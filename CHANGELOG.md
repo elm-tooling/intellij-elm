@@ -18,7 +18,7 @@
 *   Documentation improvements
 
 ## [5.0.0] - 2024-04-23
-*   Moved the plugin into a [GitHub organization of its own](https://github.com/intellij-elm/intellij-elm)
+*   Moved the plugin to [intellij-elm/intellij-elm](https://github.com/intellij-elm/intellij-elm)
 *   Got the test suite in a "mostly working" state
 *   Got CI back up and running (not "all green" yet, the reason found in the previous point)
 *   Enable support for newer versions of IntelliJ (2022.2.4 and newer)
