@@ -1,6 +1,8 @@
 The MIT License (MIT)
 
-Copyright (c) 2024 The Elm Plugin Contributors
+Copyright (c) 2017-2021 Keith Lazuka
+Copyright (c) 2018-2020 AJ Alt
+Copyright (c) 2017-2025 The intellij-elm contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
