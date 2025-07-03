@@ -31,4 +31,4 @@ You can speed-up your development/test workflow by ensuring that IntelliJ runs t
 
 ## Questions
 
-Have a question? Contact me (`klazuka`) on the [Elm Slack](https://elmlang.herokuapp.com/) or create a Github issue. 
+Have a question? Ask it in the [intellij-elm Discord channel](https://discord.com/channels/534524278847045633/727577900525682699) or create a Github issue.
