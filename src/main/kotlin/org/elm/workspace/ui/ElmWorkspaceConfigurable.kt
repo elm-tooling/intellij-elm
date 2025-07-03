@@ -92,7 +92,7 @@ class ElmWorkspaceConfigurable(
             }
             block("") {
                 val nvmUrl = "https://github.com/nvm-sh/nvm"
-                val docsUrl = "https://github.com/elm-tooling/intellij-elm/blob/master/docs/nvm.md"
+                val docsUrl = "https://github.com/elm-tooling/intellij-elm/blob/main/docs/nvm.md"
                 noteRow("""Using <a href="$nvmUrl">nvm</a>? Please read <a href="$docsUrl">our troubleshooting tips</a>.""")
             }
         }
