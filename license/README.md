@@ -1,5 +1,5 @@
 The MIT license (given in full in LICENSE.txt) applies to all code in this repository for which the copyright is held
-by The Elm Plugin Contributors.
+by Keith Lazuka, AJ Alt and the intellij-elm contributors.
 
 The following sections of the repository contain third-party code, to which different licenses may apply:
 
