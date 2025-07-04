@@ -2,7 +2,7 @@
 
 # Changelog for et-intellij-elm
 
-## [5.1.0-beta1] - 2025-07-04
+## [Unreleased]
 *   Moved the plugin to [elm-tooling/intellij](https://github.com/elm-tooling/intellij-elm)
 *   Fix latest version not working on newer IntelliJ versions
 *   Upgraded some dependencies
