@@ -1,9 +1,11 @@
 <!-- Keep a Changelog guide -> https://keepachangelog.com -->
 
-# Changelog for intellij-elm
+# Changelog for et-intellij-elm
 
-## [Unreleased]
-*   Some unmerged PRs 
+## [5.1.0-beta1] - 2025-07-04
+*   Moved the plugin to [elm-tooling/intellij](https://github.com/elm-tooling/intellij-elm)
+*   Fix latest version not working on newer IntelliJ versions
+*   Upgraded some dependencies
 
 ## [5.0.1] - 2022-04-23
 *   Fix parse error when pattern matching in function-argument (issue #742)
