@@ -60,6 +60,7 @@ private val log = logger<ElmWorkspaceService>()
  * The state includes user-specific paths, so it is persisted to IntelliJ's workspace file
  * (which is _not_ placed in version control).
  */
+@Service(Service.Level.PROJECT)
 @State(name = "ElmWorkspace", storages = [Storage(StoragePathMacros.WORKSPACE_FILE)])
 class ElmWorkspaceService(val intellijProject: Project) : PersistentStateComponent<Element> {
 
@@ -112,7 +113,7 @@ class ElmWorkspaceService(val intellijProject: Project) : PersistentStateCompone
         }
 
 
-    val rawSettings get() = rawSettingsRef.get()
+    val rawSettings: RawSettings? get() = rawSettingsRef.get()
 
 
     private val rawSettingsRef = AtomicReference(RawSettings())
@@ -461,7 +462,7 @@ class ElmWorkspaceService(val intellijProject: Project) : PersistentStateCompone
         val isElmFormatOnSaveEnabled = settingsElement
             .getAttributeValue("isElmFormatOnSaveEnabled")
             .takeIf { it != null && it.isNotBlank() }?.toBoolean()
-            ?: ElmToolchain.DEFAULT_FORMAT_ON_SAVE
+            ?: DEFAULT_FORMAT_ON_SAVE
 
         modifySettings(notify = false) {
             RawSettings(

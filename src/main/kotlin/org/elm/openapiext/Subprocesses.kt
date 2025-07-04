@@ -42,7 +42,6 @@ import java.nio.file.Path
 
 private val log = Logger.getInstance("org.elm.openapiext.Subprocesses")
 
-@Suppress("FunctionName")
 fun GeneralCommandLine(path: Path, vararg args: String) =
     GeneralCommandLine(path.systemIndependentPath, *args)
 

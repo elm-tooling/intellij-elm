@@ -2,7 +2,7 @@
     <!-- Changing the ID will prohibit upgrades of version of the plugin with a previous ID. -->
     <id>intellij-elm</id>
     <name>Elm</name>
-    <vendor url="https://github.com/intellij-elm">The Elm Plugin Contributors</vendor>
+    <vendor url="https://github.com/elm-tooling/">The Elm Plugin Contributors</vendor>
 
     <description><![CDATA[
         Provides support for the <a href="http://elm-lang.org">Elm programming language</a>.<br/>
@@ -220,7 +220,6 @@
         </intentionAction>
 
         <!-- ELM PROJECTS, PACKAGES AND DEPENDENCIES -->
-        <projectService serviceImplementation="org.elm.workspace.ElmWorkspaceService"/>
         <additionalLibraryRootsProvider implementation="org.elm.workspace.ElmAdditionalLibraryRootsProvider"/>
         <projectConfigurable instance="org.elm.workspace.ui.ElmWorkspaceConfigurable" displayName="Elm"
                              groupId="language"/>
