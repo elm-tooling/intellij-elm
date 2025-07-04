@@ -1,7 +1,7 @@
 <idea-plugin>
     <!-- Changing the ID will prohibit upgrades of version of the plugin with a previous ID. -->
-    <id>intellij-elm</id>
-    <name>Elm</name>
+    <id>et-intellij-elm</id>
+    <name>Elm Language</name>
     <vendor url="https://github.com/elm-tooling/intellij-elm">The Elm Plugin Contributors</vendor>
 
     <description><![CDATA[
