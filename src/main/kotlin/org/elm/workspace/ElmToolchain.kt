@@ -27,11 +27,11 @@ data class ElmToolchain(
 ) {
     constructor(elmCompilerPath: String, lamderaCompilerPath: String, elmFormatPath: String, elmTestPath: String, elmReviewPath: String, isElmFormatOnSaveEnabled: Boolean) :
             this(
-                    if (elmCompilerPath.isNotBlank()) Paths.get(elmCompilerPath) else null,
-                    if (lamderaCompilerPath.isNotBlank()) Paths.get(lamderaCompilerPath) else null,
-                    if (elmFormatPath.isNotBlank()) Paths.get(elmFormatPath) else null,
-                    if (elmTestPath.isNotBlank()) Paths.get(elmTestPath) else null,
-                    if (elmReviewPath.isNotBlank()) Paths.get(elmReviewPath) else null,
+                    if (elmCompilerPath.isNotBlank() && Files.exists(Paths.get(elmCompilerPath))) Paths.get(elmCompilerPath) else null,
+                    if (lamderaCompilerPath.isNotBlank() && Files.exists(Paths.get(lamderaCompilerPath))) Paths.get(lamderaCompilerPath) else null,
+                    if (elmFormatPath.isNotBlank() && Files.exists(Paths.get(elmFormatPath))) Paths.get(elmFormatPath) else null,
+                    if (elmTestPath.isNotBlank() && Files.exists(Paths.get(elmTestPath))) Paths.get(elmTestPath) else null,
+                    if (elmReviewPath.isNotBlank() && Files.exists(Paths.get(elmReviewPath))) Paths.get(elmReviewPath) else null,
                     isElmFormatOnSaveEnabled
             )
 

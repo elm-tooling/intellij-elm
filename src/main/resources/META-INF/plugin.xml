@@ -220,7 +220,6 @@
         </intentionAction>
 
         <!-- ELM PROJECTS, PACKAGES AND DEPENDENCIES -->
-        <projectService serviceImplementation="org.elm.workspace.ElmWorkspaceService"/>
         <additionalLibraryRootsProvider implementation="org.elm.workspace.ElmAdditionalLibraryRootsProvider"/>
         <projectConfigurable instance="org.elm.workspace.ui.ElmWorkspaceConfigurable" displayName="Elm"
                              groupId="language"/>
