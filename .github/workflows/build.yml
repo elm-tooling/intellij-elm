@@ -121,6 +121,14 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Install elm tools
+        run: npm install --global elm elm-test elm-format elm-review lamdera
+
       # Run tests
       - name: Run Tests
         run: ./gradlew check
