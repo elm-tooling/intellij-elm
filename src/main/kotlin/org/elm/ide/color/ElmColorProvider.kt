@@ -11,6 +11,7 @@ import org.elm.lang.core.psi.ElmTypes.REGULAR_STRING_PART
 import org.elm.lang.core.psi.elementType
 import org.elm.lang.core.psi.elements.*
 import java.awt.Color
+import java.util.Locale
 import kotlin.math.roundToInt
 
 private val colorRegex = Regex("""#[0-9a-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\([^)]+\)""")
@@ -197,5 +198,5 @@ private fun Color.toRGB() = RGB(red, green, blue, alpha / 255f)
 private fun Float.render(): String = when (this) {
     0f -> "0"
     1f -> "1"
-    else -> String.format("%.4f", this).trimEnd('0').trimEnd('.')
+    else -> String.format(Locale.ENGLISH, "%.4f", this).trimEnd('0').trimEnd('.')
 }
