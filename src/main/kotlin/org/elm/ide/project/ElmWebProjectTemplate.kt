@@ -55,14 +55,14 @@ class ElmWebProjectTemplate : WebProjectTemplate<Any>(), CustomStepProjectGenera
 
                 // Mark the source roots, etc.
                 with(contentEntry) {
-                    addSourceFolder(join(root.url, "src"), /* test = */ false)
-                    addSourceFolder(join(root.url, DEFAULT_TESTS_DIR_NAME), /* test = */ true)
+                    addSourceFolder(join(root.url, "src"), /* p1 = */ false)
+                    addSourceFolder(join(root.url, DEFAULT_TESTS_DIR_NAME), /* p1 = */ true)
                     addExcludeFolder(join(root.url, "elm-stuff"))
                 }
 
                 rootModel.commit()
-                project.save()
             }
+            project.save()
 
             // attempt to autoconfigure the Elm toolchain and attach `elm.json`.
             asyncAutoDiscoverWorkspace(project, explicitRequest = true).whenCompleteAsync { _, _ ->
