@@ -22,7 +22,7 @@ Elm File
       PsiWhiteSpace('\n')
       PsiElement(VIRTUAL_OPEN_SECTION)('        ')
       PsiElement(LOWER_CASE_IDENTIFIER)('x')
-      PsiErrorElement:COLON, EQ, LEFT_BRACE, LEFT_PARENTHESIS, LEFT_SQUARE_BRACKET, LOWER_CASE_IDENTIFIER, NUMBER_LITERAL, OPEN_CHAR, OPEN_QUOTE or UNDERSCORE expected
+      PsiErrorElement:<pattern>, COLON, EQ, LEFT_BRACE, LEFT_PARENTHESIS, LEFT_SQUARE_BRACKET, LOWER_CASE_IDENTIFIER, NUMBER_LITERAL, OPEN_CHAR, OPEN_QUOTE or UNDERSCORE expected
         <empty list>
       PsiErrorElement:IN expected
         <empty list>

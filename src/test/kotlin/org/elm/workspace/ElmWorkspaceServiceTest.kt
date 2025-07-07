@@ -1,5 +1,6 @@
 package org.elm.workspace
 
+import com.intellij.testFramework.PlatformTestUtil
 import junit.framework.TestCase
 import org.elm.fileTree
 import org.elm.openapiext.elementFromXmlString
@@ -270,6 +271,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
 
         // ... must be able to load from serialized state ...
         workspace.asyncLoadState(elementFromXmlString(xml)).get()
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         val actualProjects = workspace.allProjects.map { it.manifestPath }
         val expectedProjects = listOf(projectPath)
         checkEquals(expectedProjects, actualProjects)

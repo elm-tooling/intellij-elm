@@ -92,7 +92,7 @@ class ElmWorkspaceConfigurable(
             }
             block("") {
                 val nvmUrl = "https://github.com/nvm-sh/nvm"
-                val docsUrl = "https://github.com/elm-tooling/intellij-elm/blob/master/docs/nvm.md"
+                val docsUrl = "https://github.com/elm-tooling/intellij-elm/blob/main/docs/nvm.md"
                 noteRow("""Using <a href="$nvmUrl">nvm</a>? Please read <a href="$docsUrl">our troubleshooting tips</a>.""")
             }
         }
@@ -297,19 +297,29 @@ class ElmWorkspaceConfigurable(
 
     override fun reset() {
         val settings = project.elmWorkspace.rawSettings
-        val elmCompilerPath = settings.elmCompilerPath
-        val lamderaCompilerPath = settings.lamderaCompilerPath
-        val elmFormatPath = settings.elmFormatPath
-        val isElmFormatOnSaveEnabled = settings.isElmFormatOnSaveEnabled
-        val elmTestPath = settings.elmTestPath
-        val elmReviewPath = settings.elmReviewPath
+        val elmCompilerPath = settings?.elmCompilerPath
+        val lamderaCompilerPath = settings?.lamderaCompilerPath
+        val elmFormatPath = settings?.elmFormatPath
+        val isElmFormatOnSaveEnabled = settings?.isElmFormatOnSaveEnabled
+        val elmTestPath = settings?.elmTestPath
+        val elmReviewPath = settings?.elmReviewPath
 
-        elmPathField.text = elmCompilerPath
-        lamderaPathField.text = lamderaCompilerPath
-        elmFormatPathField.text = elmFormatPath
-        elmFormatOnSaveCheckbox.isSelected = isElmFormatOnSaveEnabled
-        elmTestPathField.text = elmTestPath
-        elmReviewPathField.text = elmReviewPath
+        if (elmCompilerPath != null) {
+            elmPathField.text = elmCompilerPath
+        }
+        if (lamderaCompilerPath != null) {
+            lamderaPathField.text = lamderaCompilerPath
+        }
+        if (elmFormatPath != null) {
+            elmFormatPathField.text = elmFormatPath
+        }
+        elmFormatOnSaveCheckbox.isSelected = isElmFormatOnSaveEnabled == true
+        if (elmTestPath != null) {
+            elmTestPathField.text = elmTestPath
+        }
+        if (elmReviewPath != null) {
+            elmReviewPathField.text = elmReviewPath
+        }
 
         update()
     }
@@ -331,7 +341,7 @@ class ElmWorkspaceConfigurable(
 
     override fun isModified(): Boolean {
         val settings = project.elmWorkspace.rawSettings
-        return elmPathField.text != settings.elmCompilerPath
+        return elmPathField.text != settings?.elmCompilerPath
                 || lamderaPathField.text != settings.lamderaCompilerPath
                 || elmFormatPathField.text != settings.elmFormatPath
                 || elmTestPathField.text != settings.elmTestPath
