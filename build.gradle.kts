@@ -47,6 +47,7 @@ dependencies {
     implementation("com.github.ajalt.colormath:colormath:3.6.1")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.2.0")
+    implementation("org.opentest4j:opentest4j:1.3.0")
 }
 
 // Configure Gradle IntelliJ Plugin - read more: https://github.com/JetBrains/gradle-intellij-plugin
