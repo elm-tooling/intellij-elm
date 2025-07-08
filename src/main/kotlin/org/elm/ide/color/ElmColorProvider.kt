@@ -1,7 +1,9 @@
 package org.elm.ide.color
 
+import com.github.ajalt.colormath.AngleUnit
 import com.github.ajalt.colormath.Color
 import com.github.ajalt.colormath.formatCssString
+import com.github.ajalt.colormath.hueOr
 import com.github.ajalt.colormath.model.HSL
 import com.github.ajalt.colormath.model.RGB
 import com.github.ajalt.colormath.parse
@@ -46,16 +48,16 @@ class ElmColorProvider : ElementColorProvider {
                 "rgb", "rgba" -> {
                     if (call.a == null && call.name == "rgba") return null
                     if (call.useFloat) RGB(call.c1, call.c2, call.c3, call.a ?: 1f)
-                    else RGB(call.c1.toInt(), call.c2.toInt(), call.c3.toInt(), call.a ?: 1f)
+                    else RGB.from255(call.c1.toInt(), call.c2.toInt(), call.c3.toInt(), ((call.a ?: 1f) * 255).toInt())
                 }
-                "rgb255" -> RGB(call.c1.toInt(), call.c2.toInt(), call.c3.toInt())
-                "rgba255" -> RGB(call.c1.toInt(), call.c2.toInt(), call.c3.toInt(), call.a ?: return null)
+                "rgb255" -> RGB.from255(call.c1.toInt(), call.c2.toInt(), call.c3.toInt())
+                "rgba255" -> RGB.from255(call.c1.toInt(), call.c2.toInt(), call.c3.toInt(), ((call.a ?: 1f) * 255).toInt())
                 "hsl" -> HSL(call.c1, call.c2, call.c3)
                 "hsla" -> HSL(call.c1, call.c2, call.c3, call.a ?: return null)
                 else -> return null
-            }
+            }.toAwtColor()
         }.getOrNull()
-        return color?.toAwtColor()
+        return color
     }
 
     private fun getFuncCall(element: PsiElement): FuncCall? {
@@ -119,9 +121,9 @@ class ElmColorProvider : ElementColorProvider {
 
         if (call.name.startsWith("hsl")) {
             val hsl = color.toRGB().toHSL()
-            call.args[0].replace(factory.createNumberConstant(hsl.h.render()))
-            call.args[1].replace(factory.createNumberConstant((hsl.s / 100f).render()))
-            call.args[2].replace(factory.createNumberConstant((hsl.l / 100f).render()))
+            call.args[0].replace(factory.createNumberConstant(hsl.hueOr(0).render()))
+            call.args[1].replace(factory.createNumberConstant(hsl.s.render()))
+            call.args[2].replace(factory.createNumberConstant(hsl.l.render()))
         } else {
             call.args[0].replace(color.red, call.useFloat)
             call.args[1].replace(color.green, call.useFloat)
@@ -146,8 +148,24 @@ class ElmColorProvider : ElementColorProvider {
 
         val newColor = when {
             match.startsWith("#") -> rgb.toHex()
-            match.startsWith("rgb") -> rgb.formatCssString()
-            match.startsWith("hsl") -> rgb.toHSL().formatCssString()
+            match.startsWith("rgb") -> rgb.formatCssString(
+                legacyFormat = commas,
+                legacyName = match.startsWith("rgba"),
+                unitsPercent = percentCount > 1,
+                alphaPercent = percentCount == 1 || percentCount == 4
+            )
+            match.startsWith("hsl") -> rgb.toHSL().formatCssString(
+                legacyFormat = commas,
+                legacyName = match.startsWith("hsla"),
+                hueUnit = when {
+                    "deg" in match -> AngleUnit.DEGREES
+                    "grad" in match -> AngleUnit.GRADIANS
+                    "rad" in match -> AngleUnit.RADIANS
+                    "turn" in match -> AngleUnit.TURNS
+                    else -> AngleUnit.AUTO
+                },
+                alphaPercent = percentCount == 1 || percentCount == 3
+            )
             else -> return
         }
 
@@ -178,10 +196,10 @@ private data class FuncCall(
 }
 
 fun com.github.ajalt.colormath.Color.toAwtColor(): AwtColor = toSRGB().let {
-    AwtColor(it.r, it.g, it.b, it.alpha * 255)
+    AwtColor(it.r, it.g, it.b, it.alpha)
 }
 
-private fun AwtColor.toRGB() = RGB(red, green, blue, alpha / 255f)
+private fun AwtColor.toRGB() = RGB.from255(red, green, blue, alpha)
 
 private fun Float.render(): String = when (this) {
     0f -> "0"
