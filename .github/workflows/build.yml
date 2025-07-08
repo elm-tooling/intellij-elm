@@ -50,7 +50,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: corretto
-          java-version: 17
+          java-version: 21
 
       # Setup Gradle
       - name: Setup Gradle
@@ -115,7 +115,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: corretto
-          java-version: 17
+          java-version: 21
 
       # Setup Gradle
       - name: Setup Gradle
@@ -174,7 +174,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: corretto
-          java-version: 17
+          java-version: 21
 
       # Run Qodana inspections
       - name: Qodana - Code Inspection
@@ -206,7 +206,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: corretto
-          java-version: 17
+          java-version: 21
 
       # Setup Gradle
       - name: Setup Gradle
