@@ -31,7 +31,7 @@ class ElmTestCLI(private val executablePath: Path) {
      * @param elmCompilerPath The path to the Elm compiler.
      * @param elmProject The [ElmProject] containing the tests to be run.
      */
-    fun runTestsProcessHandler(elmCompilerPath: Path, elmProject: ElmProject): ProcessHandler {
+    fun runTestsProcessHandler(elmCompilerPath: Path, elmProject: ElmProject, testFilePath: String?): ProcessHandler {
         val commandLine = GeneralCommandLine(executablePath.toString(), "--report=json")
                 .withWorkDirectory(elmProject.projectDirPath.toString())
                 .withParameters("--compiler", elmCompilerPath.toString())
@@ -41,7 +41,10 @@ class ElmTestCLI(private val executablePath: Path) {
         // By default elm-test will process tests in a folder called "tests", under the current working directory
         // (in this case elmProject.projectDirPath). If the project has a custom location for tests we need to supply a
         // path to that folder.
-        if (elmProject.isCustomTestsDir) {
+        if (testFilePath != null) {
+            log.debug { """Test file or directory was provided: "${elmProject.testsRelativeDirPath}". Will specify this path as argument to elm-test.""" }
+            commandLine.withParameters(testFilePath)
+        } else if (elmProject.isCustomTestsDir) {
             log.debug { """Tests are in custom location: "${elmProject.testsRelativeDirPath}". Will specify this path as argument to elm-test.""" }
             commandLine.withParameters(elmProject.testsRelativeDirPath)
         } else {

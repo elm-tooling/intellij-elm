@@ -15,6 +15,25 @@ class ElmTestRunConfigurationTest {
 
         val options = Options()
         options.elmFolder = "folder"
+        options.testFile = ElmTestRunConfiguration.FilteredTest.from("foo", "foo")
+
+        writeOptions(options, root)
+
+        assertEquals(1, root.children.size.toLong())
+        assertEquals(ElmTestRunConfiguration::class.java.simpleName, root.children[0].name)
+        assertEquals(3, root.children[0].attributes.size.toLong())
+        assertEquals("elm-folder", root.children[0].attributes[0].name)
+        assertEquals("folder", root.children[0].attributes[0].value)
+        assertEquals("test-file-path", root.children[0].attributes[1].name)
+        assertEquals("foo", root.children[0].attributes[1].value)
+    }
+
+    @Test
+    fun writeOptionsWithNullTestFile() {
+        val root = Element("ROOT")
+
+        val options = Options()
+        options.elmFolder = "folder"
 
         writeOptions(options, root)
 
@@ -31,11 +50,27 @@ class ElmTestRunConfigurationTest {
 
         val options = Options()
         options.elmFolder = "folder"
+        options.testFile = ElmTestRunConfiguration.FilteredTest("foo", "foo")
 
         writeOptions(options, root)
         val options2 = readOptions(root)
 
         assertEquals(options.elmFolder, options2.elmFolder)
+        assertEquals(options.testFile, options2.testFile)
+    }
+
+    @Test
+    fun roundTripWithNullTestFile() {
+        val root = Element("ROOT")
+
+        val options = Options()
+        options.elmFolder = "folder"
+
+        writeOptions(options, root)
+        val options2 = readOptions(root)
+
+        assertEquals(options.elmFolder, options2.elmFolder)
+        assertEquals(options.testFile, options2.testFile)
     }
 
 }
