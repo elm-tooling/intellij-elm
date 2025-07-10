@@ -2,7 +2,7 @@ package org.elm.lang.core.stubs
 
 import com.intellij.psi.stubs.IndexSink
 import org.elm.lang.core.stubs.index.ElmModulesIndex
-import org.elm.lang.core.stubs.index.ElmNamedElementIndex
+import org.elm.lang.core.stubs.index.KEY
 
 
 fun IndexSink.indexModuleDecl(stub: ElmModuleDeclarationStub) {
@@ -40,5 +40,5 @@ fun IndexSink.indexRecordField(stub: ElmFieldTypeStub) {
 
 
 private fun IndexSink.indexNamedStub(stub: ElmNamedStub) {
-    occurrence(ElmNamedElementIndex.KEY, stub.name)
+    occurrence(KEY, stub.name)
 }
