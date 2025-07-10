@@ -155,34 +155,34 @@ main = ("border", "1px solid #aabbcc")
         doCssWriteTest("rgb(255 0 153 / 100%)", "rgb(123 45 67 / 50%)", RGB.from255(123, 45, 67, 128))
 
     @Test
-    fun `test write hsl(270,60%,70%)`() = doCssWriteTest("hsl(270,60%,70%)", "hsl(123, 45%, 67%, .2)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270,60%,70%)`() = doCssWriteTest("hsl(270,60%,70%)", "hsl(123.1579, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
-    fun `test write hsl(270, 60%, 70%)`() = doCssWriteTest("hsl(270, 60%, 70%)", "hsl(123, 45%, 67%)", HSL.fromFractions(123, 45, 67))
+    fun `test write hsl(270, 60%, 70%)`() = doCssWriteTest("hsl(270, 60%, 70%)", "hsl(123.1579, 45%, 67%)", HSL.fromFractions(123, 45, 67))
 
     @Test
-    fun `test write hsl(270 60% 70%)`() = doCssWriteTest("hsl(270 60% 70%)", "hsl(123 45% 67%)", HSL.fromFractions(123, 45, 67))
+    fun `test write hsl(270 60% 70%)`() = doCssWriteTest("hsl(270 60% 70%)", "hsl(123.1579 45% 67%)", HSL.fromFractions(123, 45, 67))
 
     @Test
-    fun `test write hsl(270, 60%, 50%, _15)`() = doCssWriteTest("hsl(270, 60%, 50%, .15)", "hsl(123, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270, 60%, 50%, _15)`() = doCssWriteTest("hsl(270, 60%, 50%, .15)", "hsl(123.1579, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
-    fun `test write hsl(270, 60%, 50%, 15%)`() = doCssWriteTest("hsl(270, 60%, 50%, 15%)", "hsl(123, 45%, 67%, 20%)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270, 60%, 50%, 15%)`() = doCssWriteTest("hsl(270, 60%, 50%, 15%)", "hsl(123.1579, 45%, 67%, 20%)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
-    fun `test write hsl(270 60% 50% _ _15)`() = doCssWriteTest("hsl(270 60% 50% / .15)", "hsl(123 45% 67% / 0.2)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270 60% 50% _ _15)`() = doCssWriteTest("hsl(270 60% 50% / .15)", "hsl(123.1579 45% 67% / 0.2)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
-    fun `test write hsl(270 60% 50% _ 15%)`() = doCssWriteTest("hsl(270 60% 50% / 15%)", "hsl(123 45% 67% / 20%)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270 60% 50% _ 15%)`() = doCssWriteTest("hsl(270 60% 50% / 15%)", "hsl(123.1579 45% 67% / 20%)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
-    fun `test write hsl(270grad,60%,70%)`() = doCssWriteTest("hsl(270grad,60%,70%)", "hsl(136.6666grad, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270grad,60%,70%)`() = doCssWriteTest("hsl(270grad,60%,70%)", "hsl(136.8421grad, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
-    fun `test write hsl(270rad,60%,70%)`() = doCssWriteTest("hsl(270rad,60%,70%)", "hsl(2.1467rad, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270rad,60%,70%)`() = doCssWriteTest("hsl(270rad,60%,70%)", "hsl(2.1495rad, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
-    fun `test write hsl(270turn,60%,70%)`() = doCssWriteTest("hsl(270turn,60%,70%)", "hsl(0.3416turn, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270turn,60%,70%)`() = doCssWriteTest("hsl(270turn,60%,70%)", "hsl(0.3421turn, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
     fun `test rgb int read`() = doGutterTest(2, """
@@ -303,28 +303,28 @@ main =
         doFuncWriteTest("rgba", "255 255 255 1", "123 45 67 0.2", RGB.from255(123, 45, 67, 51))
 
     @Test
-    fun `test write rgb float 1 1 1`() = doFuncWriteTest("rgb", "1 1 1", "0.4824 0.1765 0.2627")
+    fun `test write rgb float 1 1 1`() = doFuncWriteTest("rgb", "1 1 1", "0.48 0.18 0.26")
 
     @Test
-    fun `test write rgb float 0_5 0_5 0_5`() = doFuncWriteTest("rgb", "0.5 0.5 05", "0.4824 0.1765 0.2627")
+    fun `test write rgb float 0_5 0_5 0_5`() = doFuncWriteTest("rgb", "0.5 0.5 05", "0.48 0.18 0.26")
 
     @Test
-    fun `test write rgba 1 1 1 1`() = doFuncWriteTest("rgba", "1 1 1 1", "0.4824 0.1765 0.2627 1")
+    fun `test write rgba 1 1 1 1`() = doFuncWriteTest("rgba", "1 1 1 1", "0.48 0.18 0.26 1")
 
     @Test
-    fun `test write rgba float`() = doFuncWriteTest("rgba", "0.5 0.5 05 0.5", "0.4824 0.1765 0.2627 1")
+    fun `test write rgba float`() = doFuncWriteTest("rgba", "0.5 0.5 05 0.5", "0.48 0.18 0.26 1")
 
     @Test
-    fun `test write hsl 0 0 0`() = doFuncWriteTest("hsl", "0 0 0", "0 0 0", HSL.fromFractions(0, 0, 0))
+    fun `test write hsl 0 0 0`() = doFuncWriteTest("hsl", "0 0 0", "0 0 0", HSL(0, 0, 0))
 
     @Test
-    fun `test write hsl 360 1 1`() = doFuncWriteTest("hsl", "360 1 1", "180 0.5 0.5", HSL.fromFractions(180, 50, 50))
+    fun `test write hsl 360 1 1`() = doFuncWriteTest("hsl", "360 1 1", "180 0.5 0.5", HSL(180, .5f, .5f))
 
     @Test
-    fun `test write hsla 0 0 0 0`() = doFuncWriteTest("hsla", "0 0 0 0", "0 0 0 1", HSL.fromFractions(0, 0, 0))
+    fun `test write hsla 0 0 0 0`() = doFuncWriteTest("hsla", "0 0 0 0", "0 0 0 1", HSL(0, 0, 0))
 
     @Test
-    fun `test write hsla 360 1 1 1`() = doFuncWriteTest("hsla", "360 1 1 1", "180 0.5 0.5 0.2", HSL.fromFractions(180, 50, 50, .2f))
+    fun `test write hsla 360 1 1 1`() = doFuncWriteTest("hsla", "360 1 1 1", "180 0.5 0.5 0.2", HSL(180, .5f, .5f, .2f))
 
     @Test
     fun `test write rgb with linebreaks and comments`() = doWriteTest(

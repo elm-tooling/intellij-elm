@@ -18,7 +18,6 @@ import org.elm.lang.core.psi.elementType
 import org.elm.lang.core.psi.elements.*
 import java.awt.Color as AwtColor
 import java.util.Locale
-import kotlin.math.roundToInt
 
 private val colorRegex = Regex("""#[0-9a-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\([^)]+\)""")
 
@@ -195,7 +194,7 @@ private data class FuncCall(
     }
 }
 
-fun com.github.ajalt.colormath.Color.toAwtColor(): AwtColor = toSRGB().let {
+fun Color.toAwtColor(): AwtColor = toSRGB().let {
     AwtColor(it.r, it.g, it.b, it.alpha)
 }
 
@@ -204,5 +203,5 @@ private fun AwtColor.toRGB() = RGB.from255(red, green, blue, alpha)
 private fun Float.render(): String = when (this) {
     0f -> "0"
     1f -> "1"
-    else -> String.format(Locale.ENGLISH, "%.4f", this).trimEnd('0').trimEnd('.')
+    else -> String.format(Locale.ENGLISH, "%.2f", this).trimEnd('0').trimEnd('.')
 }
