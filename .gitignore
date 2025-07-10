@@ -10,3 +10,4 @@ testData/
 todos/
 src/main/gen
 .intellijPlatform/
+.DS_Store
