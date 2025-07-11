@@ -63,7 +63,7 @@ class ElmTestRunProfileState internal constructor(
             return handleBadConfiguration(project, "Could not find the Elm compiler ")
         }
 
-        val testFilePath = (environment.runProfile as? ElmTestRunConfiguration)?.options?.testFile?.filePath
+        val testFilePath = (environment.runProfile as? ElmTestRunConfiguration)?.options?.testFile?.runnableFilePath()
 
         return elmTestCLI.runTestsProcessHandler(elmCompilerBinary, elmProject, testFilePath)
     }

@@ -71,7 +71,11 @@ class ElmTestCLI(private val executablePath: Path) {
             return Result.Err("no output from elm-test")
         }
 
-        val trimmedFirstLine = firstLine.takeWhile { it != '-' }
+        val trimmedFirstLine = if (firstLine.startsWith("elm-test-rs")) {
+            firstLine.removePrefix("elm-test-rs").trim()
+        } else {
+            firstLine.takeWhile { it != '-' }
+        }
 
         return try {
             Result.Ok(Version.parse(trimmedFirstLine))

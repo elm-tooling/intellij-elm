@@ -41,10 +41,10 @@ class ElmTestRunConfiguration internal constructor(project: Project, factory: Co
 
     data class Options(var elmFolder: String? = null, var testFile: FilteredTest? = null)
 
-    data class FilteredTest(val filePath: String, val label: String) {
+    data class FilteredTest(val filePath: String, val label: String, val testIsDirectory: Boolean) {
         companion object {
             fun from(path: String?, project: Project): FilteredTest? {
-                if (path == null || path.isEmpty())  return null
+                if (path.isNullOrBlank())  return null
 
                 val virtualFile = VirtualFileManager.getInstance().findFileByUrl("file://$path") ?: return null
 
@@ -53,15 +53,21 @@ class ElmTestRunConfiguration internal constructor(project: Project, factory: Co
 
             fun from(path: String?, label: String?): FilteredTest? {
                 if (path.isNullOrBlank() || label.isNullOrBlank()) return null
+                val isDirectory = !path.substringAfterLast('/').contains('.')
 
-                return FilteredTest(path, label)
+                return FilteredTest(path, label, isDirectory)
             }
 
             fun from(virtualFile: VirtualFile, project: Project): FilteredTest? {
                 val psiManager = PsiManager.getInstance(project)
-                val psiFile = psiManager.findFile(virtualFile) ?: return null
 
-                return from(psiFile)
+                if (virtualFile.isDirectory) {
+                    val psiDirectory = psiManager.findDirectory(virtualFile) ?: return null
+                    return from(psiDirectory)
+                } else {
+                    val psiFile = psiManager.findFile(virtualFile) ?: return null
+                    return from(psiFile)
+                }
             }
 
             fun from(element: PsiElement): FilteredTest? {
@@ -75,12 +81,16 @@ class ElmTestRunConfiguration internal constructor(project: Project, factory: Co
                 val elmFile = psiFile as? ElmFile ?: return null
                 val moduleName = elmFile.getModuleDecl()?.name ?: return null
 
-                return FilteredTest(psiFile.virtualFile.path, moduleName)
+                return FilteredTest(psiFile.virtualFile.path, moduleName, false)
             }
 
             fun from(psiDirectory: PsiDirectory): FilteredTest? {
-                return FilteredTest(psiDirectory.virtualFile.path, psiDirectory.name)
+                return FilteredTest(psiDirectory.virtualFile.path, psiDirectory.name, true)
             }
+        }
+
+        fun runnableFilePath(): String {
+            return if (testIsDirectory) "$filePath/**/*.elm" else filePath
         }
     }
 
