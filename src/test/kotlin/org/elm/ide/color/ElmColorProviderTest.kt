@@ -41,10 +41,10 @@ main = ("border", "1px solid #aabbcc")
     fun `test rgb(255, 0, 153_0)`() = doFormatTest("rgb(255, 0, 153.0)")
 
     @Test
-    fun `test rgb(100%,0%,60%)`() = doFormatTest("rgb(100%,0%,60%)")
+    fun `test rgb(100pct,0pct,60pct)`() = doFormatTest("rgb(100%,0%,60%)")
 
     @Test
-    fun `test rgb(100%, 0%, 60%)`() = doFormatTest("rgb(100%, 0%, 60%)")
+    fun `test rgb(100pct, 0pct, 60pct)`() = doFormatTest("rgb(100%, 0%, 60%)")
 
     @Test
     fun `test rgb(255 0 153)`() = doFormatTest("rgb(255 0 153)")
@@ -65,49 +65,49 @@ main = ("border", "1px solid #aabbcc")
     fun `test rgb(255, 0, 153, 1)`() = doFormatTest("rgb(255, 0, 153, 1)")
 
     @Test
-    fun `test rgb(255, 0, 153, 100%)`() = doFormatTest("rgb(255, 0, 153, 100%)")
+    fun `test rgb(255, 0, 153, 100pct)`() = doFormatTest("rgb(255, 0, 153, 100%)")
 
     @Test
     fun `test rgb(255 0 153 _ 1)`() = doFormatTest("rgb(255 0 153 / 1)")
 
     @Test
-    fun `test rgb(255 0 153 _ 100%)`() = doFormatTest("rgb(255 0 153 / 100%)")
+    fun `test rgb(255 0 153 _ 100pct)`() = doFormatTest("rgb(255 0 153 / 100%)")
 
     @Test
     fun `test rgb(255, 0, 153_6, 1)`() = doFormatTest("rgb(255, 0, 153.6, 1)")
 
     @Test
-    fun `test rgb(1e2, _5e1, _5e0, +_25e2%)`() = doFormatTest("rgb(1e2, .5e1, .5e0, +.25e2%)")
+    fun `test rgb(1e2, _5e1, _5e0, +_25e2pct)`() = doFormatTest("rgb(1e2, .5e1, .5e0, +.25e2%)")
 
     @Test
-    fun `test hsl(270,60%,70%)`() = doFormatTest("hsl(270,60%,70%)")
+    fun `test hsl(270,60pct,70pct)`() = doFormatTest("hsl(270,60%,70%)")
 
     @Test
-    fun `test hsl(270, 60%, 70%)`() = doFormatTest("hsl(270, 60%, 70%)")
+    fun `test hsl(270, 60pct, 70pct)`() = doFormatTest("hsl(270, 60%, 70%)")
 
     @Test
-    fun `test hsl(270 60% 70%)`() = doFormatTest("hsl(270 60% 70%)")
+    fun `test hsl(270 60pct 70pct)`() = doFormatTest("hsl(270 60% 70%)")
 
     @Test
-    fun `test hsl(270deg, 60%, 70%)`() = doFormatTest("hsl(270deg, 60%, 70%)")
+    fun `test hsl(270deg, 60pct, 70pct)`() = doFormatTest("hsl(270deg, 60%, 70%)")
 
     @Test
-    fun `test hsl(4_71239rad, 60%, 70%)`() = doFormatTest("hsl(4.71239rad, 60%, 70%)")
+    fun `test hsl(4_71239rad, 60pct, 70pct)`() = doFormatTest("hsl(4.71239rad, 60%, 70%)")
 
     @Test
-    fun `test hsl(_75turn, 60%, 70%)`() = doFormatTest("hsl(.75turn, 60%, 70%)")
+    fun `test hsl(_75turn, 60pct, 70pct)`() = doFormatTest("hsl(.75turn, 60%, 70%)")
 
     @Test
-    fun `test hsl(270, 60%, 50%, _15)`() = doFormatTest("hsl(270, 60%, 50%, .15)")
+    fun `test hsl(270, 60pct, 50pct, _15)`() = doFormatTest("hsl(270, 60%, 50%, .15)")
 
     @Test
-    fun `test hsl(270, 60%, 50%, 15%)`() = doFormatTest("hsl(270, 60%, 50%, 15%)")
+    fun `test hsl(270, 60pct, 50pct, 15pct)`() = doFormatTest("hsl(270, 60%, 50%, 15%)")
 
     @Test
-    fun `test hsl(270 60% 50% _ _15)`() = doFormatTest("hsl(270 60% 50% / .15)")
+    fun `test hsl(270 60pct 50pct _ _15)`() = doFormatTest("hsl(270 60% 50% / .15)")
 
     @Test
-    fun `test hsl(270 60% 50% _ 15%)`() = doFormatTest("hsl(270 60% 50% / 15%)")
+    fun `test hsl(270 60pct 50pct _ 15pct)`() = doFormatTest("hsl(270 60% 50% / 15%)")
 
     @Test
     fun `test write #f09`() = doCssWriteTest("#f09", "#7b2d43")
@@ -125,10 +125,10 @@ main = ("border", "1px solid #aabbcc")
     fun `test write rgb(255, 0, 153_0)`() = doCssWriteTest("rgb(255, 0, 153.0)", "rgb(123, 45, 67)")
 
     @Test
-    fun `test write rgb(100%,0%,60%)`() = doCssWriteTest("rgb(100%,0%,60%)", "rgb(48%, 18%, 26%)")
+    fun `test write rgb(100pct,0pct,60pct)`() = doCssWriteTest("rgb(100%,0%,60%)", "rgb(48%, 18%, 26%)")
 
     @Test
-    fun `test write rgb(100%, 0%, 60%)`() = doCssWriteTest("rgb(100%, 0%, 60%)", "rgb(48%, 18%, 26%)")
+    fun `test write rgb(100pct, 0pct, 60pct)`() = doCssWriteTest("rgb(100%, 0%, 60%)", "rgb(48%, 18%, 26%)")
 
     @Test
     fun `test write rgb(255 0 153)`() = doCssWriteTest("rgb(255 0 153)", "rgb(123 45 67)")
@@ -143,7 +143,7 @@ main = ("border", "1px solid #aabbcc")
     fun `test write rgba(255, 0, 153, 1)`() = doCssWriteTest("rgba(255, 0, 153, 1)", "rgba(123, 45, 67)")
 
     @Test
-    fun `test write rgb(255, 0, 153, 100%)`() =
+    fun `test write rgb(255, 0, 153, 100pct)`() =
         doCssWriteTest("rgb(255, 0, 153, 100%)", "rgb(123, 45, 67, 50%)", RGB.from255(123, 45, 67, 128))
 
     @Test
@@ -151,38 +151,38 @@ main = ("border", "1px solid #aabbcc")
         doCssWriteTest("rgb(255 0 153 / 1)", "rgb(123 45 67 / 0.2)", RGB.from255(123, 45, 67, 51))
 
     @Test
-    fun `test write rgb(255 0 153 _ 100%)`() =
+    fun `test write rgb(255 0 153 _ 100pct)`() =
         doCssWriteTest("rgb(255 0 153 / 100%)", "rgb(123 45 67 / 50%)", RGB.from255(123, 45, 67, 128))
 
     @Test
-    fun `test write hsl(270,60%,70%)`() = doCssWriteTest("hsl(270,60%,70%)", "hsl(123.1579, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270,60pct,70pct)`() = doCssWriteTest("hsl(270,60%,70%)", "hsl(123.1579, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
-    fun `test write hsl(270, 60%, 70%)`() = doCssWriteTest("hsl(270, 60%, 70%)", "hsl(123.1579, 45%, 67%)", HSL.fromFractions(123, 45, 67))
+    fun `test write hsl(270, 60pct, 70pct)`() = doCssWriteTest("hsl(270, 60%, 70%)", "hsl(123.1579, 45%, 67%)", HSL.fromFractions(123, 45, 67))
 
     @Test
-    fun `test write hsl(270 60% 70%)`() = doCssWriteTest("hsl(270 60% 70%)", "hsl(123.1579 45% 67%)", HSL.fromFractions(123, 45, 67))
+    fun `test write hsl(270 60pct 70pct)`() = doCssWriteTest("hsl(270 60% 70%)", "hsl(123.1579 45% 67%)", HSL.fromFractions(123, 45, 67))
 
     @Test
-    fun `test write hsl(270, 60%, 50%, _15)`() = doCssWriteTest("hsl(270, 60%, 50%, .15)", "hsl(123.1579, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270, 60pct, 50pct, _15)`() = doCssWriteTest("hsl(270, 60%, 50%, .15)", "hsl(123.1579, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
-    fun `test write hsl(270, 60%, 50%, 15%)`() = doCssWriteTest("hsl(270, 60%, 50%, 15%)", "hsl(123.1579, 45%, 67%, 20%)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270, 60pct, 50pct, 15pct)`() = doCssWriteTest("hsl(270, 60%, 50%, 15%)", "hsl(123.1579, 45%, 67%, 20%)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
-    fun `test write hsl(270 60% 50% _ _15)`() = doCssWriteTest("hsl(270 60% 50% / .15)", "hsl(123.1579 45% 67% / 0.2)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270 60pct 50pct _ _15)`() = doCssWriteTest("hsl(270 60% 50% / .15)", "hsl(123.1579 45% 67% / 0.2)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
-    fun `test write hsl(270 60% 50% _ 15%)`() = doCssWriteTest("hsl(270 60% 50% / 15%)", "hsl(123.1579 45% 67% / 20%)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270 60pct 50pct _ 15pct)`() = doCssWriteTest("hsl(270 60% 50% / 15%)", "hsl(123.1579 45% 67% / 20%)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
-    fun `test write hsl(270grad,60%,70%)`() = doCssWriteTest("hsl(270grad,60%,70%)", "hsl(136.8421grad, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270grad,60pct,70pct)`() = doCssWriteTest("hsl(270grad,60%,70%)", "hsl(136.8421grad, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
-    fun `test write hsl(270rad,60%,70%)`() = doCssWriteTest("hsl(270rad,60%,70%)", "hsl(2.1495rad, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270rad,60pct,70pct)`() = doCssWriteTest("hsl(270rad,60%,70%)", "hsl(2.1495rad, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
-    fun `test write hsl(270turn,60%,70%)`() = doCssWriteTest("hsl(270turn,60%,70%)", "hsl(0.3421turn, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
+    fun `test write hsl(270turn,60pct,70pct)`() = doCssWriteTest("hsl(270turn,60%,70%)", "hsl(0.3421turn, 45%, 67%, 0.2)", HSL.fromFractions(123, 45, 67, .2f))
 
     @Test
     fun `test rgb int read`() = doGutterTest(2, """
