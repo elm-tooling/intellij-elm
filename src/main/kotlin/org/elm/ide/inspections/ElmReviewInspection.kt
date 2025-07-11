@@ -37,7 +37,7 @@ class ElmReviewInspection : ElmLocalInspection() {
 
         if (scope is GlobalSearchScope) {
             // to keep inspection/analysis time brief, bail out if 'Find Usages' will be slow
-            val searchCost = PsiSearchHelper.getInstance(project).isCheapEnoughToSearch(name, scope, null, null)
+            val searchCost = PsiSearchHelper.getInstance(project).isCheapEnoughToSearch(name, scope, null)
             if (searchCost == TOO_MANY_OCCURRENCES) return
         }
 

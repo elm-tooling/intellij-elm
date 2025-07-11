@@ -159,62 +159,77 @@
         <!-- Intentions -->
 
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.exposure.ExposeIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.exposure.ExposeWithVariantsIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.exposure.ExposeVariantsIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.PipelineIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.RemovePipelineIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.exposure.StopExposingIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.exposure.StopExposingVariantsIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.MapToFoldIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.RegularToTripleQuotedStringIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.TripleQuotedToRegularStringIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.MakeAnnotationIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language></language>
             <className>org.elm.ide.intentions.MakeDecoderIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.MakeEncoderIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.RecordConstructorToLiteralIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.InlineDebugIntention</className>
             <category>Elm</category>
         </intentionAction>
@@ -250,7 +265,7 @@
                              contextId="ELM_EXPRESSION" baseContextId="Generic"/>
         <liveTemplateContext implementation="org.elm.ide.livetemplates.ElmLiveTemplateContext$ValueDecl"
                              contextId="ELM_VALUE_DECL" baseContextId="Generic"/>
-        <defaultLiveTemplatesProvider implementation="org.elm.ide.livetemplates.ElmLiveTemplateProvider"/>
+        <defaultLiveTemplates file="liveTemplates/Elm.xml"/>
 
         <configurationType implementation="org.elm.ide.test.run.ElmTestRunConfigurationType"/>
         <programRunner implementation="org.elm.ide.test.run.ElmTestProgramRunner"/>
@@ -334,5 +349,4 @@
             <reference id="Elm.RunExternalElmReviewWatchmode"/>
         </group>
     </actions>
-
 </idea-plugin>
