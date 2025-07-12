@@ -49,7 +49,7 @@ class ElmFormatCLI(private val elmFormatExecutablePath: Path) {
         val processOutput = try {
             ProgressManager.getInstance().runProcessWithProgressSynchronously<ProcessOutput, ExecutionException>({
                 getFormattedContentOfDocument(version, document, project)
-            }, "Running elm-format on current file...", true, project)
+            }, "Running 'elm-format' On Current File", true, project)
         } catch (e: ExecutionException) {
             val msg = e.message ?: "unknown"
             return when {

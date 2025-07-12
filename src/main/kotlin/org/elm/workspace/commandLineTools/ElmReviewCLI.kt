@@ -80,7 +80,7 @@ class ElmReviewCLI(val elmReviewExecutablePath: Path) {
                     } else msgs
                 }
                 if (!isUnitTestMode) {
-                    indicator.text = "review finished"
+                    indicator.text = "Review Finished"
                     ApplicationManager.getApplication().invokeLater {
                         project.messageBus.syncPublisher(ELM_REVIEW_ERRORS_TOPIC).update(elmProject.projectDirPath, messages, null, 0)
                     }
