@@ -9,11 +9,11 @@ import java.nio.file.Paths
 
 object LabelUtils {
 
-    val DESCRIBE_PROTOCOL = "elmTestDescribe"
-    val TEST_PROTOCOL = "elmTestTest"
-    val ERROR_PROTOCOL = "elmTestError"
+    const val DESCRIBE_PROTOCOL = "elmTestDescribe"
+    const val TEST_PROTOCOL = "elmTestTest"
+    const val ERROR_PROTOCOL = "elmTestError"
 
-    val EMPTY_PATH = Paths.get("")
+    val EMPTY_PATH: Path = Paths.get("")
 
     private fun getModuleName(path: Path): String {
         return pathString(path.getName(0))

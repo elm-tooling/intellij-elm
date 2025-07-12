@@ -289,8 +289,8 @@ fun Ty.allDeclarations(
         }
         is TyFunction -> {
             if (includeFunctions) {
-                yieldAll(ret.allDeclarations(includeFunctions, includeUnionsWithAliases))
-                parameters.forEach { yieldAll(it.allDeclarations(includeFunctions, includeUnionsWithAliases)) }
+                yieldAll(ret.allDeclarations(includeFunctions=true, includeUnionsWithAliases))
+                parameters.forEach { yieldAll(it.allDeclarations(includeFunctions=true, includeUnionsWithAliases)) }
             }
         }
         is TyUnion -> {
