@@ -13,6 +13,7 @@ import org.elm.lang.core.psi.ElmFile
 import org.elm.lang.core.psi.ElmNamedElement
 import org.elm.lang.core.psi.moduleName
 import org.elm.lang.core.stubs.index.ElmNamedElementIndex
+import org.elm.lang.core.stubs.index.find
 import org.elm.openapiext.findFileByPathTestAware
 import org.elm.workspace.ElmPackageProject
 import org.elm.workspace.ElmProject
@@ -43,7 +44,7 @@ object ElmLookup {
             if (log.isDebugEnabled) log.debug("Cannot lookup '$name' when Elm project context is unknown")
             return emptyList()
         }
-        return ElmNamedElementIndex.find(name, clientLocation.intellijProject, searchScopeAt(clientLocation))
+        return find(name, clientLocation.intellijProject, searchScopeAt(clientLocation))
                 .filterIsInstance<T>()
     }
 

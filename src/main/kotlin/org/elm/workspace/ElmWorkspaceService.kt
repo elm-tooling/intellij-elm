@@ -506,14 +506,14 @@ class ElmWorkspaceService(val intellijProject: Project) : PersistentStateCompone
             }
     }
 
-    override fun noStateLoaded() {
-        // The workspace is being opened for the first time. As soon as IntelliJ has
-        // fully loaded the project, we will attempt to auto-discover the Elm toolchain
-        // and the `elm.json` file.
-        StartupManager.getInstance(intellijProject).runWhenProjectIsInitialized {
-            asyncAutoDiscoverWorkspace(intellijProject)
-        }
-    }
+//    override fun noStateLoaded() {
+//        // The workspace is being opened for the first time. As soon as IntelliJ has
+//        // fully loaded the project, we will attempt to auto-discover the Elm toolchain
+//        // and the `elm.json` file.
+//        StartupManager.getInstance(intellijProject).runWhenProjectIsInitialized {
+//            asyncAutoDiscoverWorkspace(intellijProject)
+//        }
+//    }
 
     // NOTIFICATIONS
 

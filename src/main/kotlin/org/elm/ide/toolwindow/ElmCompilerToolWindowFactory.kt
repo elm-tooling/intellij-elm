@@ -36,7 +36,7 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
                     }
 
                     toolWindow.contentManager.removeAllContents(true)
-                    toolWindow.contentManager.addContent(ContentImpl(errorTreeViewPanel, "Compilation result", true))
+                    toolWindow.contentManager.addContent(ContentImpl(errorTreeViewPanel, "Compilation Result", true))
                     toolWindow.show(null)
                     errorTreeViewPanel.expandAll()
                     errorTreeViewPanel.requestFocus()

@@ -10,7 +10,6 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.LocalFileSystem
-import org.elm.ide.hints.ElmParameterInfoHandler
 import org.elm.openapiext.refreshAndFindFileByPathTestAware
 import org.elm.workspace.ElmToolchain.Companion.SIDECAR_FILENAME
 import org.elm.workspace.solver.Pkg
@@ -202,26 +201,26 @@ private sealed class ElmProjectDTO
 
 
 private class ElmApplicationProjectDTO(
-    @JsonProperty("elm-version") val elmVersion: Version,
-    @JsonProperty("source-directories") val sourceDirectories: List<String>,
-    @JsonProperty("dependencies") val deps: ExactDependenciesDTO,
-    @JsonProperty("test-dependencies") val testDeps: ExactDependenciesDTO
+    @param:JsonProperty("elm-version") val elmVersion: Version,
+    @param:JsonProperty("source-directories") val sourceDirectories: List<String>,
+    @param:JsonProperty("dependencies") val deps: ExactDependenciesDTO,
+    @param:JsonProperty("test-dependencies") val testDeps: ExactDependenciesDTO
 ) : ElmProjectDTO()
 
 
 private class ExactDependenciesDTO(
-    @JsonProperty("direct") val direct: Map<String, Version>,
-    @JsonProperty("indirect") val indirect: Map<String, Version>
+    @param:JsonProperty("direct") val direct: Map<String, Version>,
+    @param:JsonProperty("indirect") val indirect: Map<String, Version>
 )
 
 
 private class ElmPackageProjectDTO(
-    @JsonProperty("elm-version") val elmVersion: Constraint,
-    @JsonProperty("dependencies") val deps: Map<String, Constraint>,
-    @JsonProperty("test-dependencies") val testDeps: Map<String, Constraint>,
-    @JsonProperty("name") val name: String,
-    @JsonProperty("version") val version: Version,
-    @JsonProperty("exposed-modules") val exposedModulesNode: JsonNode
+    @param:JsonProperty("elm-version") val elmVersion: Constraint,
+    @param:JsonProperty("dependencies") val deps: Map<String, Constraint>,
+    @param:JsonProperty("test-dependencies") val testDeps: Map<String, Constraint>,
+    @param:JsonProperty("name") val name: String,
+    @param:JsonProperty("version") val version: Version,
+    @param:JsonProperty("exposed-modules") val exposedModulesNode: JsonNode
 ) : ElmProjectDTO()
 
 
@@ -268,5 +267,5 @@ private class ElmSidecarManifestDTO(
     /**
      * The path to the directory containing the unit tests, relative to the root of the Elm project.
      */
-    @JsonProperty("test-directory") val testDirectory: String
+    @param:JsonProperty("test-directory") val testDirectory: String
 )

@@ -8,7 +8,7 @@ import org.elm.lang.core.toElmLowerId
 import org.elm.lang.core.types.*
 
 class MakeDecoderIntention : AnnotationBasedGeneratorIntention() {
-    override fun getText() = "Generate Decoder"
+    override fun getText() = "Generate decoder"
 
     override fun getRootIfApplicable(annotationTy: Ty): Ty? {
         if (annotationTy !is TyUnion) return null

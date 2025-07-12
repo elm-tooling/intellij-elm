@@ -1,7 +1,6 @@
 package org.elm.ide.inspections.import
 
 import com.intellij.codeInsight.intention.PriorityAction.Priority
-import com.intellij.codeInsight.navigation.NavigationUtil
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.project.Project
@@ -122,7 +121,7 @@ class AddImportFix : NamedQuickFix("Import", Priority.HIGH) {
             val picker = if (isUnitTestMode) {
                 MOCK ?: error("You must set mock UI via `withMockImportPickerUI`")
             } else {
-                RealImportPickerUI(dataContext, context.refName, project)
+                RealImportPickerUI(dataContext, context.refName)
             }
             picker.choose(context.candidates) { candidate ->
                 project.runWriteCommandAction {
@@ -136,7 +135,7 @@ class AddImportFix : NamedQuickFix("Import", Priority.HIGH) {
 private class RealImportPickerUI(
         private val dataContext: DataContext,
         private val refName: String,
-        private val project: Project
+//        private val project: Project
 ) : ImportPickerUI {
     override fun choose(candidates: List<Import>, callback: (Import) -> Unit) {
         val popup = JBPopupFactory.getInstance().createPopupChooserBuilder(candidates)
@@ -145,7 +144,6 @@ private class RealImportPickerUI(
                 .setNamerForFiltering { it.moduleName }
                 .setRenderer(CandidateRenderer())
                 .createPopup()
-        NavigationUtil.hidePopupIfDumbModeStarts(popup, project)
         popup.showInBestPositionFor(dataContext)
     }
 }

@@ -7,7 +7,7 @@ class ElmTestRunConfigurationType : ConfigurationType {
 
     override fun getDisplayName() = "Elm Test"
 
-    override fun getConfigurationTypeDescription() = "Elm Test Runner"
+    override fun getConfigurationTypeDescription() = "Elm test runner"
 
     override fun getIcon() = RUN_ICON
 

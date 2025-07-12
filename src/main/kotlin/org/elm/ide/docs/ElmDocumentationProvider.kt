@@ -217,7 +217,7 @@ private fun documentationFor(element: ElmFieldType): String? = buildString {
         i { append("field") }
         append(" ", name)
         if (fieldTy !is TyUnknown) {
-            append(": ", fieldTy.renderedText(true, false))
+            append(": ", fieldTy.renderedText(linkify = true, withModule = false))
         }
         if (recordTy.alias != null) {
             i { append(" of record ") }

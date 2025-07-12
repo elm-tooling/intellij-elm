@@ -18,17 +18,15 @@ fun ElmExpressionTag.suggestedNames(): SuggestedNames {
     val names = LinkedHashSet<String>()
     val ty = findTy()
 
-    when {
-        this is ElmFunctionCallExpr -> {
-            // suggest based on function call (e.g. suggest "books" for expr: `getBooks "shakespeare" library`)
-            val target = target
-            if (target is ElmValueExpr) {
-                names.addName(target.referenceName)
-            }
+    when (this) {
+        is ElmFunctionCallExpr -> {
+            // Suggest based on function call: e.g. "books" from `getBooks "shakespeare" library`
+            (target as? ElmValueExpr)?.referenceName?.let { names.addName(it) }
         }
-        this is ElmFieldAccessExpr -> {
-            // suggest the last field in a record field access chain (e.g. "title" in expr `model.currentPage.title`)
-            names.addName(this.lowerCaseIdentifier.text)
+
+        is ElmFieldAccessExpr -> {
+            // Suggest last field in a record chain: e.g. "title" in `model.currentPage.title`
+            this.lowerCaseIdentifier?.text?.let { names.addName(it) }
         }
     }
 

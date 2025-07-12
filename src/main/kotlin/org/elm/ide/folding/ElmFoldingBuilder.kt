@@ -61,12 +61,12 @@ private class ElmFoldingVisitor : PsiElementVisitor() {
                 val imports = element.directChildren.filterIsInstance<ElmImportClause>().toList()
                 if (imports.size < 2) return
                 val start = imports.first()
-                foldBetween(start, start.moduleQID, imports.last(), true, true)
+                foldBetween(start, start.moduleQID, imports.last(), includeStart = true, includeEnd = true)
             }
             is ElmModuleDeclaration -> {
                 if (element.exposesAll) return
                 val exposingList = element.exposingList ?: return
-                foldBetween(element, exposingList.openParen, exposingList.closeParen, false, false)
+                foldBetween(element, exposingList.openParen, exposingList.closeParen, includeStart = false, includeEnd = false)
             }
             is PsiComment -> {
                 if (element.elementType == BLOCK_COMMENT || element.elementType == DOC_COMMENT) fold(element)
@@ -86,8 +86,8 @@ private class ElmFoldingVisitor : PsiElementVisitor() {
             is ElmLetInExpr -> {
                 val letKw = element.directChildren.find { it.elementType == LET } ?: return
                 val inKw = element.directChildren.find { it.elementType == IN } ?: return
-                foldBetween(letKw, letKw, inKw, false, false)
-                foldBetween(inKw, inKw, element.lastChild, false, true)
+                foldBetween(letKw, letKw, inKw, includeStart = false, includeEnd = false)
+                foldBetween(inKw, inKw, element.lastChild, includeStart = false, includeEnd = true)
             }
             is ElmCaseOfExpr -> {
                 foldToEnd(element) { directChildren.find { it.elementType == OF } }
@@ -105,7 +105,7 @@ private class ElmFoldingVisitor : PsiElementVisitor() {
 
     private inline fun <T : PsiElement> foldToEnd(element: T, predicate: T.() -> PsiElement?) {
         val start = predicate(element) ?: return
-        foldBetween(element, start, element.lastChild, false, true)
+        foldBetween(element, start, element.lastChild, includeStart = false, includeEnd = true)
     }
 
     private fun foldBetween(element: PsiElement, left: PsiElement?, right: PsiElement?,

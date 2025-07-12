@@ -76,11 +76,11 @@ class ElmIntroduceVariableHandler : RefactoringActionHandler {
         // find the nearest location where a let/in would be
         var current: PsiElement? = chosenExpr
         while (current != null) {
-            when {
-                current is ElmLetInExpr -> return current
-                current is ElmValueDeclaration -> return current.expression
-                current is ElmCaseOfBranch -> return current.expression
-                current is ElmAnonymousFunctionExpr -> {
+            when (current) {
+                is ElmLetInExpr -> return current
+                is ElmValueDeclaration -> return current.expression
+                is ElmCaseOfBranch -> return current.expression
+                is ElmAnonymousFunctionExpr -> {
                     if (current.expression in chosenExpr.ancestors) return current.expression
                 }
             }

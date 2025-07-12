@@ -35,7 +35,7 @@ class ElmReviewToolWindowFactory : ToolWindowFactory {
                     }
 
                     toolWindow.contentManager.removeAllContents(true)
-                    toolWindow.contentManager.addContent(ContentImpl(errorTreeViewPanel, "Elm-Review watchmode result", true))
+                    toolWindow.contentManager.addContent(ContentImpl(errorTreeViewPanel, "elm-review Watchmode Result", true))
                     toolWindow.show(null)
                     errorTreeViewPanel.expandAll()
                     errorTreeViewPanel.requestFocus()

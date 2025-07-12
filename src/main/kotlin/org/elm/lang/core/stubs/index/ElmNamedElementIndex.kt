@@ -24,20 +24,19 @@ class ElmNamedElementIndex : StringStubIndexExtension<ElmNamedElement>() {
     override fun getKey(): StubIndexKey<String, ElmNamedElement> =
             KEY
 
-    companion object {
-        val KEY: StubIndexKey<String, ElmNamedElement> =
-                StubIndexKey.createIndexKey("org.elm.lang.core.stubs.index.ElmNamedElementIndex")
-
-        /**
-         * Find all [ElmNamedElement]s whose name matches [name] in [scope].
-         */
-        fun find(name: String, project: Project, scope: GlobalSearchScope): Collection<ElmNamedElement> =
-                StubIndex.getElements(KEY, name, project, scope, ElmNamedElement::class.java)
-
-        /**
-         * Get the name of every element stored in this index.
-         */
-        fun getAllNames(project: Project): Collection<String> =
-                StubIndex.getInstance().getAllKeys(KEY, project)
-    }
 }
+
+val KEY: StubIndexKey<String, ElmNamedElement> =
+        StubIndexKey.createIndexKey("org.elm.lang.core.stubs.index.ElmNamedElementIndex")
+
+/**
+ * Find all [ElmNamedElement]s whose name matches [name] in [scope].
+ */
+fun find(name: String, project: Project, scope: GlobalSearchScope): Collection<ElmNamedElement> =
+        StubIndex.getElements(KEY, name, project, scope, ElmNamedElement::class.java)
+
+/**
+ * Get the name of every element stored in this index.
+ */
+fun getAllNames(project: Project): Collection<String> =
+        StubIndex.getInstance().getAllKeys(KEY, project)
