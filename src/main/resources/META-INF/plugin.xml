@@ -41,6 +41,7 @@
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <postStartupActivity implementation="org.elm.workspace.ElmAutoDiscoverProjectActivity"/>
         <additionalTextAttributes scheme="Default" file="colorSchemes/ElmDefault.xml"/>
         <additionalTextAttributes scheme="Darcula" file="colorSchemes/ElmDarcula.xml"/>
         <annotator language="Elm" implementationClass="org.elm.ide.highlight.ElmSyntaxHighlightAnnotator"/>
@@ -92,7 +93,7 @@
         <directoryProjectGenerator implementation="org.elm.ide.project.ElmWebProjectTemplate"/>
 
         <!-- DEPRECATED. See `ElmModuleType` for details! -->
-        <moduleType id="ELM_MODULE" implementationClass="org.elm.ide.project.ElmModuleType"/>
+        <!-- <moduleType id="ELM_MODULE" implementationClass="org.elm.ide.project.ElmModuleType"/> -->
 
 
         <!-- Inspections -->
@@ -214,7 +215,7 @@
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
-            <language></language>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.MakeDecoderIntention</className>
             <category>Elm</category>
         </intentionAction>
@@ -251,7 +252,7 @@
 
         <!-- STUBS -->
         <!-- Adding `externalIdPrefix="elm"` breaks the tests -->
-        <stubElementTypeHolder class="org.elm.lang.core.psi.ElmTypes"/>
+        <stubElementTypeHolder class="org.elm.lang.core.psi.ElmTypes" />
         <stubIndex implementation="org.elm.lang.core.stubs.index.ElmModulesIndex"/>
         <stubIndex implementation="org.elm.lang.core.stubs.index.ElmNamedElementIndex"/>
 
@@ -321,10 +322,10 @@
         </action>
 
         <group id="Elm.WorkspaceToolsGroup" text="Elm" popup="true">
-            <reference id="Elm.RefreshElmProjects"/>
+            <reference ref="Elm.RefreshElmProjects"/>
             <separator/>
-            <reference id="Elm.AttachElmProject"/>
-            <reference id="Elm.DetachElmProject"/>
+            <reference ref="Elm.AttachElmProject"/>
+            <reference ref="Elm.DetachElmProject"/>
 
             <add-to-group group-id="ToolsMenu"/>
         </group>
@@ -338,15 +339,15 @@
         </action>
 
         <group id="Elm.CompilerToolsGroup" text="Elm Compiler" popup="true">
-            <reference id="Elm.Build"/>
+            <reference ref="Elm.Build"/>
             <add-to-group group-id="Elm.WorkspaceToolsGroup"/>
         </group>
 
         <group id="Elm.ReviewToolsGroup" text="elm-review" popup="true">
-            <reference id="Elm.RunExternalElmReview"/>
+            <reference ref="Elm.RunExternalElmReview"/>
         </group>
         <group id="Elm.ReviewWatchmodeToolsGroup" text="elm-review-watchmode" popup="true">
-            <reference id="Elm.RunExternalElmReviewWatchmode"/>
+            <reference ref="Elm.RunExternalElmReviewWatchmode"/>
         </group>
     </actions>
 </idea-plugin>
