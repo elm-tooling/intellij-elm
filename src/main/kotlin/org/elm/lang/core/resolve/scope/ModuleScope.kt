@@ -9,9 +9,9 @@ import org.elm.lang.core.psi.elements.*
 
 private val DECLARED_VALUES_KEY: Key<CachedValue<DeclaredNames>> = Key.create("DECLARED_VALUES_KEY")
 private val VISIBLE_VALUES_KEY: Key<CachedValue<VisibleNames>> = Key.create("VISIBLE_VALUES_KEY")
-private val REFRENCABLE_VALUES_KEY: Key<CachedValue<VisibleNames>> = Key.create("REFRENCABLE_VALUES_KEY")
-private val REFRENCABLE_TYPES_KEY: Key<CachedValue<VisibleNames>> = Key.create("REFRENCABLE_TYPES_KEY")
-private val REFRENCABLE_CONSTRUCTORS_KEY: Key<CachedValue<VisibleNames>> = Key.create("REFRENCABLE_CONSTRUCTORS_KEY")
+private val REFERENCABLE_VALUES_KEY: Key<CachedValue<VisibleNames>> = Key.create("REFERENCABLE_VALUES_KEY")
+private val REFERENCABLE_TYPES_KEY: Key<CachedValue<VisibleNames>> = Key.create("REFERENCABLE_TYPES_KEY")
+private val REFERENCABLE_CONSTRUCTORS_KEY: Key<CachedValue<VisibleNames>> = Key.create("REFERENCABLE_CONSTRUCTORS_KEY")
 private val DECLARED_TYPES_KEY: Key<CachedValue<DeclaredNames>> = Key.create("DECLARED_TYPES_KEY")
 private val VISIBLE_TYPES_KEY: Key<CachedValue<VisibleNames>> = Key.create("VISIBLE_TYPES_KEY")
 private val DECLARED_CONSTRUCTORS_KEY: Key<CachedValue<DeclaredNames>> = Key.create("DECLARED_CONSTRUCTORS_KEY")
@@ -97,7 +97,7 @@ object ModuleScope {
     fun importDeclsForQualifierPrefix(elmFile: ElmFile, qualifierPrefix: String) =
             getImportDecls(elmFile).filter {
                 // If a module has an alias, then the alias hides the original module name. (issue #93)
-                qualifierPrefix == it.asClause?.name ?: it.moduleQID.fullName
+                qualifierPrefix == (it.asClause?.name ?: it.moduleQID.fullName)
             }
 
     /**
@@ -170,7 +170,7 @@ object ModuleScope {
 
     /** Get all values that can be referenced from [elmFile], with or without a qualifier */
     fun getReferencableValues(elmFile: ElmFile): VisibleNames {
-        return CachedValuesManager.getCachedValue(elmFile, REFRENCABLE_VALUES_KEY) {
+        return CachedValuesManager.getCachedValue(elmFile, REFERENCABLE_VALUES_KEY) {
             val fromGlobal = GlobalScope.forElmFile(elmFile)?.getVisibleValues() ?: emptyList()
             val fromTopLevel = getDeclaredValues(elmFile).list
 
@@ -187,7 +187,7 @@ object ModuleScope {
 
     /** Get all types that can be referenced from [elmFile], with or without a qualifier */
     fun getReferencableTypes(elmFile: ElmFile): VisibleNames {
-        return CachedValuesManager.getCachedValue(elmFile, REFRENCABLE_TYPES_KEY) {
+        return CachedValuesManager.getCachedValue(elmFile, REFERENCABLE_TYPES_KEY) {
             val fromGlobal = GlobalScope.forElmFile(elmFile)?.getVisibleTypes() ?: emptyList()
             val fromTopLevel = getDeclaredTypes(elmFile).list
 
@@ -204,7 +204,7 @@ object ModuleScope {
 
     /** Get all constructors that can be referenced from [elmFile], with or without a qualifier */
     fun getReferencableConstructors(elmFile: ElmFile): VisibleNames {
-        return CachedValuesManager.getCachedValue(elmFile, REFRENCABLE_CONSTRUCTORS_KEY) {
+        return CachedValuesManager.getCachedValue(elmFile, REFERENCABLE_CONSTRUCTORS_KEY) {
             val fromGlobal = GlobalScope.forElmFile(elmFile)?.getVisibleConstructors() ?: emptyList()
             val fromTopLevel = getDeclaredConstructors(elmFile).list
 
@@ -299,7 +299,7 @@ object ModuleScope {
         // intersect the names exposed by the module with the names declared
         // in this import clause's exposing list.
         val locallyExposedNames = importClause.exposingList?.exposedTypeList
-                ?.mapTo(mutableSetOf<String>()) { it.referenceName }
+                ?.mapTo(mutableSetOf()) { it.referenceName }
                 ?: return emptyList()
         return allExposedTypes.filter { locallyExposedNames.contains(it.name) }
     }
@@ -312,9 +312,9 @@ object ModuleScope {
         return CachedValuesManager.getCachedValue(elmFile, DECLARED_CONSTRUCTORS_KEY) {
             val declaredConstructors = elmFile.stubDirectChildrenOfType<ElmNameIdentifierOwner>()
                     .flatMap {
-                        when {
-                            it is ElmTypeDeclaration -> it.unionVariantList
-                            it is ElmTypeAliasDeclaration && it.isRecordAlias -> listOf(it)
+                        when (it) {
+                            is ElmTypeDeclaration -> it.unionVariantList
+                            is ElmTypeAliasDeclaration if it.isRecordAlias -> listOf(it)
                             else -> emptyList()
                         }
                     }
@@ -351,10 +351,10 @@ object ModuleScope {
         // union types that expose all of their constructors.
 
         val locallyExposedUnionConstructorNames =
-                exposedTypes.flatMap {
+                exposedTypes.flatMap { outer ->
                     when {
-                        it.exposesAll ->
-                            (it.reference.resolve() as? ElmTypeDeclaration)
+                        outer.exposesAll ->
+                            (outer.reference.resolve() as? ElmTypeDeclaration)
                                     ?.unionVariantList
                                     ?.map { it.name }
                                     ?: emptyList()
