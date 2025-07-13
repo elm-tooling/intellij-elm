@@ -120,10 +120,10 @@ class ElmPsiFactory(private val project: Project) {
         for (segment in valueAndFunctionApplications) {
             when (segment) {
                 is String -> {
-                    if (visitedExpression) {
-                        pipeChainBuilder += "\n$existingIndent$indent|> $segment"
+                    pipeChainBuilder += if (visitedExpression) {
+                        "\n$existingIndent$indent|> $segment"
                     } else {
-                        pipeChainBuilder += "\n$existingIndent$indent $segment"
+                        "\n$existingIndent$indent $segment"
                     }
                     visitedExpression = true
                 }

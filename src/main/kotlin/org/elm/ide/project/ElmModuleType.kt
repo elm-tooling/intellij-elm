@@ -30,7 +30,7 @@ class ElmModuleType : ModuleType<ModuleBuilder>(ID) {
     override fun getNodeIcon(isOpened: Boolean): Icon = ElmIcons.FILE
 
     companion object {
-        val ID = "ELM_MODULE"
+        const val ID = "ELM_MODULE"
         val INSTANCE: ElmModuleType by lazy {
             ModuleTypeManager.getInstance().findByID(ID) as ElmModuleType
         }

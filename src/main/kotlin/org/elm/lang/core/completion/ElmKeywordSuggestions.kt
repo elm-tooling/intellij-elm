@@ -108,15 +108,15 @@ object ElmKeywordSuggestor : Suggestor {
 
 
     private fun addInsertionHandler(keyword: String, item: LookupElementBuilder): LookupElementBuilder {
-        when (keyword) {
+        return when (keyword) {
             in ALWAYS_NEEDS_SPACE ->
-                return item.withInsertHandler { ctx, _ -> ctx.addSuffix(" ") }
+                item.withInsertHandler { ctx, _ -> ctx.addSuffix(" ") }
 
             "exposing" ->
-                return item.withInsertHandler { ctx, _ -> ctx.addSuffix(" ()", moveCursorLeft = 1) }
+                item.withInsertHandler { ctx, _ -> ctx.addSuffix(" ()", moveCursorLeft = 1) }
 
             else ->
-                return item
+                item
         }
     }
 
