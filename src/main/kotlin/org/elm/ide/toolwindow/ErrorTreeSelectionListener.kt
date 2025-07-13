@@ -8,7 +8,7 @@ import javax.swing.JTextPane
 import javax.swing.event.TreeSelectionEvent
 import javax.swing.event.TreeSelectionListener
 
-class ErrorTreeSelectionListener(private val messages: List<String>, private val reportUI: JTextPane, val toolWindow: ToolWindow) : TreeSelectionListener {
+class ErrorTreeSelectionListener(private val messages: List<String>, private val reportUI: JTextPane, private val toolWindow: ToolWindow) : TreeSelectionListener {
 
     override fun valueChanged(e: TreeSelectionEvent) {
         val collectSelectedUserObject = TreeUtil.collectSelectedUserObjects(e.source as Tree)[0] as ErrorTreeNodeDescriptor

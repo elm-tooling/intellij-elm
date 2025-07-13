@@ -134,8 +134,7 @@ class AddImportFix : NamedQuickFix("Import", Priority.HIGH) {
 
 private class RealImportPickerUI(
         private val dataContext: DataContext,
-        private val refName: String,
-//        private val project: Project
+        private val refName: String
 ) : ImportPickerUI {
     override fun choose(candidates: List<Import>, callback: (Import) -> Unit) {
         val popup = JBPopupFactory.getInstance().createPopupChooserBuilder(candidates)

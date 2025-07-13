@@ -90,7 +90,7 @@ private fun unwrapNestedParensHelp(expression: ElmParenthesizedExpr): ElmParenth
  *
  * @see buildIndentedText
  */
-class IndentedTextBuilder(startLevel: Int, val indentSize: Int) {
+class IndentedTextBuilder(startLevel: Int, private val indentSize: Int) {
     var level: Int = startLevel
     private var buffer = StringBuilder()
 
