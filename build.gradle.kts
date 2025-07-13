@@ -63,10 +63,22 @@ changelog {
 }
 
 // Configure Gradle Qodana Plugin - read more: https://github.com/JetBrains/gradle-qodana-plugin
+// Updating quodana marks these as red. I'm afraid I'm not familiar enough with how quodana works
+// to fix it.
+//
+// I did try updating to 2025.1.1 in the GH actions and it blew up if I updated it to the latest
+// version. So I set it back to the original, and maybe somebody can look at it later.  -- AH July 2025
 qodana {
     cachePath.set(projectDir.resolve(".qodana").canonicalPath)
     resultsPath.set(projectDir.resolve("build/reports/inspections").canonicalPath)
+    //    saveReport.set(true)
+    //    showReport.set(System.getenv("QODANA_SHOW_REPORT")?.toBoolean() ?: false)
 }
+
+//qodanaScan {
+//    resultsPath.set(projectDir.resolve("build/reports/inspections").canonicalPath)
+//    arguments.set(listOf("--fail-threshold", "0"))
+//}
 
 val generateGrammars = tasks.register("generateGrammars") {
     dependsOn("generateParser", "generateLexer")
