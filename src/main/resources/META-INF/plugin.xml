@@ -86,7 +86,7 @@
         <codeStyleSettingsProvider implementation="org.elm.ide.formatter.settings.ElmCodeStyleSettingsProvider"/>
         <langCodeStyleSettingsProvider
                 implementation="org.elm.ide.formatter.settings.ElmLanguageCodeStyleSettingsProvider"/>
-
+        <lang.documentationProvider language="Elm" implementationClass="org.elm.ide.docs.ElmDocumentationProvider"/>
         <!-- New Project for IDEA -->
         <projectTemplatesFactory implementation="org.elm.ide.project.ElmProjectTemplatesFactory"/>
 
