@@ -43,7 +43,9 @@ class ElmLineMarkerProvider : LineMarkerProviderDescriptor() {
 private val optionProviders = mapOf(
     ElmExposureLineMarkerProvider.OPTION to { ElmExposureLineMarkerProvider() },
     ElmRecursiveCallLineMarkerProvider.OPTION to { ElmRecursiveCallLineMarkerProvider() },
-    ElmTestModuleLineMarkerProvider.OPTION to { ElmTestModuleLineMarkerProvider() }
+    ElmTestModuleLineMarkerProvider.OPTION to { ElmTestModuleLineMarkerProvider() },
+    ElmTestDescribeLineMarkerProvider.OPTION to { ElmTestDescribeLineMarkerProvider() },
+    ElmTestSingleLineMarkerProvider.OPTION to { ElmTestSingleLineMarkerProvider() }
 )
 
 private val OPTIONS = optionProviders.keys.toTypedArray()

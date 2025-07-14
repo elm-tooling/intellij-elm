@@ -26,6 +26,7 @@ class ElmTestSettingsEditor internal constructor(project: Project) : SettingsEdi
     private var myPanel: JPanel? = null
     private var projectChooser: ComboBox<String>? = null
     private var testFilePathField: JTextField? = null
+    private var testFilter: JTextField? = null
 
     override fun createEditor(): JComponent {
         helper.allNames().forEach { projectChooser!!.addItem(it) }
@@ -37,7 +38,8 @@ class ElmTestSettingsEditor internal constructor(project: Project) : SettingsEdi
                 configuration.options.elmFolder?.let {
                     helper.nameByProjectDirPath(it)
                 }
-        this.testFilePathField!!.text = configuration.options.testFile?.filePath
+        this.testFilePathField!!.text = configuration.options.filteredTestConfig?.filePath
+        this.testFilter!!.text = configuration.options.filteredTestConfig?.filter
     }
 
     override fun applyEditorTo(configuration: ElmTestRunConfiguration) {
@@ -47,6 +49,7 @@ class ElmTestSettingsEditor internal constructor(project: Project) : SettingsEdi
         }
 
         val field = testFilePathField!!.text.trim().ifEmpty { null }
-        configuration.options.testFile = ElmTestRunConfiguration.FilteredTest.from(field, configuration.project)
+        val filter = testFilter!!.text.trim().ifEmpty { null }
+        configuration.options.filteredTestConfig = ElmTestRunConfiguration.FilteredTest.from(field, configuration.project, filter)
     }
 }

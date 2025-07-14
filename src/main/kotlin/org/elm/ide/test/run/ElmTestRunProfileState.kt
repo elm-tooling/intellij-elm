@@ -63,9 +63,9 @@ class ElmTestRunProfileState internal constructor(
             return handleBadConfiguration(project, "Could not find the Elm compiler ")
         }
 
-        val testFilePath = (environment.runProfile as? ElmTestRunConfiguration)?.options?.testFile?.runnableFilePath()
+        val filteredTest = (environment.runProfile as? ElmTestRunConfiguration)?.options?.filteredTestConfig
 
-        return elmTestCLI.runTestsProcessHandler(elmCompilerBinary, elmProject, testFilePath)
+        return elmTestCLI.runTestsProcessHandler(elmCompilerBinary, elmProject, filteredTest)
     }
 
     @Throws(ExecutionException::class)

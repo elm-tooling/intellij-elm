@@ -29,6 +29,7 @@ object ElmIcons {
 
     // TEST ICONS
 
+    val RUN = getIcon("run.svg")
     val RUN_ALL = getIcon("runAll.svg")
 
     private fun getIcon(path: String): Icon {

@@ -4,6 +4,7 @@ import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.execution.actions.LazyRunConfigurationProducer
 import com.intellij.openapi.util.Ref
 import com.intellij.psi.PsiElement
+import org.elm.ide.test.core.ElmTestElementNavigator
 import org.elm.workspace.elmWorkspace
 
 class ElmTestRunConfigurationProducer : LazyRunConfigurationProducer<ElmTestRunConfiguration>() {
@@ -17,7 +18,8 @@ class ElmTestRunConfigurationProducer : LazyRunConfigurationProducer<ElmTestRunC
 
         configuration.options.elmFolder = elmFolder
         if (vfile != null) {
-            configuration.options.testFile = ElmTestRunConfiguration.FilteredTest.from(sourceElement.get())
+            val filter = ElmTestElementNavigator.findTestDescription(context.psiLocation)
+            configuration.options.filteredTestConfig = ElmTestRunConfiguration.FilteredTest.from(sourceElement.get(), filter)
         }
 
         configuration.setGeneratedName()
@@ -28,9 +30,11 @@ class ElmTestRunConfigurationProducer : LazyRunConfigurationProducer<ElmTestRunC
     override fun isConfigurationFromContext(configuration: ElmTestRunConfiguration, context: ConfigurationContext): Boolean {
         val elmFolder = getCandidateElmFolder(context) ?: return false
         val vfile = context.location?.virtualFile
+        val filter = ElmTestElementNavigator.findTestDescription(context.psiLocation)
 
-        return configuration.options.elmFolder == elmFolder &&
-            configuration.options.testFile?.filePath == vfile?.path
+        return configuration.options.elmFolder == elmFolder
+                && configuration.options.filteredTestConfig?.filePath == vfile?.path
+                && configuration.options.filteredTestConfig?.filter == filter
     }
 
     private fun getCandidateElmFolder(context: ConfigurationContext): String? {

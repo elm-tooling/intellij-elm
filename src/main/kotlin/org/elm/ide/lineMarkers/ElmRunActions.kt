@@ -23,14 +23,26 @@ class RunAllTestsAction(private val element: PsiElement) : AnAction("Run All Tes
 }
 
 /**
+ * Action to run a test filtered by test or describe description
+ */
+class RunFilteredTestAction(private val element: PsiElement, private val filter: String) : AnAction("Run Filtered Test") {
+    override fun actionPerformed(event: AnActionEvent) {
+        ProgramRunnerUtil.executeConfiguration(
+            ElmTestRunConfigurationSettingsBuilder.createAndRegisterFromElement(element, filter),
+            DefaultRunExecutor.getRunExecutorInstance()
+        )
+    }
+}
+
+/**
  * Creates a run configuration and opens editor
  */
-class ModifyRunConfiguration(private val element: PsiElement) : AnAction("Modify Run Configuration") {
+class ModifyRunConfiguration(private val element: PsiElement, private val filter: String? = null) : AnAction("Modify Run Configuration") {
     override fun actionPerformed(event: AnActionEvent) {
         ShowSettingsUtil.getInstance().editConfigurable(
             element.project,
             SingleConfigurationConfigurable.editSettings<ElmTestRunConfiguration>(
-                ElmTestRunConfigurationSettingsBuilder.createAndRegisterFromElement(element),
+                ElmTestRunConfigurationSettingsBuilder.createAndRegisterFromElement(element, filter),
                 null
             )
         )

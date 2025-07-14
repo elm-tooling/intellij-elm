@@ -11,7 +11,7 @@ import org.elm.lang.core.psi.ElmTypes
  */
 class ElmTestModuleLineMarkerProvider : ElmTestLineMarkerProvider() {
     companion object {
-        val OPTION = GutterIconDescriptor.Option("elm.test", "Test module", ElmIcons.RUN_ALL)
+        val OPTION = GutterIconDescriptor.Option("elm.testModule", "Test module", ElmIcons.RUN_ALL)
     }
 
     /**
@@ -22,6 +22,8 @@ class ElmTestModuleLineMarkerProvider : ElmTestLineMarkerProvider() {
     }
 
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
+        if (!shouldAddGutterIcon(element)) return null
+
         return createLineMarkerInfo(
             element,
             ElmIcons.RUN_ALL,

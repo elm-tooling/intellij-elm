@@ -39,53 +39,53 @@ class ElmTestRunConfiguration internal constructor(project: Project, factory: Co
     override fun getState(executor: Executor, executionEnvironment: ExecutionEnvironment) =
             ElmTestRunProfileState(executionEnvironment, this)
 
-    data class Options(var elmFolder: String? = null, var testFile: FilteredTest? = null)
+    data class Options(var elmFolder: String? = null, var filteredTestConfig: FilteredTest? = null)
 
-    data class FilteredTest(val filePath: String, val label: String, val testIsDirectory: Boolean) {
+    data class FilteredTest(val filePath: String, val moduleName: String, val testIsDirectory: Boolean, val filter: String?) {
         companion object {
-            fun from(path: String?, project: Project): FilteredTest? {
+            fun from(path: String?, project: Project, filter: String? = null): FilteredTest? {
                 if (path.isNullOrBlank())  return null
 
                 val virtualFile = VirtualFileManager.getInstance().findFileByUrl("file://$path") ?: return null
 
-                return from(virtualFile, project)
+                return from(virtualFile, project, filter)
             }
 
-            fun from(path: String?, label: String?): FilteredTest? {
-                if (path.isNullOrBlank() || label.isNullOrBlank()) return null
+            fun from(path: String?, moduleName: String?, filter: String? = null): FilteredTest? {
+                if (path.isNullOrBlank() || moduleName.isNullOrBlank()) return null
                 val isDirectory = !path.substringAfterLast('/').contains('.')
 
-                return FilteredTest(path, label, isDirectory)
+                return FilteredTest(path, moduleName, isDirectory, filter)
             }
 
-            fun from(virtualFile: VirtualFile, project: Project): FilteredTest? {
+            fun from(virtualFile: VirtualFile, project: Project, filter: String? = null): FilteredTest? {
                 val psiManager = PsiManager.getInstance(project)
 
                 if (virtualFile.isDirectory) {
                     val psiDirectory = psiManager.findDirectory(virtualFile) ?: return null
-                    return from(psiDirectory)
+                    return from(psiDirectory, filter)
                 } else {
                     val psiFile = psiManager.findFile(virtualFile) ?: return null
-                    return from(psiFile)
+                    return from(psiFile, filter)
                 }
             }
 
-            fun from(element: PsiElement): FilteredTest? {
+            fun from(element: PsiElement, filter: String? = null): FilteredTest? {
                 return when (element) {
-                    is PsiDirectory -> from(element)
-                    else -> element.containingFile?.let { from(it) }
+                    is PsiDirectory -> from(element, filter)
+                    else -> element.containingFile?.let { from(it, filter) }
                 }
             }
 
-            fun from(psiFile: PsiFile): FilteredTest? {
+            fun from(psiFile: PsiFile, filter: String? = null): FilteredTest? {
                 val elmFile = psiFile as? ElmFile ?: return null
                 val moduleName = elmFile.getModuleDecl()?.name ?: return null
 
-                return FilteredTest(psiFile.virtualFile.path, moduleName, false)
+                return FilteredTest(psiFile.virtualFile.path, moduleName, false, filter)
             }
 
-            fun from(psiDirectory: PsiDirectory): FilteredTest? {
-                return FilteredTest(psiDirectory.virtualFile.path, psiDirectory.name, true)
+            fun from(psiDirectory: PsiDirectory, filter: String? = null): FilteredTest? {
+                return FilteredTest(psiDirectory.virtualFile.path, psiDirectory.name, true, filter)
             }
         }
 
@@ -109,8 +109,12 @@ class ElmTestRunConfiguration internal constructor(project: Project, factory: Co
     override fun suggestedName(): String? {
         val elmFolder = options.elmFolder
 
-        if (!options.testFile?.label.isNullOrBlank()) {
-            return "Tests in ${options.testFile?.label}"
+        if (!options.filteredTestConfig?.moduleName.isNullOrBlank()) {
+            return if (options.filteredTestConfig?.filter.isNullOrBlank()) {
+                "Tests in ${options.filteredTestConfig?.moduleName}"
+            } else {
+                "Tests in ${options.filteredTestConfig?.moduleName}: ${options.filteredTestConfig?.filter}"
+            }
         }
 
         if (elmFolder != null) {
@@ -129,9 +133,12 @@ class ElmTestRunConfiguration internal constructor(project: Project, factory: Co
             val e = element.getChild(name) ?: Element(name).also { element.addContent(it) }
 
             e.setAttribute("elm-folder", options.elmFolder ?: "")
-            if (options.testFile != null) {
-                e.setAttribute("test-file-path", options.testFile?.filePath)
-                e.setAttribute("test-file-module", options.testFile?.label)
+            if (options.filteredTestConfig != null) {
+                e.setAttribute("test-file-path", options.filteredTestConfig?.filePath)
+                e.setAttribute("test-file-module", options.filteredTestConfig?.moduleName)
+                if (!options.filteredTestConfig?.filter.isNullOrBlank()) {
+                    e.setAttribute("test-filter", options.filteredTestConfig?.filter)
+                }
             }
         }
 
@@ -140,9 +147,10 @@ class ElmTestRunConfiguration internal constructor(project: Project, factory: Co
                 val name = ElmTestRunConfiguration::class.java.simpleName
                 val child = element.getChild(name)
                 elmFolder = child?.getAttribute("elm-folder")?.value
-                testFile = FilteredTest.from(
+                filteredTestConfig = FilteredTest.from(
                     child?.getAttribute("test-file-path")?.value,
-                    child?.getAttribute("test-file-module")?.value
+                    child?.getAttribute("test-file-module")?.value,
+                    child?.getAttribute("test-filter")?.value
                 )
 
             }

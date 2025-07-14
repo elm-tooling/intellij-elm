@@ -10,7 +10,7 @@ import kotlin.io.path.pathString
  * Helper object to create a run configuration and add it to the run manager. Returns the config settings.
  */
 object ElmTestRunConfigurationSettingsBuilder {
-    fun createAndRegisterFromElement(element: PsiElement): RunnerAndConfigurationSettings {
+    fun createAndRegisterFromElement(element: PsiElement, filter: String? = null): RunnerAndConfigurationSettings {
         val project = element.project
         val runManager = RunManager.getInstance(project)
         val configurationFactory = ElmTestRunConfigurationType.instance.configurationFactories.single()
@@ -18,11 +18,11 @@ object ElmTestRunConfigurationSettingsBuilder {
         val configuration = configurationFactory.createTemplateConfiguration(project)
         configuration.options.elmFolder =
             project.elmWorkspace.findProjectForFile(element.containingFile.virtualFile)?.projectDirPath?.pathString
-        configuration.options.testFile = ElmTestRunConfiguration.FilteredTest.from(element)
+        configuration.options.filteredTestConfig = ElmTestRunConfiguration.FilteredTest.from(element, filter)
         configuration.setGeneratedName()
 
         val configSettings = runManager.createConfiguration(configuration, configurationFactory)
-        configSettings.isTemporary = false
+        configSettings.isTemporary = true
         runManager.addConfiguration(configSettings)
         runManager.selectedConfiguration = configSettings
 
