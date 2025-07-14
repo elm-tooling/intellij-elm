@@ -131,7 +131,7 @@ jobs:
 
       # Run tests
       - name: Run Tests
-        run: (./gradlew check) | tee /tmp/gradle-check.out
+        run: ./gradlew check
 
       # Collect Tests Result of failed tests
       - name: Collect Tests Result
@@ -140,14 +140,6 @@ jobs:
         with:
           name: tests-result
           path: ${{ github.workspace }}/build/reports/tests
-
-      - name: Add coverage report to GitHub job summary
-        run: |
-          echo "### Code coverage" >> $GITHUB_STEP_SUMMARY
-          cat ${{ github.workspace }}/build/kover/coverage.txt >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
 
       # Upload the Kover report to CodeCov
       - name: Upload Code Coverage Report

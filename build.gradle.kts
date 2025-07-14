@@ -18,8 +18,6 @@ plugins {
     id("org.jetbrains.changelog") version "1.3.1"
     // Gradle Qodana Plugin
     id("org.jetbrains.qodana") version "0.1.13"
-    // Gradle Kover Plugin (test coverage)
-    id("org.jetbrains.kotlinx.kover") version "0.9.1"
 }
 
 group = properties("pluginGroup")
@@ -68,19 +66,6 @@ qodana {
     reportPath.set(projectDir.resolve("build/reports/inspections").canonicalPath)
     saveReport.set(true)
     showReport.set(System.getenv("QODANA_SHOW_REPORT")?.toBoolean() ?: false)
-}
-
-kover {
-    reports {
-        total {
-            xml {
-                onCheck = true
-            }
-            log {
-                onCheck = true
-            }
-        }
-    }
 }
 
 val generateGrammars = tasks.register("generateGrammars") {
