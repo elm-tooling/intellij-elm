@@ -32,6 +32,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
+import com.intellij.testFramework.IndexingTestUtil
+import groovy.lang.MetaClassImpl
 import org.elm.lang.core.psi.parentOfType
 import org.elm.lang.core.resolve.ElmReferenceElement
 import org.elm.openapiext.fullyRefreshDirectory
@@ -166,8 +168,11 @@ class TestProject(
             shouldNotResolve: Boolean = false,
             toPackage: String? = null
     ) {
+        IndexingTestUtil.waitUntilIndexesAreReadyInAllOpenedProjects()
+
         val ref = findElementInFile<T>(path)
         val res = ref.reference.resolve()
+
         if (shouldNotResolve) {
             check(res == null) {
                 "Reference ${ref.text} should be unresolved in `$path`"

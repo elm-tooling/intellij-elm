@@ -30,7 +30,7 @@ import org.elm.workspace.*
 import org.elm.workspace.commandLineTools.makeProject
 import java.nio.file.Path
 
-val ELM_BUILD_ACTION_ID = "Elm.Build"
+const val ELM_BUILD_ACTION_ID = "Elm.Build"
 
 class ElmBuildAction : AnAction() {
 

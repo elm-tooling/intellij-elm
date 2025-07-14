@@ -2,6 +2,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 
 fun properties(key: String) = project.findProperty(key).toString()
 
@@ -9,15 +11,15 @@ plugins {
     // Java support
     id("java")
     // Kotlin support
-    id("org.jetbrains.kotlin.jvm") version "1.9.25"
+    id("org.jetbrains.kotlin.jvm") version "2.2.0"
     // Gradle IntelliJ Plugin
-    id("org.jetbrains.intellij.platform") version "2.1.0"
+    id("org.jetbrains.intellij.platform") version "2.6.0"
     // GrammarKit Plugin
     id("org.jetbrains.grammarkit") version "2022.3.2.2"
     // Gradle Changelog Plugin
-    id("org.jetbrains.changelog") version "1.3.1"
+    id("org.jetbrains.changelog") version "2.2.1"
     // Gradle Qodana Plugin
-    id("org.jetbrains.qodana") version "0.1.13"
+    id("org.jetbrains.qodana") version "2025.1.1"
 }
 
 group = properties("pluginGroup")
@@ -37,14 +39,14 @@ dependencies {
 
         plugins(properties("platformPlugins").split(',').map(String::trim).filter(String::isNotEmpty))
 
-        instrumentationTools()
         pluginVerifier()
         testFramework(TestFrameworkType.Platform)
     }
 
-    implementation("com.github.ajalt.colormath:colormath:2.1.0")
+    implementation("com.github.ajalt.colormath:colormath:3.6.1")
 
-    testImplementation("org.jetbrains.kotlin:kotlin-test:1.9.25")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:2.2.0")
+    implementation("org.opentest4j:opentest4j:1.3.0")
 }
 
 // Configure Gradle IntelliJ Plugin - read more: https://github.com/JetBrains/gradle-intellij-plugin
@@ -61,12 +63,22 @@ changelog {
 }
 
 // Configure Gradle Qodana Plugin - read more: https://github.com/JetBrains/gradle-qodana-plugin
+// Updating quodana marks these as red. I'm afraid I'm not familiar enough with how quodana works
+// to fix it.
+//
+// I did try updating to 2025.1.1 in the GH actions and it blew up if I updated it to the latest
+// version. So I set it back to the original, and maybe somebody can look at it later.  -- AH July 2025
 qodana {
     cachePath.set(projectDir.resolve(".qodana").canonicalPath)
-    reportPath.set(projectDir.resolve("build/reports/inspections").canonicalPath)
-    saveReport.set(true)
-    showReport.set(System.getenv("QODANA_SHOW_REPORT")?.toBoolean() ?: false)
+    resultsPath.set(projectDir.resolve("build/reports/inspections").canonicalPath)
+    //    saveReport.set(true)
+    //    showReport.set(System.getenv("QODANA_SHOW_REPORT")?.toBoolean() ?: false)
 }
+
+//qodanaScan {
+//    resultsPath.set(projectDir.resolve("build/reports/inspections").canonicalPath)
+//    arguments.set(listOf("--fail-threshold", "0"))
+//}
 
 val generateGrammars = tasks.register("generateGrammars") {
     dependsOn("generateParser", "generateLexer")
@@ -107,13 +119,16 @@ tasks {
     }
 
     // Set the JVM compatibility versions
-    properties("javaVersion").let {
-        withType<JavaCompile> {
-            sourceCompatibility = it
-            targetCompatibility = it
-        }
-        withType<KotlinCompile> {
-            kotlinOptions.jvmTarget = it
+    val javaVersion = properties("javaVersion")
+
+    withType<JavaCompile>().configureEach {
+        sourceCompatibility = javaVersion
+        targetCompatibility = javaVersion
+    }
+
+    withType<KotlinCompile>().configureEach {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.fromTarget(javaVersion))
         }
     }
 
@@ -165,9 +180,10 @@ tasks {
         val changelog = project.changelog // local variable for configuration cache compatibility
         // Get the latest available change notes from the changelog file
         changeNotes.set(provider {
-            changelog.run {
-                (getOrNull(properties("pluginVersion")) ?: getUnreleased()).withHeader(false)
-            }.toHTML()
+            changelog.renderItem(
+                changelog.run {
+                    (getOrNull(properties("pluginVersion")) ?: getUnreleased()).withHeader(false)
+                }, Changelog.OutputType.HTML)
         })
     }
 

@@ -1,5 +1,6 @@
 package org.elm.workspace
 
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataKey
@@ -26,5 +27,9 @@ class ElmDetachProjectAction : AnAction() {
 
     companion object {
         val DATA_KEY = DataKey.create<ElmProject>("ELM_PROJECT_TO_DETACH")
+    }
+
+    override fun getActionUpdateThread(): ActionUpdateThread {
+        return ActionUpdateThread.BGT
     }
 }

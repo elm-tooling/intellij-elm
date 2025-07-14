@@ -22,14 +22,14 @@ class ElmAttachProjectAction : AnAction() {
         val manifestName = ELM_JSON
         val descriptor = FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
                 .withFileFilter { it.name == manifestName }
-                .withTitle("Select '$manifestName' file")
+                .withTitle("Select '$manifestName' File")
                 .apply { isForcedToUseIdeaFileChooser = true }
 
         val file = FileChooser.chooseFile(descriptor, project, null)
                 ?: return
 
         if (file.name != manifestName) {
-            Messages.showErrorDialog("Expected '$manifestName', got ${file.name}", "Invalid file type")
+            Messages.showErrorDialog("Expected '$manifestName', got ${file.name}", "Invalid File Type")
             return
         }
 

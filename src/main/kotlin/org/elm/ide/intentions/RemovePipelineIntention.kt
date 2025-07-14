@@ -20,7 +20,7 @@ class RemovePipelineIntention : ElmAtCaretIntentionActionBase<RemovePipelineInte
 
     data class Context(val pipeline: Pipeline)
 
-    override fun getText() = "Remove Pipes"
+    override fun getText() = "Remove pipes"
     override fun getFamilyName() = text
 
     override fun findApplicableContext(project: Project, editor: Editor, element: PsiElement): Context? =

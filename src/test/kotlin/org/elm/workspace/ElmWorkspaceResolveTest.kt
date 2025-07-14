@@ -1,5 +1,6 @@
 package org.elm.workspace
 
+import com.intellij.testFramework.IndexingTestUtil
 import org.elm.fileTree
 import org.elm.lang.core.psi.elements.ElmImportClause
 import org.elm.openapiext.pathAsPath
@@ -308,6 +309,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
         }
 
         testProject.run {
+            IndexingTestUtil.waitUntilIndexesAreReady(project);
             checkReferenceIsResolved<ElmImportClause>("a/src/Main.elm", toPackage = "elm/parser 1.0.0")
             checkReferenceIsResolved<ElmImportClause>("b/src/Main.elm", toPackage = "elm/parser 1.1.0")
         }

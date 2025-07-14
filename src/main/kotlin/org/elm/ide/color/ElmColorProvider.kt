@@ -1,6 +1,12 @@
 package org.elm.ide.color
 
-import com.github.ajalt.colormath.*
+import com.github.ajalt.colormath.AngleUnit
+import com.github.ajalt.colormath.Color
+import com.github.ajalt.colormath.formatCssString
+import com.github.ajalt.colormath.hueOr
+import com.github.ajalt.colormath.model.HSL
+import com.github.ajalt.colormath.model.RGB
+import com.github.ajalt.colormath.parse
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.editor.ElementColorProvider
 import com.intellij.psi.PsiDocumentManager
@@ -10,15 +16,14 @@ import org.elm.lang.core.psi.ElmTypes.LOWER_CASE_IDENTIFIER
 import org.elm.lang.core.psi.ElmTypes.REGULAR_STRING_PART
 import org.elm.lang.core.psi.elementType
 import org.elm.lang.core.psi.elements.*
-import java.awt.Color
+import java.awt.Color as AwtColor
 import java.util.Locale
-import kotlin.math.roundToInt
 
 private val colorRegex = Regex("""#[0-9a-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\([^)]+\)""")
 
 /** Adds color blocks to the gutter when hex colors exist in a string */
 class ElmColorProvider : ElementColorProvider {
-    override fun getColorFrom(element: PsiElement): Color? {
+    override fun getColorFrom(element: PsiElement): AwtColor? {
         // Like all line markers, we should only provide colors on leaf elements
         if (element.firstChild != null) return null
         return getCssColorFromString(element) ?: getColorFromFuncCall(element)
@@ -27,14 +32,14 @@ class ElmColorProvider : ElementColorProvider {
     // Parse a CSS color from any string that contains one, since "1px solid #1a2b3c" probably
     // contains a color. We don't parse color keywords, since "The red fire truck" is probably not
     // supposed to contain a color.
-    private fun getCssColorFromString(element: PsiElement): Color? {
+    private fun getCssColorFromString(element: PsiElement): AwtColor? {
         if (element.elementType != REGULAR_STRING_PART) return null
         return colorRegex.find(element.text)
-            ?.let { runCatching { ConvertibleColor.fromCss(it.value) }.getOrNull() }
+            ?.let { runCatching { Color.parse(it.value) }.getOrNull() }
             ?.toAwtColor()
     }
 
-    private fun getColorFromFuncCall(element: PsiElement): Color? {
+    private fun getColorFromFuncCall(element: PsiElement): AwtColor? {
         val call = getFuncCall(element) ?: return null
         val color = runCatching {
             // color constructors will throw if the args are out of bounds
@@ -42,16 +47,16 @@ class ElmColorProvider : ElementColorProvider {
                 "rgb", "rgba" -> {
                     if (call.a == null && call.name == "rgba") return null
                     if (call.useFloat) RGB(call.c1, call.c2, call.c3, call.a ?: 1f)
-                    else RGB(call.c1.toInt(), call.c2.toInt(), call.c3.toInt(), call.a ?: 1f)
+                    else RGB.from255(call.c1.toInt(), call.c2.toInt(), call.c3.toInt(), ((call.a ?: 1f) * 255).toInt())
                 }
-                "rgb255" -> RGB(call.c1.toInt(), call.c2.toInt(), call.c3.toInt())
-                "rgba255" -> RGB(call.c1.toInt(), call.c2.toInt(), call.c3.toInt(), call.a ?: return null)
+                "rgb255" -> RGB.from255(call.c1.toInt(), call.c2.toInt(), call.c3.toInt())
+                "rgba255" -> RGB.from255(call.c1.toInt(), call.c2.toInt(), call.c3.toInt(), ((call.a ?: 1f) * 255).toInt())
                 "hsl" -> HSL(call.c1, call.c2, call.c3)
                 "hsla" -> HSL(call.c1, call.c2, call.c3, call.a ?: return null)
                 else -> return null
-            }
+            }.toAwtColor()
         }.getOrNull()
-        return color?.toAwtColor()
+        return color
     }
 
     private fun getFuncCall(element: PsiElement): FuncCall? {
@@ -82,7 +87,7 @@ class ElmColorProvider : ElementColorProvider {
         )
     }
 
-    override fun setColorTo(element: PsiElement, color: Color) {
+    override fun setColorTo(element: PsiElement, color: AwtColor) {
         if (element.firstChild != null) return
         val command = stringColorSettingRunnable(element, color)
             ?: functionColorSettingRunnable(element, color)
@@ -99,13 +104,13 @@ class ElmColorProvider : ElementColorProvider {
         )
     }
 
-    private fun functionColorSettingRunnable(element: PsiElement, color: Color): Runnable? {
+    private fun functionColorSettingRunnable(element: PsiElement, color: AwtColor): Runnable? {
         val funcCall = getFuncCall(element)
         val call = funcCall ?: return null
         return Runnable { setColorInFunctionCall(element, color, call) }
     }
 
-    private fun setColorInFunctionCall(element: PsiElement, color: Color, call: FuncCall) {
+    private fun setColorInFunctionCall(element: PsiElement, color: AwtColor, call: FuncCall) {
         val factory = ElmPsiFactory(element.project)
 
         fun ElmNumberConstantExpr.replace(c: Int, float: Boolean) {
@@ -115,9 +120,9 @@ class ElmColorProvider : ElementColorProvider {
 
         if (call.name.startsWith("hsl")) {
             val hsl = color.toRGB().toHSL()
-            call.args[0].replace(factory.createNumberConstant(hsl.h.toFloat().render()))
-            call.args[1].replace(factory.createNumberConstant((hsl.s / 100f).render()))
-            call.args[2].replace(factory.createNumberConstant((hsl.l / 100f).render()))
+            call.args[0].replace(factory.createNumberConstant(hsl.hueOr(0).render()))
+            call.args[1].replace(factory.createNumberConstant(hsl.s.render()))
+            call.args[2].replace(factory.createNumberConstant(hsl.l.render()))
         } else {
             call.args[0].replace(color.red, call.useFloat)
             call.args[1].replace(color.green, call.useFloat)
@@ -127,12 +132,12 @@ class ElmColorProvider : ElementColorProvider {
         call.args.getOrNull(3)?.replace(color.alpha, true)
     }
 
-    private fun stringColorSettingRunnable(element: PsiElement, color: Color): Runnable? {
+    private fun stringColorSettingRunnable(element: PsiElement, color: AwtColor): Runnable? {
         if (element.elementType != REGULAR_STRING_PART) return null
         return Runnable { setCssColorInString(element, color) }
     }
 
-    private fun setCssColorInString(element: PsiElement, color: Color) {
+    private fun setCssColorInString(element: PsiElement, color: AwtColor) {
         val parent = element.parent as? ElmStringConstantExpr ?: return
         val match = colorRegex.find(element.text)?.value ?: return
 
@@ -142,15 +147,15 @@ class ElmColorProvider : ElementColorProvider {
 
         val newColor = when {
             match.startsWith("#") -> rgb.toHex()
-            match.startsWith("rgb") -> rgb.toCssRgb(
-                commas = commas,
-                namedRgba = match.startsWith("rgba"),
-                rgbPercent = percentCount > 1,
+            match.startsWith("rgb") -> rgb.formatCssString(
+                legacyFormat = commas,
+                legacyName = match.startsWith("rgba"),
+                unitsPercent = percentCount > 1,
                 alphaPercent = percentCount == 1 || percentCount == 4
             )
-            match.startsWith("hsl") -> rgb.toCssHsl(
-                commas = commas,
-                namedHsla = match.startsWith("hsla"),
+            match.startsWith("hsl") -> rgb.toHSL().formatCssString(
+                legacyFormat = commas,
+                legacyName = match.startsWith("hsla"),
                 hueUnit = when {
                     "deg" in match -> AngleUnit.DEGREES
                     "grad" in match -> AngleUnit.GRADIANS
@@ -189,14 +194,14 @@ private data class FuncCall(
     }
 }
 
-fun com.github.ajalt.colormath.Color.toAwtColor(): Color = toRGB().let {
-    Color(it.r, it.g, it.b, (it.a * 255).roundToInt())
+fun Color.toAwtColor(): AwtColor = toSRGB().let {
+    AwtColor(it.r, it.g, it.b, it.alpha)
 }
 
-private fun Color.toRGB() = RGB(red, green, blue, alpha / 255f)
+private fun AwtColor.toRGB() = RGB.from255(red, green, blue, alpha)
 
 private fun Float.render(): String = when (this) {
     0f -> "0"
     1f -> "1"
-    else -> String.format(Locale.ENGLISH, "%.4f", this).trimEnd('0').trimEnd('.')
+    else -> String.format(Locale.ENGLISH, "%.2f", this).trimEnd('0').trimEnd('.')
 }

@@ -21,7 +21,6 @@ import com.intellij.openapi.project.RootsChangeRescanningInfo.TOTAL_RESCAN
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.roots.ex.ProjectRootManagerEx
-import com.intellij.openapi.startup.StartupManager
 import com.intellij.openapi.util.EmptyRunnable
 import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.util.io.FileUtil
@@ -506,14 +505,17 @@ class ElmWorkspaceService(val intellijProject: Project) : PersistentStateCompone
             }
     }
 
-    override fun noStateLoaded() {
-        // The workspace is being opened for the first time. As soon as IntelliJ has
-        // fully loaded the project, we will attempt to auto-discover the Elm toolchain
-        // and the `elm.json` file.
-        StartupManager.getInstance(intellijProject).runWhenProjectIsInitialized {
-            asyncAutoDiscoverWorkspace(intellijProject)
-        }
-    }
+//  The runWhenProjectIsInitialized method is deprecated. It has been upgraded (as of July 2025)
+//  but the code is left here for reference because I'm not 100% convinced that it is completely upgraded.
+//   -- AH.
+//    override fun noStateLoaded() {
+//        // The workspace is being opened for the first time. As soon as IntelliJ has
+//        // fully loaded the project, we will attempt to auto-discover the Elm toolchain
+//        // and the `elm.json` file.
+//        StartupManager.getInstance(intellijProject).runWhenProjectIsInitialized {
+//            asyncAutoDiscoverWorkspace(intellijProject)
+//        }
+//    }
 
     // NOTIFICATIONS
 

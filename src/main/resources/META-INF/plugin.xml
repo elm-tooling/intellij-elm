@@ -41,6 +41,8 @@
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <postStartupActivity implementation="org.elm.workspace.ElmAutoDiscoverProjectActivity"/>
+        <notificationGroup id="Elm Plugin" displayType="BALLOON" isLogByDefault="true"/>
         <additionalTextAttributes scheme="Default" file="colorSchemes/ElmDefault.xml"/>
         <additionalTextAttributes scheme="Darcula" file="colorSchemes/ElmDarcula.xml"/>
         <annotator language="Elm" implementationClass="org.elm.ide.highlight.ElmSyntaxHighlightAnnotator"/>
@@ -84,7 +86,7 @@
         <codeStyleSettingsProvider implementation="org.elm.ide.formatter.settings.ElmCodeStyleSettingsProvider"/>
         <langCodeStyleSettingsProvider
                 implementation="org.elm.ide.formatter.settings.ElmLanguageCodeStyleSettingsProvider"/>
-
+        <lang.documentationProvider language="Elm" implementationClass="org.elm.ide.docs.ElmDocumentationProvider"/>
         <!-- New Project for IDEA -->
         <projectTemplatesFactory implementation="org.elm.ide.project.ElmProjectTemplatesFactory"/>
 
@@ -92,7 +94,7 @@
         <directoryProjectGenerator implementation="org.elm.ide.project.ElmWebProjectTemplate"/>
 
         <!-- DEPRECATED. See `ElmModuleType` for details! -->
-        <moduleType id="ELM_MODULE" implementationClass="org.elm.ide.project.ElmModuleType"/>
+        <!-- <moduleType id="ELM_MODULE" implementationClass="org.elm.ide.project.ElmModuleType"/> -->
 
 
         <!-- Inspections -->
@@ -159,62 +161,77 @@
         <!-- Intentions -->
 
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.exposure.ExposeIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.exposure.ExposeWithVariantsIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.exposure.ExposeVariantsIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.PipelineIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.RemovePipelineIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.exposure.StopExposingIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.exposure.StopExposingVariantsIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.MapToFoldIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.RegularToTripleQuotedStringIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.TripleQuotedToRegularStringIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.MakeAnnotationIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.MakeDecoderIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.MakeEncoderIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.RecordConstructorToLiteralIntention</className>
             <category>Elm</category>
         </intentionAction>
         <intentionAction>
+            <language>Elm</language>
             <className>org.elm.ide.intentions.InlineDebugIntention</className>
             <category>Elm</category>
         </intentionAction>
@@ -236,7 +253,7 @@
 
         <!-- STUBS -->
         <!-- Adding `externalIdPrefix="elm"` breaks the tests -->
-        <stubElementTypeHolder class="org.elm.lang.core.psi.ElmTypes"/>
+        <stubElementTypeHolder class="org.elm.lang.core.psi.ElmTypes" />
         <stubIndex implementation="org.elm.lang.core.stubs.index.ElmModulesIndex"/>
         <stubIndex implementation="org.elm.lang.core.stubs.index.ElmNamedElementIndex"/>
 
@@ -250,7 +267,7 @@
                              contextId="ELM_EXPRESSION" baseContextId="Generic"/>
         <liveTemplateContext implementation="org.elm.ide.livetemplates.ElmLiveTemplateContext$ValueDecl"
                              contextId="ELM_VALUE_DECL" baseContextId="Generic"/>
-        <defaultLiveTemplatesProvider implementation="org.elm.ide.livetemplates.ElmLiveTemplateProvider"/>
+        <defaultLiveTemplates file="liveTemplates/Elm.xml"/>
 
         <configurationType implementation="org.elm.ide.test.run.ElmTestRunConfigurationType"/>
         <programRunner implementation="org.elm.ide.test.run.ElmTestProgramRunner"/>
@@ -306,10 +323,10 @@
         </action>
 
         <group id="Elm.WorkspaceToolsGroup" text="Elm" popup="true">
-            <reference id="Elm.RefreshElmProjects"/>
+            <reference ref="Elm.RefreshElmProjects"/>
             <separator/>
-            <reference id="Elm.AttachElmProject"/>
-            <reference id="Elm.DetachElmProject"/>
+            <reference ref="Elm.AttachElmProject"/>
+            <reference ref="Elm.DetachElmProject"/>
 
             <add-to-group group-id="ToolsMenu"/>
         </group>
@@ -323,16 +340,15 @@
         </action>
 
         <group id="Elm.CompilerToolsGroup" text="Elm Compiler" popup="true">
-            <reference id="Elm.Build"/>
+            <reference ref="Elm.Build"/>
             <add-to-group group-id="Elm.WorkspaceToolsGroup"/>
         </group>
 
         <group id="Elm.ReviewToolsGroup" text="elm-review" popup="true">
-            <reference id="Elm.RunExternalElmReview"/>
+            <reference ref="Elm.RunExternalElmReview"/>
         </group>
         <group id="Elm.ReviewWatchmodeToolsGroup" text="elm-review-watchmode" popup="true">
-            <reference id="Elm.RunExternalElmReviewWatchmode"/>
+            <reference ref="Elm.RunExternalElmReviewWatchmode"/>
         </group>
     </actions>
-
 </idea-plugin>

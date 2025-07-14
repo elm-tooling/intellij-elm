@@ -10,13 +10,12 @@ package org.elm.ide.notifications
 import com.intellij.notification.*
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.AnActionResult
 import com.intellij.openapi.actionSystem.DataContext
-import com.intellij.openapi.actionSystem.ex.ActionManagerEx
+import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.project.Project
 
-private val pluginNotifications = NotificationGroup.balloonGroup("Elm Plugin")
-
+private val pluginNotifications: NotificationGroup
+    get() = NotificationGroupManager.getInstance().getNotificationGroup("Elm Plugin")
 
 /**
  * Show a balloon notification along with action(s). The notification will be automatically dismissed
@@ -45,13 +44,5 @@ fun Project.showBalloon(
 
 fun executeAction(action: AnAction, place: String, dataContext: DataContext) {
     val event = AnActionEvent.createFromAnAction(action, null, place, dataContext)
-    action.beforeActionPerformedUpdate(event)
-    action.update(event)
-
-    if (event.presentation.isEnabled && event.presentation.isVisible) {
-        val actionManager = ActionManagerEx.getInstanceEx()
-        actionManager.fireBeforeActionPerformed(action, event)
-        action.actionPerformed(event)
-        actionManager.fireAfterActionPerformed(action, event, AnActionResult.PERFORMED)
-    }
+    ActionUtil.performActionDumbAwareWithCallbacks(action, event)
 }
