@@ -1,9 +1,12 @@
 package org.elm.ide.actions
 
+import com.intellij.notification.Notification
+import com.intellij.notification.Notifications
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.command.undo.UndoManager
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.util.Ref
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.MapDataContext
 import com.intellij.testFramework.TestActionEvent
@@ -53,6 +56,36 @@ class ElmExternalFormatActionTest : ElmWorkspaceTestBase() {
 
                 """.trimIndent()
         TestCase.assertEquals(expected, document.text)
+    }
+
+    @Test
+    fun `test elm-format action on a file with syntax errors`() {
+        val originalCode = """
+                    module Main exposing (f)
+
+
+                    f x =
+                """.trimIndent()
+
+
+        buildProject {
+            project("elm.json", manifestElm19)
+            dir("src") {
+                elm("Main.elm", originalCode)
+            }
+        }
+
+        val file = myFixture.configureFromTempProjectFile("src/Main.elm").virtualFile
+        val document = FileDocumentManager.getInstance().getDocument(file)!!
+
+        val ref = connectToBusAndGetNotificationRef()
+        reformat(file)
+        
+        TestCase.assertEquals(originalCode, document.text)
+
+        TestCase.assertEquals("elm-format encountered syntax errors that it could not fix", ref.get().content)
+        TestCase.assertEquals(1, ref.get().actions.size)
+        TestCase.assertEquals("Show Errors", ref.get().actions.first().templatePresentation.text)
     }
 
     @Test
@@ -114,6 +147,16 @@ class ElmExternalFormatActionTest : ElmWorkspaceTestBase() {
         val event = TestActionEvent(dataContext, action)
         action.beforeActionPerformedUpdate(event)
         return Pair(action, event)
+    }
+
+    private fun connectToBusAndGetNotificationRef(): Ref<Notification> {
+        val notificationRef = Ref<Notification>()
+        project.messageBus.connect(testRootDisposable).subscribe(Notifications.TOPIC,
+            object : Notifications {
+                override fun notify(notification: Notification) =
+                    notificationRef.set(notification)
+            })
+        return notificationRef
     }
 
 }

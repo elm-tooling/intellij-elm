@@ -45,6 +45,11 @@ class ElmFormatCLI(private val elmFormatExecutablePath: Path) {
         class UnknownFailure(msg: String? = null, cause: Throwable?) : ElmFormatResult(msg ?: "Something went wrong running elm-format", cause)
     }
 
+    private fun isBadSyntaxErrorMessage(msg: String): Boolean {
+        return msg.contains("SYNTAX PROBLEM", ignoreCase = true) // Elm-format 0.8.4 and below
+                || msg.contains("Unable to parse file")  // Elm-format 0.8.5 and above
+    }
+
     fun formatDocumentAndSetText(project: Project, document: Document, version: Version, addToUndoStack: Boolean): ElmFormatResult {
         val processOutput = try {
             ProgressManager.getInstance().runProcessWithProgressSynchronously<ProcessOutput, ExecutionException>({
@@ -59,7 +64,12 @@ class ElmFormatCLI(private val elmFormatExecutablePath: Path) {
             }
         }
 
-        if (processOutput.isNotSuccess) return ElmFormatResult.UnknownFailure("Process output exit code was non-zero", cause = null)
+        if (processOutput.isNotSuccess) {
+            if (isBadSyntaxErrorMessage(processOutput.stderr)) {
+                return ElmFormatResult.BadSyntax()
+            }
+            return ElmFormatResult.UnknownFailure("Process output exit code was non-zero", cause = null)
+        }
 
         val formatted = processOutput.stdout
         val source = document.text
