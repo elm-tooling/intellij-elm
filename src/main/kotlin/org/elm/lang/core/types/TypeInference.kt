@@ -1038,7 +1038,7 @@ private class InferenceScope(
         }
         val assignable = try {
             assignable(ty1, ty2)
-        } catch (e: InfiniteTypeException) {
+        } catch (_: InfiniteTypeException) {
             diagnostics += InfiniteTypeError(element)
             return false
         }
