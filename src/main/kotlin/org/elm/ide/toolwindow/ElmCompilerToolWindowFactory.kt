@@ -5,6 +5,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.ui.content.impl.ContentImpl
 import com.intellij.util.ui.MessageCategory
 import org.elm.workspace.compiler.ElmBuildAction
@@ -37,7 +38,7 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
                     }
 
                     // Ensure UI updates happen on the Event Dispatch Thread
-                    ApplicationManager.getApplication().invokeLater {
+                    ToolWindowManager.getInstance(project).invokeLater {
                         toolWindow.contentManager.removeAllContents(true)
                         toolWindow.contentManager.addContent(
                             ContentImpl(errorTreeViewPanel, "Compilation Result", true)
