@@ -21,21 +21,19 @@ The original repo was [klazuka/intellij-elm](https://github.com/klazuka/intellij
 You may want to have some CLI tools --`elm` (the Elm compiler), [`elm-test`](docs/elm-test.md), [`elm-format`](docs/features/elm-format.md),
 [`elm-review`](docs/features/elm-review.md) and [`lamdera`](docs/features/lamdera.md)-- installed for certain features of this plugin to work.
 
-Install the first three with:
+You can install these globally with:
 
 ```bash
-sudo npm install -g elm elm-test elm-format elm-review
+sudo npm install -g elm elm-test elm-format elm-review lamdera
 ```
 
 **NOTE**: if you have [node](https://nodejs.org) installed using [nvm](https://github.com/nvm-sh/nvm), make sure to read [our NVM setup guide](docs/nvm.md).
-
-To install the Lamdera Elm compiler, follow [their instructions](https://lamdera.com/start).
 
 To install the plugin itself first make sure to uninstall all other Elm plugins you may have installed (this requires a restart of the IDE).
 Some have reported that having two Elm plugins installed results in the IDE not starting but showing a seemingly unrelated error
 (if you have this problem, there are [ways to fix it](https://intellij-support.jetbrains.com/hc/en-us/community/posts/360000524244-Disable-Uninstall-plugin-without-launching-Idea)).
 
-From within a JetBrains IDE, go to `Settings` -> `Plugins` -> `Marketplace` and search for "TODO name of new plugin" (not yet available on the JetBrains Marketplace).
+From within a JetBrains IDE, go to `Settings` -> `Plugins` -> `Marketplace` and search for "Elm Language". If you get multiple hits look for the most recently updated version, since there are still older versions of the plugin available.
 After installing the plugin, restart the IDE and then [open your existing Elm project](docs/existing-project.md) or [create a new project](docs/new-project.md).
 
 Alternatively you can install it manually by downloading a [release](https://github.com/elm-tooling/intellij-elm/releases) (or downloading the source and building it yourself) and
