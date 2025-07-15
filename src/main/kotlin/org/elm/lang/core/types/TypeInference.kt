@@ -1272,7 +1272,6 @@ private class InferenceScope(
             name2 == null -> unconstrainedAllowed
             name1 == name2 -> true
             name1 == "number" && name2 == "comparable" -> true
-            name1 == "comparable" && name2 == "number" -> true
             name1 == "comparable" && (name2 == "number" || name2 == "compappend") -> true
             name1 == "compappend" && (name2 == "comparable" || name2 == "appendable") -> true
             else -> false
