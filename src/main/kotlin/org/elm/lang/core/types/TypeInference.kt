@@ -343,7 +343,9 @@ private class InferenceScope(
         fun validateTree(tree: BinaryExprTree<ElmBinOpPartTag>): TyAndRange {
             return when (tree) {
                 is BinaryExprTree.Operand -> {
-                    val ty = inferOperand(tree.operand as ElmOperandTag)
+                    val operandTag = tree.operand as? ElmOperandTag
+                        ?: error("Expected ElmOperandTag but got ${tree.operand::class.simpleName} at ${tree.operand.text}")
+                    val ty = inferOperand(operandTag)
                     TyAndRange(tree.operand, ty)
                 }
                 is BinaryExprTree.Binary -> {
