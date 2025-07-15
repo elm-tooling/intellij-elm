@@ -65,7 +65,7 @@ class ElmWorkspacePanel(private val project: Project) : SimpleToolWindowPanel(tr
 
 
     init {
-        setToolbar(createToolbar())
+        toolbar = createToolbar()
         setContent(ScrollPaneFactory.createScrollPane(projectListUI, 0))
 
         // populate the initial workspace state
