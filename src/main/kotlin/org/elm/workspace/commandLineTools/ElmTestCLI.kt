@@ -33,6 +33,8 @@ class ElmTestCLI(private val executablePath: Path) {
      *
      * @param elmCompilerPath The path to the Elm compiler.
      * @param elmProject The [ElmProject] containing the tests to be run.
+     * @param filteredTest An instance of the filter parameters for the test
+     * @param isElmTestRsEnabled True if using elm-test-rs
      */
     fun runTestsProcessHandler(elmCompilerPath: Path, elmProject: ElmProject, filteredTest: FilteredTest?, isElmTestRsEnabled: Boolean): ProcessHandler {
         val commandLine = GeneralCommandLine(executablePath.toString(), "--report=json")

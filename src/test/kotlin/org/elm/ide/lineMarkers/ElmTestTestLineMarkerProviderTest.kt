@@ -12,7 +12,6 @@ class ElmTestTestLineMarkerProviderTest : ElmLineMarkerProviderTestBase() {
             lamderaCompilerPath = "",
             elmFormatPath = "",
             elmTestPath = "",
-            elmTestRsPath = "",
             elmReviewPath = "",
             isElmTestRsEnabled = enabled,
             isElmFormatOnSaveEnabled = false

@@ -46,11 +46,6 @@ abstract class ElmTestLineMarkerProvider : LineMarkerProvider {
         return element.containingFile.text.contains("import Test exposing")
     }
 
-    /** Returns true if elm-test-rs is enabled */
-    protected fun usingElmTestRs(project: Project): Boolean {
-        return project.elmToolchain.isElmTestRsEnabled
-    }
-
     /** Create a gutter icon on a given line with an icon, tooltip, and list of popup actions */
     protected fun createLineMarkerInfo(element: PsiElement, icon: Icon, tooltip: String, actions: List<AnAction>, ): LineMarkerInfo<*>? {
         if (!isTestFile(element) || !shouldAddGutterIcon(element)) return null

@@ -5,6 +5,7 @@ import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.psi.PsiElement
 import org.elm.ide.icons.ElmIcons
 import org.elm.ide.test.core.ElmTestElementNavigator
+import org.elm.workspace.elmToolchain
 
 /** Handles adding a gutter icon for running tests under a describe */
 class ElmTestDescribeLineMarkerProvider : ElmTestLineMarkerProvider() {
@@ -14,7 +15,7 @@ class ElmTestDescribeLineMarkerProvider : ElmTestLineMarkerProvider() {
 
     /** Add gutter icons for the describe line */
     override fun shouldAddGutterIcon(element: PsiElement): Boolean {
-        return usingElmTestRs(element.project) && element.text == "describe"
+        return element.project.elmToolchain.isElmTestRsEnabled && element.text == "describe"
     }
 
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {

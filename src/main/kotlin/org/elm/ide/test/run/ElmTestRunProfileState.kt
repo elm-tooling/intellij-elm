@@ -64,6 +64,7 @@ class ElmTestRunProfileState internal constructor(
         }
 
         if (toolchain.isElmTestRsEnabled) {
+            // ensure that elm-test-rs is being used if the checkbox is enabled
             val version = elmTestCLI.queryVersion(project)
             if (version is org.elm.openapiext.Result.Err) return handleBadConfiguration(project, version.reason)
         }

@@ -313,7 +313,6 @@ class ElmWorkspaceConfigurable(
         val elmFormatPath = settings?.elmFormatPath
         val isElmFormatOnSaveEnabled = settings?.isElmFormatOnSaveEnabled
         val elmTestPath = settings?.elmTestPath
-        val elmTestRsPath = settings?.elmTestRsPath
         val isElmTestRsEnabled = settings?.isElmTestRsEnabled
         val elmReviewPath = settings?.elmReviewPath
 
@@ -327,11 +326,8 @@ class ElmWorkspaceConfigurable(
             elmFormatPathField.text = elmFormatPath
         }
         elmFormatOnSaveCheckbox.isSelected = isElmFormatOnSaveEnabled == true
-        if (elmTestPath != null && (isElmTestRsEnabled == null || !isElmTestRsEnabled)) {
+        if (elmTestPath != null) {
             elmTestPathField.text = elmTestPath
-        }
-        if (elmTestRsPath != null && isElmTestRsEnabled == true) {
-            elmTestPathField.text = elmTestRsPath
         }
         elmTestRsCheckbox.isSelected = isElmTestRsEnabled == true
         if (elmReviewPath != null) {
@@ -346,15 +342,14 @@ class ElmWorkspaceConfigurable(
             it.copy(elmCompilerPath = elmPathField.text,
                     lamderaCompilerPath = lamderaPathField.text,
                     elmFormatPath = elmFormatPathField.text,
-                    elmTestPath = if (isElmTestRsEnabledAndSelected()) "" else elmTestPathField.text,
-                    elmTestRsPath = if (isElmTestRsEnabledAndSelected()) elmTestPathField.text else "",
+                    elmTestPath = elmTestPathField.text,
                     elmReviewPath = elmReviewPathField.text,
                     isElmTestRsEnabled = isElmTestRsEnabledAndSelected(),
                     isElmFormatOnSaveEnabled = isOnSaveHookEnabledAndSelected()
             )
         }
     }
-    
+
     private fun isElmTestRsEnabledAndSelected() =
         elmTestRsCheckbox.isEnabled && elmTestRsCheckbox.isSelected
 
@@ -363,12 +358,10 @@ class ElmWorkspaceConfigurable(
 
     override fun isModified(): Boolean {
         val settings = project.elmWorkspace.rawSettings
-        val isElmTestPathModified = if (isElmTestRsEnabledAndSelected()) elmTestPathField.text != settings?.elmTestRsPath else elmTestPathField.text != settings?.elmTestPath
-
         return elmPathField.text != settings?.elmCompilerPath
                 || lamderaPathField.text != settings.lamderaCompilerPath
                 || elmFormatPathField.text != settings.elmFormatPath
-                || isElmTestPathModified
+                || elmTestPathField.text != settings.elmTestPath
                 || elmReviewPathField.text != settings.elmReviewPath
                 || isElmTestRsEnabledAndSelected() != settings.isElmTestRsEnabled
                 || isOnSaveHookEnabledAndSelected() != settings.isElmFormatOnSaveEnabled

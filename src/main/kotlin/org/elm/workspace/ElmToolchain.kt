@@ -23,18 +23,16 @@ data class ElmToolchain(
         val lamderaCompilerPath: Path?,
         val elmFormatPath: Path?,
         val elmTestPath: Path?,
-        val elmTestRsPath: Path?,
         val elmReviewPath: Path?,
         val isElmTestRsEnabled: Boolean,
         val isElmFormatOnSaveEnabled: Boolean
 ) {
-    constructor(elmCompilerPath: String, lamderaCompilerPath: String, elmFormatPath: String, elmTestPath: String, elmTestRsPath: String, elmReviewPath: String, isElmTestRsEnabled: Boolean, isElmFormatOnSaveEnabled: Boolean) :
+    constructor(elmCompilerPath: String, lamderaCompilerPath: String, elmFormatPath: String, elmTestPath: String, elmReviewPath: String, isElmTestRsEnabled: Boolean, isElmFormatOnSaveEnabled: Boolean) :
             this(
                     if (elmCompilerPath.isNotBlank() && Files.exists(Paths.get(elmCompilerPath))) Paths.get(elmCompilerPath) else null,
                     if (lamderaCompilerPath.isNotBlank() && Files.exists(Paths.get(lamderaCompilerPath))) Paths.get(lamderaCompilerPath) else null,
                     if (elmFormatPath.isNotBlank() && Files.exists(Paths.get(elmFormatPath))) Paths.get(elmFormatPath) else null,
                     if (elmTestPath.isNotBlank() && Files.exists(Paths.get(elmTestPath))) Paths.get(elmTestPath) else null,
-                    if (elmTestRsPath.isNotBlank() && Files.exists(Paths.get(elmTestRsPath))) Paths.get(elmTestRsPath) else null,
                     if (elmReviewPath.isNotBlank() && Files.exists(Paths.get(elmReviewPath))) Paths.get(elmReviewPath) else null,
                     isElmTestRsEnabled,
                     isElmFormatOnSaveEnabled
@@ -46,7 +44,7 @@ data class ElmToolchain(
 
     val elmFormatCLI: ElmFormatCLI? = elmFormatPath?.let { ElmFormatCLI(it) }
 
-    val elmTestCLI: ElmTestCLI? = if (isElmTestRsEnabled) elmTestRsPath?.let { ElmTestCLI(it) } else elmTestPath?.let { ElmTestCLI(it) }
+    val elmTestCLI: ElmTestCLI? = elmTestPath?.let { ElmTestCLI(it) }
 
     val elmReviewCLI: ElmReviewCLI? = elmReviewPath?.let { ElmReviewCLI(it) }
 
@@ -76,8 +74,7 @@ data class ElmToolchain(
                 elmCompilerPath = elmCompilerPath ?: suggestions[elmCompilerTool],
                 lamderaCompilerPath = lamderaCompilerPath ?: suggestions[lamderaCompilerTool],
                 elmFormatPath = elmFormatPath ?: suggestions[elmFormatTool],
-                elmTestPath = elmTestPath ?: suggestions[elmTestTool],
-                elmTestRsPath = elmTestRsPath ?: suggestions[elmTestRsTool],
+                elmTestPath = if (isElmTestRsEnabled) elmTestPath ?: suggestions[elmTestRsTool] else elmTestPath ?: suggestions[elmTestTool],
                 elmReviewPath = elmReviewPath ?: suggestions[elmReviewTool]
         )
     }
@@ -106,7 +103,6 @@ data class ElmToolchain(
                 lamderaCompilerPath = null,
                 elmFormatPath = null,
                 elmTestPath = null,
-                elmTestRsPath = null,
                 elmReviewPath = null,
                 isElmTestRsEnabled = DEFAULT_ELM_TEST_RS,
                 isElmFormatOnSaveEnabled = DEFAULT_FORMAT_ON_SAVE

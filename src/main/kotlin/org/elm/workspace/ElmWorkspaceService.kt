@@ -93,7 +93,6 @@ class ElmWorkspaceService(val intellijProject: Project) : PersistentStateCompone
         val lamderaCompilerPath: String = "",
         val elmFormatPath: String = "",
         val elmTestPath: String = "",
-        val elmTestRsPath: String = "",
         val isElmTestRsEnabled: Boolean = DEFAULT_ELM_TEST_RS,
         val elmReviewPath: String = "",
         val isElmFormatOnSaveEnabled: Boolean = DEFAULT_FORMAT_ON_SAVE
@@ -108,7 +107,6 @@ class ElmWorkspaceService(val intellijProject: Project) : PersistentStateCompone
                 lamderaCompilerPath = raw.lamderaCompilerPath,
                 elmFormatPath = raw.elmFormatPath,
                 elmTestPath = raw.elmTestPath,
-                elmTestRsPath = raw.elmTestRsPath,
                 elmReviewPath = raw.elmReviewPath,
                 isElmTestRsEnabled = raw.isElmTestRsEnabled,
                 isElmFormatOnSaveEnabled = raw.isElmFormatOnSaveEnabled
@@ -140,7 +138,6 @@ class ElmWorkspaceService(val intellijProject: Project) : PersistentStateCompone
                 lamderaCompilerPath = toolchain.lamderaCompilerPath.toString(),
                 elmFormatPath = toolchain.elmFormatPath.toString(),
                 elmTestPath = toolchain.elmTestPath.toString(),
-                elmTestRsPath = toolchain.elmTestRsPath.toString(),
                 elmReviewPath = toolchain.elmReviewPath.toString(),
                 isElmTestRsEnabled = toolchain.isElmTestRsEnabled,
                 isElmFormatOnSaveEnabled = toolchain.isElmFormatOnSaveEnabled
@@ -446,7 +443,6 @@ class ElmWorkspaceService(val intellijProject: Project) : PersistentStateCompone
         settingsElement.setAttribute("lamderaCompilerPath", raw.lamderaCompilerPath)
         settingsElement.setAttribute("elmFormatPath", raw.elmFormatPath)
         settingsElement.setAttribute("elmTestPath", raw.elmTestPath)
-        settingsElement.setAttribute("elmTestRsPath", raw.elmTestRsPath)
         settingsElement.setAttribute("isElmTestRsEnabled", raw.isElmTestRsEnabled.toString())
         settingsElement.setAttribute("elmReviewPath", raw.elmReviewPath)
         settingsElement.setAttribute("isElmFormatOnSaveEnabled", raw.isElmFormatOnSaveEnabled.toString())
@@ -466,7 +462,6 @@ class ElmWorkspaceService(val intellijProject: Project) : PersistentStateCompone
         val lamderaCompilerPath = settingsElement.getAttributeValue("lamderaCompilerPath") ?: ""
         val elmFormatPath = settingsElement.getAttributeValue("elmFormatPath") ?: ""
         val elmTestPath = settingsElement.getAttributeValue("elmTestPath") ?: ""
-        val elmTestRsPath = settingsElement.getAttributeValue("elmTestRsPath") ?: ""
         val elmReviewPath = settingsElement.getAttributeValue("elmReviewPath") ?: ""
         val isElmTestRsEnabled = settingsElement
             .getAttributeValue("isElmTestRsEnabled")
@@ -483,7 +478,6 @@ class ElmWorkspaceService(val intellijProject: Project) : PersistentStateCompone
                 lamderaCompilerPath = lamderaCompilerPath,
                 elmFormatPath = elmFormatPath,
                 elmTestPath = elmTestPath,
-                elmTestRsPath = elmTestRsPath,
                 isElmTestRsEnabled = isElmTestRsEnabled,
                 elmReviewPath = elmReviewPath,
                 isElmFormatOnSaveEnabled = isElmFormatOnSaveEnabled
