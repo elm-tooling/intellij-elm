@@ -1,7 +1,9 @@
 package org.elm.ide.hints
 
-import com.intellij.codeInsight.lookup.LookupElement
-import com.intellij.lang.parameterInfo.*
+import com.intellij.lang.parameterInfo.CreateParameterInfoContext
+import com.intellij.lang.parameterInfo.ParameterInfoHandler
+import com.intellij.lang.parameterInfo.ParameterInfoUIContext
+import com.intellij.lang.parameterInfo.UpdateParameterInfoContext
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement

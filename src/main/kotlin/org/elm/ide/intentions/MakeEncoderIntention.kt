@@ -6,7 +6,7 @@ import org.elm.lang.core.psi.elements.ElmTypeDeclaration
 import org.elm.lang.core.types.*
 
 class MakeEncoderIntention : AnnotationBasedGeneratorIntention() {
-    override fun getText() = "Generate Encoder"
+    override fun getText() = "Generate encoder"
 
     override fun getRootIfApplicable(annotationTy: Ty): Ty? {
         if (annotationTy !is TyFunction) return null

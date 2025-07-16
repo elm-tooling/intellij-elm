@@ -21,7 +21,6 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
-import com.intellij.openapi.vfs.ex.temp.TempFileSystem
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -159,14 +158,16 @@ fun LocalFileSystem.findFileByPath(path: Path): VirtualFile? {
  * function instead.
  */
 fun findFileByPathTestAware(path: Path): VirtualFile? {
-    if (isUnitTestMode) {
-        val vFile = TempFileSystem.getInstance().findFileByPath(path)
-        if (vFile != null) {
-            return vFile
-        }
+    val filePath = path.toString()
+
+    // First, try whatever file system has the file in memory (typically used in unit tests)
+    val inMemoryFile = VirtualFileManager.getInstance().findFileByUrl("temp://$filePath")
+    if (inMemoryFile != null) {
+        return inMemoryFile
     }
 
-    return LocalFileSystem.getInstance().findFileByPath(path)
+    // Fallback to local file system
+    return LocalFileSystem.getInstance().findFileByPath(filePath)
 }
 
 // TODO [kl] Rethink these "testAware" functions.
@@ -177,14 +178,17 @@ fun findFileByPathTestAware(path: Path): VirtualFile? {
 // Maybe there's a better way?
 
 fun refreshAndFindFileByPathTestAware(path: Path): VirtualFile? {
+    val filePath = path.toString()
+    val tempUrl = "temp://$filePath"
+
     if (isUnitTestMode) {
-        val vFile = TempFileSystem.getInstance().refreshAndFindFileByPath(path.toString())
-        if (vFile != null) {
-            return vFile
+        val tempVFile = VirtualFileManager.getInstance().refreshAndFindFileByUrl(tempUrl)
+        if (tempVFile != null) {
+            return tempVFile
         }
     }
 
-    return LocalFileSystem.getInstance().refreshAndFindFileByPath(path.toString())
+    return LocalFileSystem.getInstance().refreshAndFindFileByPath(filePath)
 }
 
 val isUnitTestMode: Boolean get() = ApplicationManager.getApplication().isUnitTestMode
