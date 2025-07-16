@@ -117,7 +117,7 @@ inline fun <Key : Any, reified Psi : PsiElement> getElements(
 fun Element.toXmlString() =
     JDOMUtil.writeElement(this)
 
-fun elementFromXmlString(xml: String): org.jdom.Element =
+fun elementFromXmlString(xml: String): Element =
     // TODO(cies) Use JDOMUtil or JDK API (StAX) or XmlDomReader.readXmlAsModel instead (first decide which)
     SAXBuilder().build(xml.byteInputStream()).rootElement
 
