@@ -10,7 +10,8 @@ object ElmIcons {
     val FILE = getIcon("elm-file.png")
 
     /** Monochromatic Elm icon suitable for toolwindow (it's also smaller than the normal icons */
-    val TOOL_WINDOW = getIcon("elm-toolwindow.png")
+    // Toolwindow icons are set in plugin.xml, but this is left here for reference.
+    // val TOOL_WINDOW = getIcon("elm-toolwindow.png")
 
     /** Colorful Elm icon */
     val COLORFUL = getIcon("elm-colorful.png")
@@ -23,7 +24,8 @@ object ElmIcons {
     // STRUCTURE VIEW ICONS
 
     val FUNCTION = getIcon("function.png")
-    val VALUE = getIcon("value.png")
+    // Unused icon
+    // val VALUE = getIcon("value.png")
     val UNION_TYPE = getIcon("type.png")
     val TYPE_ALIAS = getIcon("type.png")
 

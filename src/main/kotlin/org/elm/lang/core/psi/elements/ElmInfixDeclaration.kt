@@ -24,9 +24,6 @@ class ElmInfixDeclaration : ElmStubbedNamedElementImpl<ElmInfixDeclarationStub>,
             super(stub, stubType, IdentifierCase.OPERATOR)
 
 
-    val operatorIdentifier: PsiElement
-        get() = findNotNullChildByType(ElmTypes.OPERATOR_IDENTIFIER)
-
     val precedenceElement: PsiElement
         get() = findNotNullChildByType(ElmTypes.NUMBER_LITERAL)
 

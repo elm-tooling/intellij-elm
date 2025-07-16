@@ -3,7 +3,6 @@ package org.elm.ide.project
 import com.intellij.ide.util.projectWizard.EmptyModuleBuilder
 import com.intellij.ide.util.projectWizard.ModuleBuilder
 import com.intellij.openapi.module.ModuleType
-import com.intellij.openapi.module.ModuleTypeManager
 import org.elm.ide.icons.ElmIcons
 import javax.swing.Icon
 
@@ -31,9 +30,6 @@ class ElmModuleType : ModuleType<ModuleBuilder>(ID) {
 
     companion object {
         const val ID = "ELM_MODULE"
-        val INSTANCE: ElmModuleType by lazy {
-            ModuleTypeManager.getInstance().findByID(ID) as ElmModuleType
-        }
     }
 
 }

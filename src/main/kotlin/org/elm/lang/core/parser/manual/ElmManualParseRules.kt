@@ -25,7 +25,10 @@ object ElmManualParseRules : GeneratedParserUtilBase() {
     fun parseDotWithoutTrailingWhitespace(builder: PsiBuilder, level: Int) =
             DotWithoutWhitespaceParser(allowLeadingWs = true, allowTrailingWs = false).parse(builder, level)
 
+    // This function gets marked as "Unused" but in fact it is used in the language parser. So the warning is
+    // suppressed for this case.
     @JvmStatic
+    @Suppress("Unused")
     fun parseDotWithoutLeadingWhitespace(builder: PsiBuilder, level: Int) =
             DotWithoutWhitespaceParser(allowLeadingWs = false, allowTrailingWs = true).parse(builder, level)
 

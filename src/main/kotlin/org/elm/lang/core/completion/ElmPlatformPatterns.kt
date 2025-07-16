@@ -5,10 +5,6 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ProcessingContext
 
-inline fun <reified I : PsiElement> psiElement(): PsiElementPattern.Capture<I> {
-    return PlatformPatterns.psiElement(I::class.java)
-}
-
 /**
  * Similar with [TreeElementPattern.afterSiblingSkipping]
  * but it uses [PsiElement.getPrevSibling] to get previous sibling elements

@@ -550,6 +550,7 @@ class ElmAsClauseStub(
 private fun StubInputStream.readUTFFastAsNullable(): String? = readNullable(this, this::readUTFFast)
 private fun StubOutputStream.writeUTFFastAsNullable(value: String?) = writeNullable(this, value, this::writeUTFFast)
 
+/**
 private fun <E : Enum<E>> StubOutputStream.writeEnum(e: E) = writeByte(e.ordinal)
 private inline fun <reified E : Enum<E>> StubInputStream.readEnum(): E = enumValues<E>()[readUnsignedByte()]
 
@@ -558,3 +559,4 @@ private fun StubInputStream.readLongAsNullable(): Long? = readNullable(this, thi
 
 private fun StubOutputStream.writeDoubleAsNullable(value: Double?) = writeNullable(this, value, this::writeDouble)
 private fun StubInputStream.readDoubleAsNullable(): Double? = readNullable(this, this::readDouble)
+**/

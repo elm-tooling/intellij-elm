@@ -62,13 +62,3 @@ fun fileSystemPathTextField(
 
     return component
 }
-
-class CheckboxDelegate(private val checkbox: JBCheckBox) {
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): Boolean {
-        return checkbox.isSelected
-    }
-
-    operator fun setValue(thisRef: Any?, property: KProperty<*>, value: Boolean) {
-        checkbox.isSelected = value
-    }
-}

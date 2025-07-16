@@ -6,7 +6,6 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.PlatformDataKeys
-import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
@@ -14,11 +13,11 @@ import com.intellij.openapi.vfs.VirtualFile
 import org.elm.ide.notifications.showBalloon
 import org.elm.lang.core.ElmFileType
 import org.elm.openapiext.saveAllDocuments
-import org.elm.workspace.*
 import org.elm.workspace.commandLineTools.makeProject
 import org.elm.workspace.compiler.findEntrypoints
+import org.elm.workspace.elmToolchain
+import org.elm.workspace.elmWorkspace
 
-private val log = logger<ElmExternalReviewAction>()
 
 class ElmExternalReviewAction : AnAction() {
 
@@ -77,7 +76,7 @@ class ElmExternalReviewAction : AnAction() {
             if (compiledSuccessfully) {
                 elmReviewCLI.runReview(project, elmProject, project.elmToolchain.elmCLI, currentFileInEditor)
             }
-        } catch (e: ExecutionException) {
+        } catch (_: ExecutionException) {
             return showError(
                 project,
                 "Failed to 'make' or 'review'. Are the path settings correct ?",

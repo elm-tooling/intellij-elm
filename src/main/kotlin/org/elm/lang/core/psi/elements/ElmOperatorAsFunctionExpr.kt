@@ -21,13 +21,6 @@ class ElmOperatorAsFunctionExpr(node: ASTNode) : ElmPsiElementImpl(node), ElmRef
     val operator: PsiElement
         get() = findNotNullChildByType(OPERATOR_IDENTIFIER)
 
-    val leftParen: PsiElement
-        get() = findNotNullChildByType(LEFT_PARENTHESIS)
-
-    val rightParen: PsiElement
-        get() = findNotNullChildByType(RIGHT_PARENTHESIS)
-
-
     override val referenceNameElement: PsiElement
         get() = operator
 

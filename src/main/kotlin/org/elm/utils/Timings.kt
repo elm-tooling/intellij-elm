@@ -37,8 +37,6 @@ class Timings(
         return measureInternal(name, f)
     }
 
-    fun <T> measureAverage(name: String, f: () -> T): T = measureInternal(name, f)
-
     fun merge(other: Timings): Timings {
         val values = values()
         val otherValues = other.values()
