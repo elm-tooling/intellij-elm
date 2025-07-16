@@ -6,11 +6,15 @@ import com.intellij.codeInsight.daemon.LineMarkerProvider
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.markup.GutterIconRenderer
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.psi.PsiElement
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.FunctionUtil
+import org.elm.workspace.ElmWorkspaceService
+import org.elm.workspace.elmToolchain
 import java.awt.event.MouseEvent
 import javax.swing.Icon
 
@@ -50,6 +54,10 @@ abstract class ElmTestLineMarkerProvider : LineMarkerProvider {
      */
     protected fun isTestFile(element: PsiElement): Boolean {
         return element.containingFile.text.contains("import Test exposing")
+    }
+
+    protected fun usingElmTestRs(project: Project): Boolean {
+        return project.elmToolchain.isElmTestRsEnabled
     }
 
     /**

@@ -18,7 +18,7 @@ class ElmTestDescribeLineMarkerProvider : ElmTestLineMarkerProvider() {
      * Add gutter icons for the describe line
      */
     override fun shouldAddGutterIcon(element: PsiElement): Boolean {
-        return element.text == "describe"
+        return usingElmTestRs(element.project) && element.text == "describe"
     }
 
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {

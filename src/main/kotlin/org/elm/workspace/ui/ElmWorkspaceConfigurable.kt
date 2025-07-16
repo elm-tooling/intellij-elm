@@ -59,9 +59,14 @@ class ElmWorkspaceConfigurable(
     private val elmFormatOnSaveCheckbox = JCheckBox()
     private val elmFormatShortcutLabel = HyperlinkLabel()
     private val elmTestVersionLabel = JLabel()
+    private val elmTestRsCheckbox = JCheckBox()
     private val elmReviewVersionLabel = JLabel()
 
     override fun createComponent(): JComponent {
+        elmTestRsCheckbox.addChangeListener {
+            elmTestPathField.text = autoDiscoverPathTo(elmTestTool())
+            update()
+        }
         elmFormatOnSaveCheckbox.addChangeListener { update() }
         elmFormatShortcutLabel.addHyperlinkListener {
             showActionShortcut(ElmExternalFormatAction.ID)
@@ -69,25 +74,26 @@ class ElmWorkspaceConfigurable(
 
         val panel = layout {
             block("Elm Compiler") {
-                row("Location:", pathFieldPlusAutoDiscoverButton(elmPathField, elmCompilerTool))
+                row("Location:", pathFieldPlusAutoDiscoverButton(elmPathField) { elmCompilerTool })
                 row("Version:", elmVersionLabel)
             }
             block(elmFormatTool) {
-                row("Location:", pathFieldPlusAutoDiscoverButton(elmFormatPathField, elmFormatTool))
+                row("Location:", pathFieldPlusAutoDiscoverButton(elmFormatPathField) { elmFormatTool })
                 row("Version:", elmFormatVersionLabel)
                 row("Keyboard shortcut:", elmFormatShortcutLabel)
                 row("Run when file saved?", elmFormatOnSaveCheckbox)
             }
             block(elmTestTool) {
-                row("Location:", pathFieldPlusAutoDiscoverButton(elmTestPathField, elmTestTool))
+                row("Location:", pathFieldPlusAutoDiscoverButton(elmTestPathField) { elmTestTool() })
                 row("Version:", elmTestVersionLabel)
+                row("Use elm-test-rs?:", elmTestRsCheckbox)
             }
             block(elmReviewTool) {
-                row("Location:", pathFieldPlusAutoDiscoverButton(elmReviewPathField, elmReviewTool))
+                row("Location:", pathFieldPlusAutoDiscoverButton(elmReviewPathField) { elmReviewTool })
                 row("Version:", elmReviewVersionLabel)
             }
             block("Lamdera Compiler") {
-                row("Location:", pathFieldPlusAutoDiscoverButton(lamderaPathField, lamderaCompilerTool))
+                row("Location:", pathFieldPlusAutoDiscoverButton(lamderaPathField) { lamderaCompilerTool })
                 row("Version:", lamderaVersionLabel)
             }
             block("") {
@@ -107,11 +113,11 @@ class ElmWorkspaceConfigurable(
         return panel
     }
 
-    private fun pathFieldPlusAutoDiscoverButton(field: TextFieldWithBrowseButton, executableName: String): JPanel {
+    private fun pathFieldPlusAutoDiscoverButton(field: TextFieldWithBrowseButton, getExecutableName: () -> String): JPanel {
         val panel = JPanel().apply { layout = BoxLayout(this, BoxLayout.X_AXIS) }
         with(panel) {
             add(field)
-            add(JButton("Auto Discover").apply { addActionListener { field.text = autoDiscoverPathTo(executableName) } })
+            add(JButton("Auto Discover").apply { addActionListener { field.text = autoDiscoverPathTo(getExecutableName()) } })
         }
         return panel
     }
@@ -127,6 +133,11 @@ class ElmWorkspaceConfigurable(
             keymapPanel.selectAction(actionId)
         }
     }
+
+    fun elmTestTool(): String {
+        return if (isElmTestRsEnabledAndSelected()) elmTestRsTool else elmTestTool
+    }
+
     data class Results(
             val compilerResult: Result<Version>,
             val lamderaResult: Result<Version>,
@@ -242,7 +253,7 @@ class ElmWorkspaceConfigurable(
                             }
                             is Result.Err -> {
                                 when {
-                                    !elmTestPath.isValidFor(elmTestTool) -> {
+                                    !elmTestPath.isValidFor(elmTestTool()) -> {
                                         text = ""
                                         foreground = JBColor.foreground()
                                     }
@@ -302,6 +313,8 @@ class ElmWorkspaceConfigurable(
         val elmFormatPath = settings?.elmFormatPath
         val isElmFormatOnSaveEnabled = settings?.isElmFormatOnSaveEnabled
         val elmTestPath = settings?.elmTestPath
+        val elmTestRsPath = settings?.elmTestRsPath
+        val isElmTestRsEnabled = settings?.isElmTestRsEnabled
         val elmReviewPath = settings?.elmReviewPath
 
         if (elmCompilerPath != null) {
@@ -314,9 +327,13 @@ class ElmWorkspaceConfigurable(
             elmFormatPathField.text = elmFormatPath
         }
         elmFormatOnSaveCheckbox.isSelected = isElmFormatOnSaveEnabled == true
-        if (elmTestPath != null) {
+        if (elmTestPath != null && (isElmTestRsEnabled == null || !isElmTestRsEnabled)) {
             elmTestPathField.text = elmTestPath
         }
+        if (elmTestRsPath != null && isElmTestRsEnabled == true) {
+            elmTestPathField.text = elmTestRsPath
+        }
+        elmTestRsCheckbox.isSelected = isElmTestRsEnabled == true
         if (elmReviewPath != null) {
             elmReviewPathField.text = elmReviewPath
         }
@@ -329,23 +346,30 @@ class ElmWorkspaceConfigurable(
             it.copy(elmCompilerPath = elmPathField.text,
                     lamderaCompilerPath = lamderaPathField.text,
                     elmFormatPath = elmFormatPathField.text,
-                    elmTestPath = elmTestPathField.text,
+                    elmTestPath = if (isElmTestRsEnabledAndSelected()) "" else elmTestPathField.text,
+                    elmTestRsPath = if (isElmTestRsEnabledAndSelected()) elmTestPathField.text else "",
                     elmReviewPath = elmReviewPathField.text,
+                    isElmTestRsEnabled = isElmTestRsEnabledAndSelected(),
                     isElmFormatOnSaveEnabled = isOnSaveHookEnabledAndSelected()
             )
         }
     }
+    private fun isElmTestRsEnabledAndSelected() =
+        elmTestRsCheckbox.isEnabled && elmTestRsCheckbox.isSelected
 
     private fun isOnSaveHookEnabledAndSelected() =
             elmFormatOnSaveCheckbox.isEnabled && elmFormatOnSaveCheckbox.isSelected
 
     override fun isModified(): Boolean {
         val settings = project.elmWorkspace.rawSettings
+        val isElmTestPathModified = if (isElmTestRsEnabledAndSelected()) elmTestPathField.text != settings?.elmTestRsPath else elmTestPathField.text != settings?.elmTestPath
+
         return elmPathField.text != settings?.elmCompilerPath
                 || lamderaPathField.text != settings.lamderaCompilerPath
                 || elmFormatPathField.text != settings.elmFormatPath
-                || elmTestPathField.text != settings.elmTestPath
+                || isElmTestPathModified
                 || elmReviewPathField.text != settings.elmReviewPath
+                || isElmTestRsEnabledAndSelected() != settings.isElmTestRsEnabled
                 || isOnSaveHookEnabledAndSelected() != settings.isElmFormatOnSaveEnabled
     }
 
