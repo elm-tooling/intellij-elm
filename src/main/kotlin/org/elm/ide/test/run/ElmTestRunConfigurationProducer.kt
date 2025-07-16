@@ -18,8 +18,8 @@ class ElmTestRunConfigurationProducer : LazyRunConfigurationProducer<ElmTestRunC
         val vfile = context.location?.virtualFile
 
         configuration.options.elmFolder = elmFolder
-        if (vfile != null && context.project.elmToolchain.isElmTestRsEnabled) {
-            val filter = ElmTestElementNavigator.findTestDescription(context.psiLocation)
+        if (vfile != null) {
+            val filter = if (context.project.elmToolchain.isElmTestRsEnabled) ElmTestElementNavigator.findTestDescription(context.psiLocation) else null
             configuration.options.filteredTestConfig = ElmTestRunConfiguration.FilteredTest.from(sourceElement.get(), filter)
         }
 
@@ -33,9 +33,20 @@ class ElmTestRunConfigurationProducer : LazyRunConfigurationProducer<ElmTestRunC
         val vfile = context.location?.virtualFile
         val filter = if (context.project.elmToolchain.isElmTestRsEnabled) ElmTestElementNavigator.findTestDescription(context.psiLocation) else null
 
-        return configuration.options.elmFolder == elmFolder
-                && configuration.options.filteredTestConfig?.filePath == vfile?.path
-                && configuration.options.filteredTestConfig?.filter == filter
+        var result = configuration.options.elmFolder == elmFolder
+        val config = configuration.options.filteredTestConfig
+
+        if (config == null) return result
+
+        if (config.moduleName.isNotBlank()) {
+            result = result && config.filePath == vfile?.path
+        }
+
+        if (!config.filter.isNullOrBlank()) {
+            result = result && config.filter == filter
+        }
+
+        return result
     }
 
     private fun getCandidateElmFolder(context: ConfigurationContext): String? {
