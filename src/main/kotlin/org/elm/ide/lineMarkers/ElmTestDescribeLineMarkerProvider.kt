@@ -6,17 +6,13 @@ import com.intellij.psi.PsiElement
 import org.elm.ide.icons.ElmIcons
 import org.elm.ide.test.core.ElmTestElementNavigator
 
-/**
- * Handles adding a gutter icon for running tests under a describe
- */
+/** Handles adding a gutter icon for running tests under a describe */
 class ElmTestDescribeLineMarkerProvider : ElmTestLineMarkerProvider() {
     companion object {
         val OPTION = GutterIconDescriptor.Option("elm.testDescribe", "Test describe", ElmIcons.RUN)
     }
 
-    /**
-     * Add gutter icons for the describe line
-     */
+    /** Add gutter icons for the describe line */
     override fun shouldAddGutterIcon(element: PsiElement): Boolean {
         return usingElmTestRs(element.project) && element.text == "describe"
     }
@@ -29,7 +25,7 @@ class ElmTestDescribeLineMarkerProvider : ElmTestLineMarkerProvider() {
             element,
             ElmIcons.RUN,
             "Run describe",
-            listOf(RunFilteredTestAction(element, filter), ModifyRunConfiguration(element, filter))
+            listOf(RunFilteredTestAction(element, filter), ModifyRunConfiguration(element, filter)),
         )
     }
 }

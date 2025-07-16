@@ -10,9 +10,7 @@ import com.intellij.psi.PsiElement
 import org.elm.ide.test.run.ElmTestRunConfiguration
 import org.elm.ide.test.run.ElmTestRunConfigurationSettingsBuilder
 
-/**
- * Action to run all tests for a given file or directory
- */
+/** * Action to run all tests for a given file or directory */
 class RunAllTestsAction(private val element: PsiElement) : AnAction("Run All Tests") {
     override fun actionPerformed(event: AnActionEvent) {
         ProgramRunnerUtil.executeConfiguration(
@@ -22,9 +20,7 @@ class RunAllTestsAction(private val element: PsiElement) : AnAction("Run All Tes
     }
 }
 
-/**
- * Action to run a test filtered by test or describe description
- */
+/** * Action to run a test filtered by test or describe description */
 class RunFilteredTestAction(private val element: PsiElement, private val filter: String) : AnAction("Run Filtered Test") {
     override fun actionPerformed(event: AnActionEvent) {
         ProgramRunnerUtil.executeConfiguration(
@@ -34,9 +30,7 @@ class RunFilteredTestAction(private val element: PsiElement, private val filter:
     }
 }
 
-/**
- * Creates a run configuration and opens editor
- */
+/** * Creates a run configuration and opens editor */
 class ModifyRunConfiguration(private val element: PsiElement, private val filter: String? = null) : AnAction("Modify Run Configuration") {
     override fun actionPerformed(event: AnActionEvent) {
         ShowSettingsUtil.getInstance().editConfigurable(

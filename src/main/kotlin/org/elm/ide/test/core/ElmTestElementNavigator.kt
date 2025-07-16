@@ -30,9 +30,7 @@ object ElmTestElementNavigator {
             ?.removeSurrounding("\"")
     }
 
-    /**
-     * Find the next parent function call given a list of target names
-     */
+    /** Find the next parent function call given a list of target names */
     private fun getFunctionCallExpr(element: PsiElement?, targets: List<String> = listOf("test", "describe")): ElmFunctionCallExpr? {
         var current = element
         while (current != null) {

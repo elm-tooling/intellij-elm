@@ -6,17 +6,13 @@ import com.intellij.psi.PsiElement
 import org.elm.ide.icons.ElmIcons
 import org.elm.ide.test.core.ElmTestElementNavigator
 
-/**
- * Handles adding a gutter icon for running a specific test
- */
+/** * Handles adding a gutter icon for running a specific test */
 class ElmTestSingleLineMarkerProvider : ElmTestLineMarkerProvider() {
     companion object {
         val OPTION = GutterIconDescriptor.Option("elm.testSingle", "Test single", ElmIcons.RUN)
     }
 
-    /**
-     * Add gutter icons for the test line
-     */
+    /** * Add gutter icons for the test line */
     override fun shouldAddGutterIcon(element: PsiElement): Boolean {
         return usingElmTestRs(element.project) && element.text == "test"
     }
@@ -29,7 +25,7 @@ class ElmTestSingleLineMarkerProvider : ElmTestLineMarkerProvider() {
             element,
             ElmIcons.RUN,
             "Run test",
-            listOf(RunFilteredTestAction(element, filter), ModifyRunConfiguration(element, filter))
+            listOf(RunFilteredTestAction(element, filter), ModifyRunConfiguration(element, filter)),
         )
     }
 }

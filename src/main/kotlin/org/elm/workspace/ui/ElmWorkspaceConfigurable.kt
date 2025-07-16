@@ -354,6 +354,7 @@ class ElmWorkspaceConfigurable(
             )
         }
     }
+    
     private fun isElmTestRsEnabledAndSelected() =
         elmTestRsCheckbox.isEnabled && elmTestRsCheckbox.isSelected
 

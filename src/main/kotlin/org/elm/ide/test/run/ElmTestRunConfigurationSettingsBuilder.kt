@@ -6,9 +6,7 @@ import com.intellij.psi.PsiElement
 import org.elm.workspace.elmWorkspace
 import kotlin.io.path.pathString
 
-/**
- * Helper object to create a run configuration and add it to the run manager. Returns the config settings.
- */
+/** * Helper object to create a run configuration and add it to the run manager. Returns the config settings. */
 object ElmTestRunConfigurationSettingsBuilder {
     fun createAndRegisterFromElement(element: PsiElement, filter: String? = null): RunnerAndConfigurationSettings {
         val project = element.project

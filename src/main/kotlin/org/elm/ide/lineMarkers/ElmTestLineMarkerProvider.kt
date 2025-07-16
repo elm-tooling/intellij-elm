@@ -6,25 +6,19 @@ import com.intellij.codeInsight.daemon.LineMarkerProvider
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.DefaultActionGroup
-import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.psi.PsiElement
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.FunctionUtil
-import org.elm.workspace.ElmWorkspaceService
 import org.elm.workspace.elmToolchain
 import java.awt.event.MouseEvent
 import javax.swing.Icon
 
-/**
- * Abstract class to handle common operations for all test marker classes
- */
+/** * Abstract class to handle common operations for all test marker classes */
 abstract class ElmTestLineMarkerProvider : LineMarkerProvider {
-    /**
-     * Create a popup with a list of given actions
-     */
+    /** * Create a popup with a list of given actions */
     private class PopupHandler(val actions: List<AnAction>) : GutterIconNavigationHandler<PsiElement> {
         override fun navigate(e: MouseEvent, elt: PsiElement) {
             val group = DefaultActionGroup().apply {
@@ -44,25 +38,20 @@ abstract class ElmTestLineMarkerProvider : LineMarkerProvider {
         }
     }
 
-    /**
-     * Returns true if the line should contain a gutter icon for the type of marker
-     */
+    /** * Returns true if the line should contain a gutter icon for the type of marker */
     abstract fun shouldAddGutterIcon(element: PsiElement): Boolean
 
-    /**
-     * Returns true if the file contains tests
-     */
+    /** * Returns true if the file contains tests */
     protected fun isTestFile(element: PsiElement): Boolean {
         return element.containingFile.text.contains("import Test exposing")
     }
 
+    /** Returns true if elm-test-rs is enabled */
     protected fun usingElmTestRs(project: Project): Boolean {
         return project.elmToolchain.isElmTestRsEnabled
     }
 
-    /**
-     * Create a gutter icon on a given line with an icon, tooltip, and list of popup actions
-     */
+    /** Create a gutter icon on a given line with an icon, tooltip, and list of popup actions */
     protected fun createLineMarkerInfo(element: PsiElement, icon: Icon, tooltip: String, actions: List<AnAction>, ): LineMarkerInfo<*>? {
         if (!isTestFile(element) || !shouldAddGutterIcon(element)) return null
 
