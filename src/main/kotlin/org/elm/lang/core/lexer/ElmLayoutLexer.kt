@@ -8,7 +8,6 @@ import com.intellij.psi.tree.TokenSet
 import com.intellij.util.text.CharArrayCharSequence
 import org.elm.lang.core.lexer.State.*
 import org.elm.lang.core.psi.ELM_COMMENTS
-import org.elm.lang.core.psi.ElmTypes
 import org.elm.lang.core.psi.ElmTypes.*
 import java.util.*
 

@@ -100,7 +100,7 @@ data class ElmToolchain(
                 elmFormatPath = null,
                 elmTestPath = null,
                 elmReviewPath = null,
-                isElmFormatOnSaveEnabled = ElmToolchain.DEFAULT_FORMAT_ON_SAVE
+                isElmFormatOnSaveEnabled = DEFAULT_FORMAT_ON_SAVE
         )
 
         val MIN_SUPPORTED_COMPILER_VERSION = Version(0, 19, 0)

@@ -9,16 +9,15 @@ import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.KeyWithDefaultValue
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import org.elm.ide.notifications.showBalloon
 import org.elm.lang.core.ElmFileType
 import org.elm.openapiext.saveAllDocuments
-import org.elm.workspace.*
 import org.elm.workspace.commandLineTools.makeProject
 import org.elm.workspace.compiler.findEntrypoints
-import java.util.*
+import org.elm.workspace.elmToolchain
+import org.elm.workspace.elmWorkspace
 
 private val log = logger<ElmExternalReviewAction>()
 
