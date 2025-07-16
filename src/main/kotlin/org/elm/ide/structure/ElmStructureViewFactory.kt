@@ -10,7 +10,7 @@ import org.elm.lang.core.psi.ElmFile
 
 class ElmStructureViewFactory : PsiStructureViewFactory {
 
-    override fun getStructureViewBuilder(psiFile: PsiFile): StructureViewBuilder? {
+    override fun getStructureViewBuilder(psiFile: PsiFile): StructureViewBuilder {
         val elmFile = psiFile as ElmFile
         return object : TreeBasedStructureViewBuilder() {
             override fun createStructureViewModel(editor: Editor?) =

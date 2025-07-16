@@ -87,7 +87,7 @@ class ElmTestRunProfileState internal constructor(
         throw ExecutionException(errorMessage)
     }
 
-    override fun createConsole(executor: Executor): ConsoleView? {
+    override fun createConsole(executor: Executor): ConsoleView {
         if (elmProject == null) error("Missing ElmProject")
 
         val runConfiguration = environment.runProfile as RunConfiguration

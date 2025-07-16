@@ -19,7 +19,7 @@ import org.elm.lang.core.psi.elements.*
 
 class ElmFoldingBuilder : FoldingBuilderEx(), DumbAware {
 
-    override fun getPlaceholderText(node: ASTNode): String? {
+    override fun getPlaceholderText(node: ASTNode): String {
         return when (node.elementType) {
             BLOCK_COMMENT, DOC_COMMENT -> {
                 val nl = node.text.indexOf('\n')
