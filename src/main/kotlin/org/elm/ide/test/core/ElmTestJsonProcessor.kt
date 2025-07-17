@@ -12,6 +12,7 @@ import org.elm.ide.test.core.LabelUtils.toLocationUrl
 import org.elm.ide.test.core.json.CompileErrors
 import org.elm.ide.test.core.json.Error
 import java.nio.file.Path
+import kotlin.math.roundToLong
 
 /**
  * Processes events from a test run by elm-test.
@@ -75,7 +76,7 @@ class ElmTestJsonProcessor(private val testsRelativeDirPath: String) {
     fun testEvents(path: Path, obj: JsonObject): Sequence<TreeNodeEvent> {
         return when (getStatus(obj)) {
             "pass" -> {
-                val duration = java.lang.Long.parseLong(obj.get("duration").asString)
+                val duration = obj.get("duration").asDouble.roundToLong()
                 sequenceOf(newTestStartedEvent(path))
                         .plus(newTestFinishedEvent(path, duration))
             }
