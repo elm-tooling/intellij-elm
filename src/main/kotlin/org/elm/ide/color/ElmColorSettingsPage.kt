@@ -72,6 +72,7 @@ type <type_decl>Msg</type_decl> <type>a</type>
 <func_decl>update</func_decl> : <type>Msg</type> -> <type>Model</type> -> ( <type>Model</type>, <type>Cmd Msg</type> )
 <func_decl>update</func_decl> <fn_arg>msg</fn_arg> <fn_arg>model</fn_arg> =
     let
+        <fn_loc>localFunction</fn_loc> : <type>String</type> =
         <fn_loc>localFunction</fn_loc> <fn_loc_arg>a</fn_loc_arg> =
             <fn_loc_arg>a</fn_loc_arg>
     in
