@@ -13,24 +13,32 @@ import org.elm.lang.core.psi.elements.ElmValueDeclaration
 
 class ElmPresentableTreeElement(val element: ElmPsiElement)
     : StructureViewTreeElement,
-        Navigatable by (element as NavigatablePsiElement) {
+    Navigatable by (element as NavigatablePsiElement) {
 
 
     override fun getChildren(): Array<TreeElement> =
-            when (element) {
-                is ElmValueDeclaration -> {
-                    element.directChildDecls
-                            .map { ElmPresentableTreeElement(it) }
-                            .toList().toTypedArray()
-                }
-                else -> emptyArray()
+        when (element) {
+            is ElmValueDeclaration -> {
+                element.directChildDecls
+                    .map { ElmPresentableTreeElement(it) }
+                    .toList().toTypedArray()
             }
+            else -> emptyArray()
+        }
 
     override fun getValue() =
-            element
+        element
 
     override fun getPresentation() =
-            getPresentationForStructure(element)
+        getPresentationForStructure(element)
+
+    override fun navigate(requestFocus: Boolean) {
+        (element as? Navigatable)?.navigate(requestFocus)
+    }
+
+    override fun canNavigate(): Boolean = true
+
+    override fun canNavigateToSource(): Boolean = true
 
 }
 
