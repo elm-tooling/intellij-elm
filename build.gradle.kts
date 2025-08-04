@@ -1,7 +1,9 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.models.ProductRelease
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 
@@ -19,7 +21,7 @@ plugins {
     // Gradle Changelog Plugin
     id("org.jetbrains.changelog") version "2.2.1"
     // Gradle Qodana Plugin
-    id("org.jetbrains.qodana") version "2025.1.1"
+    id("org.jetbrains.qodana") version "2023.3.1"
 }
 
 group = properties("pluginGroup")
