@@ -2,7 +2,32 @@ Elm Plugin for JetBrains IDEs
 =============================
 
 <!-- Plugin description -->
-Provides support for the Elm programming language.
+Provides support for the [Elm programming language](https://elm-lang.org). This plugin is developed
+by the [Elm Tooling community](https://github.com/elm-tooling/intellij-elm/).
+
+Features:
+
+- Code completion
+- Go to declaration
+- Go to symbol
+- Find usages
+- Type Inference and Type Checking
+- Rename refactoring
+- Introduce "variable" refactoring (let/in)
+- Generate JSON encoders/decoders
+- Generate type annotation for un-annotated function
+- Graphical UI for running elm-test
+- Re-format code using elm-format
+- Detect unused code
+- Detect and remove unused imports
+- 'Add Import' quick fix for unresolved references
+- Code folding
+- Structure view
+- Syntax highlighting
+- WebGL/GLSL support
+- Spell checking
+- Lamdera platform support
+
 <!-- Plugin description end -->
 
 Should work on most, if not all, IntelliJ Platform IDEs: IDEA (Community and Ultimate), WebStorm, PyCharm, RubyMine and more. If not please raise an issue.
