@@ -1,8 +1,8 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 
 fun properties(key: String) = project.findProperty(key).toString()
@@ -19,7 +19,7 @@ plugins {
     // Gradle Changelog Plugin
     id("org.jetbrains.changelog") version "2.2.1"
     // Gradle Qodana Plugin
-    id("org.jetbrains.qodana") version "2025.1.1"
+    id("org.jetbrains.qodana") version "2023.3.1"
 }
 
 group = properties("pluginGroup")

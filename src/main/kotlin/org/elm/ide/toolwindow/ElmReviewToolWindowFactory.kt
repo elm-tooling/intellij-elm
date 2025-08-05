@@ -1,6 +1,8 @@
 package org.elm.ide.toolwindow
 
 import com.intellij.ide.DataManager
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -19,11 +21,16 @@ import java.nio.file.Path
 class ElmReviewToolWindowFactory : ToolWindowFactory {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
+        val errorTreeViewPanel = object : ElmErrorTreeViewPanel(project, "elm-review", createExitAction = false, createToolbar = true) {
+            override fun getRerunAction(): AnAction? = ActionManager.getInstance().getAction("Elm.RunExternalElmReview")
+        }
+        toolWindow.contentManager.addContent(ContentImpl(errorTreeViewPanel, "elm-review Watchmode Result", true))
+
         with(project.messageBus.connect()) {
             subscribe(ELM_REVIEW_ERRORS_TOPIC, object : ElmReviewErrorsListener {
 
                 override fun update(baseDirPath: Path, messages: List<ElmReviewError>, targetPath: String?, offset: Int) {
-                    val errorTreeViewPanel = ElmErrorTreeViewPanel(project, "elm-review", createExitAction = false, createToolbar = true)
+                    errorTreeViewPanel.clearMessages()
 
                     messages.forEachIndexed { index, elmReviewError ->
                         val sourceLocation = elmReviewError.path!!
@@ -34,8 +41,7 @@ class ElmReviewToolWindowFactory : ToolWindowFactory {
                         updateErrorTree(errorTreeViewPanel, encodedIndex, elmReviewError, virtualFile)
                     }
 
-                    toolWindow.contentManager.removeAllContents(true)
-                    toolWindow.contentManager.addContent(ContentImpl(errorTreeViewPanel, "elm-review Watchmode Result", true))
+                    errorTreeViewPanel.reload()
                     toolWindow.show(null)
                     errorTreeViewPanel.expandAll()
                     errorTreeViewPanel.requestFocus()

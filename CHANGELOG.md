@@ -3,9 +3,20 @@
 # Changelog for et-intellij-elm
 
 ## [Unreleased]
-*   Moved the plugin to [elm-tooling/intellij](https://github.com/elm-tooling/intellij-elm)
+
+
+## [5.1.0] - 2025-08-05
+*   Moved the plugin to [elm-tooling/intellij](https://github.com/elm-tooling/intellij-elm) (@lydell)
 *   Fix latest version not working on newer IntelliJ versions
-*   Upgraded some dependencies
+*   Fixed issue with structure browser not working (@dillonkearns)
+*   Upgraded colormath dependencies (@ahankinson, @andipabst)
+*   Fixed issue with syntax highlighting in let statements (@ilsasdo)
+*   Improved syntax highlighting (@ilsado)
+*   Fixes for compiler and review panels (@andipabst)
+*   All tests now run and pass (@ahankinson, @andipabst)
+*   Fixed test runs on non-English locales (@andipabst)
+*   Use non-deprecated DelayedDocumentWatcher (@andipabst)
+
 
 ## [5.0.1] - 2022-04-23
 *   Fix parse error when pattern matching in function-argument (issue #742)

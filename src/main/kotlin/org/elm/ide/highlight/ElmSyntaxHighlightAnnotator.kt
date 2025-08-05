@@ -217,7 +217,11 @@ class ElmSyntaxHighlightAnnotator : Annotator {
     }
 
     private fun AnnotationHolder.typeAnnotation(typeAnnotation: ElmTypeAnnotation) {
-        applyColor(typeAnnotation.lowerCaseIdentifier, ElmColor.DEFINITION_NAME)
+        if (typeAnnotation.isTopLevel) {
+            applyColor(typeAnnotation.lowerCaseIdentifier, ElmColor.DEFINITION_NAME)
+        } else {
+            applyColor(typeAnnotation.lowerCaseIdentifier, ElmColor.LOCAL_FUNCTION)
+        }
     }
 
     private fun AnnotationHolder.field(element: PsiElement?) {

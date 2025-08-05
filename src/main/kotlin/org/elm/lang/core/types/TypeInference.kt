@@ -343,7 +343,9 @@ private class InferenceScope(
         fun validateTree(tree: BinaryExprTree<ElmBinOpPartTag>): TyAndRange {
             return when (tree) {
                 is BinaryExprTree.Operand -> {
-                    val ty = inferOperand(tree.operand as ElmOperandTag)
+                    val operandTag = tree.operand as? ElmOperandTag
+                        ?: error("Expected ElmOperandTag but got ${tree.operand::class.simpleName} at ${tree.operand.text}")
+                    val ty = inferOperand(operandTag)
                     TyAndRange(tree.operand, ty)
                 }
                 is BinaryExprTree.Binary -> {
@@ -1036,7 +1038,7 @@ private class InferenceScope(
         }
         val assignable = try {
             assignable(ty1, ty2)
-        } catch (e: InfiniteTypeException) {
+        } catch (_: InfiniteTypeException) {
             diagnostics += InfiniteTypeError(element)
             return false
         }
@@ -1272,7 +1274,6 @@ private class InferenceScope(
             name2 == null -> unconstrainedAllowed
             name1 == name2 -> true
             name1 == "number" && name2 == "comparable" -> true
-            name1 == "comparable" && name2 == "number" -> true
             name1 == "comparable" && (name2 == "number" || name2 == "compappend") -> true
             name1 == "compappend" && (name2 == "comparable" || name2 == "appendable") -> true
             else -> false
