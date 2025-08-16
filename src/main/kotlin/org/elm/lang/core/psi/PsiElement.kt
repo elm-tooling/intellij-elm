@@ -126,36 +126,6 @@ fun <T : PsiElement> getStubDescendantsOfType(
     return result
 }
 
-fun <T : PsiElement> getStubDescendantOfType(
-        element: PsiElement?,
-        strict: Boolean,
-        aClass: Class<T>
-): T? {
-    if (element == null) return null
-    val stub = (element as? PsiFileImpl)?.greenStub
-            ?: (element as? StubBasedPsiElement<*>)?.greenStub
-            ?: return PsiTreeUtil.findChildOfType(element, aClass, strict)
-
-    fun go(childrenStubs: List<StubElement<out PsiElement>>): T? {
-        for (childStub in childrenStubs) {
-            val child = childStub.psi
-            if (aClass.isInstance(child)) {
-                return aClass.cast(child)
-            } else {
-                go(childStub.childrenStubs)?.let { return it }
-            }
-        }
-
-        return null
-    }
-
-    return if (strict) {
-        go(stub.childrenStubs)
-    } else {
-        go(listOf(stub))
-    }
-}
-
 @Suppress("UNCHECKED_CAST")
 inline val <T : StubElement<*>> StubBasedPsiElement<T>.greenStub: T?
     get() = (this as? StubBasedPsiElementBase<T>)?.greenStub

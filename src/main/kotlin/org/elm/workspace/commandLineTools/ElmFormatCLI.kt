@@ -35,7 +35,7 @@ class ElmFormatCLI(private val elmFormatExecutablePath: Path) {
             .execute(elmFormatTool, project, stdIn = document.text)
     }
 
-    sealed class ElmFormatResult(val msg: String, val cause: Throwable? = null) {
+    sealed class ElmFormatResult(val msg: String) {
         class Success : ElmFormatResult("ok")
         class BadSyntax : ElmFormatResult("elm-format encountered syntax errors that it could not fix")
         class FailedToStart : ElmFormatResult("Failed to launch elm-format. Is the path correct?")

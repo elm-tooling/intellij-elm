@@ -16,6 +16,7 @@ import org.elm.lang.core.stubs.ElmPlaceholderRefStub
 /**
  * Exposes a binary operator
  */
+@Suppress("unused")
 class ElmExposedOperator : ElmStubbedElement<ElmPlaceholderRefStub>, ElmReferenceElement, ElmExposedItemTag {
 
     constructor(node: ASTNode) :
@@ -27,13 +28,6 @@ class ElmExposedOperator : ElmStubbedElement<ElmPlaceholderRefStub>, ElmReferenc
 
     val operatorIdentifier: PsiElement
         get() = findNotNullChildByType(OPERATOR_IDENTIFIER)
-
-    val leftParen: PsiElement
-        get() = findNotNullChildByType(ElmTypes.LEFT_PARENTHESIS)
-
-    val rightParen: PsiElement
-        get() = findNotNullChildByType(ElmTypes.RIGHT_PARENTHESIS)
-
 
     override val referenceNameElement: PsiElement
         get() = operatorIdentifier
