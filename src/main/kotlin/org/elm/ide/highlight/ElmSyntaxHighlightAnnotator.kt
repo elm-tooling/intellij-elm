@@ -146,7 +146,7 @@ class ElmSyntaxHighlightAnnotator : Annotator {
         val parentFunction = PsiTreeUtil.getParentOfType(
             element,
             ElmFunctionDeclarationLeft::class.java
-        );
+        )
         if (parentFunction != null) {
             if (parentFunction.isTopLevel) {
                 applyColor(element, ElmColor.FUNCTION_ARGUMENT)
@@ -159,7 +159,7 @@ class ElmSyntaxHighlightAnnotator : Annotator {
         val anonymousFunction = PsiTreeUtil.getParentOfType(
             element,
             ElmAnonymousFunctionExpr::class.java
-        );
+        )
         if (anonymousFunction != null) {
             applyColor(element, ElmColor.INLINE_FUNCTION_ARGUMENT)
             return
@@ -168,7 +168,7 @@ class ElmSyntaxHighlightAnnotator : Annotator {
         val unionPattern = PsiTreeUtil.getParentOfType(
             element,
             ElmUnionPattern::class.java
-        );
+        )
         if (unionPattern != null) {
             applyColor(element, ElmColor.PATTERN_ARGUMENT)
             return
