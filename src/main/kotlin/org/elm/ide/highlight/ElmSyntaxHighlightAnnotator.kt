@@ -131,7 +131,7 @@ class ElmSyntaxHighlightAnnotator : Annotator {
         }
 
         val qid = element.valueQID
-        if (qid != null && qid.isQualified == true) {
+        if (qid != null && qid.isQualified) {
             qid.qualifiers.forEach {
                 applyColor(it, ElmColor.EXTERNAL_MODULE)
             }
