@@ -50,7 +50,7 @@ sealed class Pipeline {
                 val takeWhile = unprocessed.takeWhile { !(it is ElmOperator && it.referenceName == "|>") }
                 unprocessed = unprocessed.drop(takeWhile.count() + 1)
                 if (takeWhile.count() == 0 || unprocessed.count() == 0) {
-                    nextComments += takeWhile.filterIsInstance<PsiComment>().toList()
+                    nextComments = takeWhile.filterIsInstance<PsiComment>().toList()
                 }
                 val nextToAdd = Segment(
                         takeWhile.filterIsInstance<ElmBinOpPartTag>().toList(),
