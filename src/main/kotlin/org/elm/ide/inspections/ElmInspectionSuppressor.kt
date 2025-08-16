@@ -44,7 +44,7 @@ class ElmInspectionSuppressor : InspectionSuppressor {
 
     private class SuppressInspectionFix(
             id: String
-    ) : AbstractBatchSuppressByNoInspectionCommentFix(id, /* replaceOthers = */ id == SuppressionUtil.ALL) {
+    ) : AbstractBatchSuppressByNoInspectionCommentFix(id, /* replaceOtherSuppressionIds = */ id == SuppressionUtil.ALL) {
 
         init {
             text = when (id) {
