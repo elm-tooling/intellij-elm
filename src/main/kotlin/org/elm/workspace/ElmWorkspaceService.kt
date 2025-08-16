@@ -61,7 +61,7 @@ private val log = logger<ElmWorkspaceService>()
  */
 @Service(Service.Level.PROJECT)
 @State(name = "ElmWorkspace", storages = [Storage(StoragePathMacros.WORKSPACE_FILE)])
-class ElmWorkspaceService(val intellijProject: Project) : PersistentStateComponent<Element> {
+class ElmWorkspaceService(private val intellijProject: Project) : PersistentStateComponent<Element> {
 
 
     init {

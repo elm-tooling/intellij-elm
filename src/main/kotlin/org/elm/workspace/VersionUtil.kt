@@ -142,7 +142,7 @@ data class Constraint(
     /**
      * Returns true if the constraint is satisfied using SemVer ordering (namely "1.0-beta" < "1.0")
      */
-    fun semVerContains(version: Version): Boolean =
+    private fun semVerContains(version: Version): Boolean =
             (lowOp.evaluate(low, version) && highOp.evaluate(version, high))
 
     /**

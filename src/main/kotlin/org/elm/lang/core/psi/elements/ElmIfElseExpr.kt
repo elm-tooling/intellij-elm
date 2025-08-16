@@ -24,7 +24,7 @@ class ElmIfElseExpr(node: ASTNode) : ElmPsiElementImpl(node), ElmAtomTag {
         get() = PsiTreeUtil.getChildrenOfTypeAsList(this, ElmExpressionTag::class.java)
 
     /** The `if` keywords. This will never be empty. */
-    val ifKeywords : List<PsiElement> get() = findChildrenByType(ElmTypes.IF)
+    private val ifKeywords : List<PsiElement> get() = findChildrenByType(ElmTypes.IF)
     /** The `then` keywords. In a well-formed program, this will be the same size as [ifKeywords] */
     val thenKeywords : List<PsiElement> get() = findChildrenByType(ElmTypes.THEN)
     /** The `else` keywords. In a well-formed program, this will be the same size as [ifKeywords] */

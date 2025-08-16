@@ -30,7 +30,7 @@ private val log = logger<ElmReviewCLI>()
 /**
  * Interact with external `elm-review` process.
  */
-class ElmReviewCLI(val elmReviewExecutablePath: Path) {
+class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
 
     fun runReview(project: Project, elmProject: ElmProject, elmCompiler: ElmCLI?, currentFile: VirtualFile? = null) {
 
