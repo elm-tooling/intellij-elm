@@ -1,14 +1,11 @@
 package org.elm.ide.toolwindow
 
 import com.intellij.ide.errorTreeView.NewErrorTreeViewPanel
-import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
-import org.elm.workspace.compiler.ELM_BUILD_ACTION_ID
 import javax.swing.event.TreeSelectionListener
 
 abstract class ElmErrorTreeViewPanel(project: Project, helpId: String?, createExitAction: Boolean, createToolbar: Boolean) :
