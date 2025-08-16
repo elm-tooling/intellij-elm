@@ -18,8 +18,6 @@ import org.elm.openapiext.isNotSuccess
 import org.elm.workspace.*
 import java.nio.file.Path
 
-private val log = logger<ElmFormatCLI>()
-
 
 /**
  * Interact with external `elm-format` process.

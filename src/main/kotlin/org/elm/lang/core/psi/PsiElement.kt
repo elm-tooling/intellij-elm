@@ -71,9 +71,6 @@ fun <T : PsiElement> PsiElement.parentOfType(vararg classes: Class<out T>): T? {
     return PsiTreeUtil.getParentOfType(this, *classes)
 }
 
-inline fun <reified T : PsiElement> PsiElement.contextOfType(strict: Boolean = true): T? =
-        PsiTreeUtil.getContextOfType(this, T::class.java, strict)
-
 inline fun <reified T : PsiElement> PsiElement.descendantOfType(): T? =
         PsiTreeUtil.findChildrenOfType(this, T::class.java).find { it is T }
 
@@ -95,15 +92,6 @@ inline fun <reified T : PsiElement> PsiElement.stubDirectChildrenOfType(): List<
 
 inline fun <reified T : PsiElement> PsiElement.stubDescendantsOfTypeStrict(): Collection<T> =
         getStubDescendantsOfType(this, true, T::class.java)
-
-inline fun <reified T : PsiElement> PsiElement.stubDescendantsOfTypeOrSelf(): Collection<T> =
-        getStubDescendantsOfType(this, false, T::class.java)
-
-inline fun <reified T : PsiElement> PsiElement.stubDescendantOfTypeOrStrict(): T? =
-        getStubDescendantOfType(this, true, T::class.java)
-
-inline fun <reified T : PsiElement> PsiElement.stubDescendantOfTypeOrSelf(): T? =
-        getStubDescendantOfType(this, false, T::class.java)
 
 fun <T : PsiElement> getStubDescendantsOfType(
         element: PsiElement?,

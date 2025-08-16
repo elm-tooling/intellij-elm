@@ -45,9 +45,6 @@ data class ElmToolchain(
 
     val elmReviewCLI: ElmReviewCLI? = elmReviewPath?.let { ElmReviewCLI(it) }
 
-    val presentableLocation: String =
-            elmCompilerPath?.toString() ?: "unknown location"
-
     /**
      * Checks the currently configured elm compiler path. If a bare `elm` command is provided we check that it is on the
      * path.

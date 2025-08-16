@@ -28,10 +28,6 @@ class ElmNamesValidator : NamesValidator {
 }
 
 
-fun isValidLowerIdentifier(text: String) =
-        getLexerType(text) == ElmTypes.LOWER_CASE_IDENTIFIER
-
-
 fun isValidUpperIdentifier(text: String) =
         getLexerType(text) == ElmTypes.UPPER_CASE_IDENTIFIER
 
