@@ -87,8 +87,8 @@ object ElmSuggest {
         return project.modules
                 .asSequence()
                 .flatMap { ModuleRootManager.getInstance(it).contentRoots.asSequence() }
-                .flatMap {
-                    FileUtil.fileTraverser(File(it.path))
+                .flatMap { innerIt ->
+                    FileUtil.fileTraverser(File(innerIt.path))
                             .filter { it.name == "node_modules" && it.isDirectory }
                             .bfsTraversal()
                             .asSequence()

@@ -13,8 +13,8 @@ import com.intellij.util.ProcessingContext
 fun <T : PsiElement, Self : PsiElementPattern<T, Self>> PsiElementPattern<T, Self>.withPrevSiblingSkipping(
         skip: ElementPattern<out T>,
         pattern: ElementPattern<out T>
-): Self = with("withPrevSiblingSkipping") {
-    val sibling = it.leftSiblings.dropWhile { skip.accepts(it) }
+): Self = with("withPrevSiblingSkipping") { innerIt ->
+    val sibling = innerIt.leftSiblings.dropWhile { skip.accepts(it) }
             .firstOrNull() ?: return@with false
     pattern.accepts(sibling)
 }
