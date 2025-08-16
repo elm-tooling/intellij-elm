@@ -71,8 +71,7 @@ private fun unwrapParensHelp(expression: ElmPsiElement): ElmPsiElement {
 }
 
 private fun unwrapNestedParensHelp(expression: ElmParenthesizedExpr): ElmParenthesizedExpr {
-    val nestedExpression = expression.expression
-    return when (nestedExpression) {
+    return when (val nestedExpression = expression.expression) {
         null -> {
             expression
         }
