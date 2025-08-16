@@ -501,7 +501,6 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 }
 
                 modifyProjects { _ -> rawProjects.filterNotNull() }
-                Unit
             }
     }
 
