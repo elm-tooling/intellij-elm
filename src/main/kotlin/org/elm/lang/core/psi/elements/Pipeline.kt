@@ -1,6 +1,7 @@
 package org.elm.lang.core.psi.elements
 
 import com.intellij.psi.PsiComment
+import com.intellij.psi.PsiElement
 import org.elm.lang.core.psi.ElmBinOpPartTag
 
 sealed class Pipeline {
@@ -41,29 +42,44 @@ sealed class Pipeline {
                     else -> false
                 }
 
-
         override fun segments(): List<Segment> {
-            var segments: List<Segment> = emptyList()
-            var unprocessed = pipeline.partsWithComments
-            var nextComments = emptyList<PsiComment>()
-            while (true) {
-                val takeWhile = unprocessed.takeWhile { !(it is ElmOperator && it.referenceName == "|>") }
-                unprocessed = unprocessed.drop(takeWhile.count() + 1)
-                if (takeWhile.count() == 0 || unprocessed.count() == 0) {
-                    nextComments = takeWhile.filterIsInstance<PsiComment>().toList()
-                }
-                val nextToAdd = Segment(
-                        takeWhile.filterIsInstance<ElmBinOpPartTag>().toList(),
-                        nextComments
-                )
-                nextComments = takeWhile.filterIsInstance<PsiComment>().toList()
-                segments = segments.plus(nextToAdd)
+            val segments = mutableListOf<Segment>()
+            val iter = pipeline.partsWithComments.iterator()
 
-                if (takeWhile.count() == 0 || unprocessed.count() == 0) {
-                    return segments
+            var pendingComments: List<PsiComment> = emptyList()
+
+            fun isPipeOp(p: PsiElement) =
+                p is ElmOperator && p.referenceName == "|>"
+
+            while (iter.hasNext()) {
+                val buffer = mutableListOf<PsiElement>()
+
+                // collect until "|>" or end
+                while (iter.hasNext()) {
+                    val next = iter.next()
+                    if (isPipeOp(next)) break
+                    buffer += next
                 }
+
+                val sliceComments = buffer.filterIsInstance<PsiComment>()
+                val sliceTags = buffer.filterIsInstance<ElmBinOpPartTag>()
+
+                // If empty or we're at end, carry comments forward
+                if (buffer.isEmpty() || !iter.hasNext()) {
+                    pendingComments = pendingComments + sliceComments
+                }
+
+                segments += Segment(sliceTags, pendingComments)
+
+                // Prepare comments for the next iteration
+                pendingComments = sliceComments
+
+                if (buffer.isEmpty() || !iter.hasNext()) break
             }
+
+            return segments
         }
+
     }
 
 }
