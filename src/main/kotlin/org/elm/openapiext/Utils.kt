@@ -30,7 +30,7 @@ import kotlin.io.path.relativeTo
 
 
 fun <T> Project.runWriteCommandAction(command: () -> T): T {
-    return WriteCommandAction.runWriteCommandAction(this, Computable<T> { command() })
+    return WriteCommandAction.runWriteCommandAction(this, Computable { command() })
 }
 
 val Project.modules: Collection<Module>
