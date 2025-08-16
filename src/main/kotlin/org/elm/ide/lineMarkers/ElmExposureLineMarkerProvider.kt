@@ -69,6 +69,6 @@ private fun makeMarker(element: PsiElement, target: PsiElement?, isTypeWithExpos
     NavigationGutterIconBuilder
         .create(ElmIcons.EXPOSED_GUTTER)
         .setTarget(target)
-        .setPopupTitle("Go to where it is exposed")
+        .setPopupTitle("Go To Where It Is Exposed")
         .setTooltipText(if (isTypeWithExposedVariants) "Exposed (including variants)" else "Exposed")
         .createLineMarkerInfo(element)

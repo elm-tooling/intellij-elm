@@ -80,7 +80,7 @@ class ElmReviewCLI(val elmReviewExecutablePath: Path) {
                     } else msgs
                 }
                 if (!isUnitTestMode) {
-                    indicator.text = "Review Finished"
+                    indicator.text = "Review finished"
                     ApplicationManager.getApplication().invokeLater {
                         project.messageBus.syncPublisher(ELM_REVIEW_ERRORS_TOPIC).update(elmProject.projectDirPath, messages, null, 0)
                     }
@@ -112,7 +112,7 @@ class ElmReviewCLI(val elmReviewExecutablePath: Path) {
             Disposer.register(project) { process.destroyForcibly() }
 
             try {
-                indicator.text = "review started in watchmode"
+                indicator.text = "Review started in watchmode"
                 val reader = JsonReader(process.inputStream.bufferedReader())
                 reader.isLenient = true
                 val exitCode = parseReviewJsonStream(reader, process) { reviewErrors ->

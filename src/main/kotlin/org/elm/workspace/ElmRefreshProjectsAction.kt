@@ -25,7 +25,7 @@ class ElmRefreshProjectsAction : AnAction() {
 
     private fun showError(error: Throwable) {
         ApplicationManager.getApplication().invokeLater {
-            Messages.showErrorDialog(error.message, "Failed to refresh Elm projects")
+            Messages.showErrorDialog(error.message, "Failed To Refresh Elm Projects")
         }
     }
 }

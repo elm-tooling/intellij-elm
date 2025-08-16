@@ -39,7 +39,7 @@ class ElmAttachProjectAction : AnAction() {
 
     private fun showError(error: Throwable) {
         ApplicationManager.getApplication().invokeLater {
-            Messages.showErrorDialog(error.message, "Failed to attach Elm project")
+            Messages.showErrorDialog(error.message, "Failed To Attach Elm Project")
         }
     }
 }
