@@ -135,7 +135,7 @@ fun ElmExposingList.addItem(itemName: String) {
     // create a dummy import with multiple exposed values so that we can also extract the preceding comma and whitespace
     val import = ElmPsiFactory(project).createImportExposing("FooBar", listOf("foobar", itemName))
     val item = import.exposingList!!.allExposedItems.single { it.text == itemName }
-    val prevComma = item.prevSiblings.first { it.elementType == ElmTypes.COMMA }
+    val prevComma = item.prevSiblings.first { it.elementType == COMMA }
     addRangeBefore(prevComma, item, closeParen)
 }
 
@@ -165,4 +165,4 @@ fun ElmExposingList.removeItem(item: ElmExposedItemTag) {
 
 // When removing an exposed item from the list, adjacent whitespace and comma should also be removed.
 private fun Sequence<PsiElement>.adjacentJunk(): Sequence<PsiElement> =
-        takeWhile { it is PsiWhiteSpace || it.elementType == ElmTypes.COMMA }
+        takeWhile { it is PsiWhiteSpace || it.elementType == COMMA }
