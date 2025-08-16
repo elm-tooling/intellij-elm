@@ -11,7 +11,7 @@ This feature operates in the background as you type, and it results in increased
 
 This feature is enabled by default.
 
-The syntax error checker cannot be disabled, but you can turn off the type checker and and unresolved reference checker. Disable them by going to **IntelliJ Settings -> Editor -> Inspections -> Elm** and un-checking each inspection that you want to disable.
+The syntax error checker cannot be disabled, but you can turn off the type checker and unresolved reference checker. Disable them by going to **IntelliJ Settings -> Editor -> Inspections -> Elm** and un-checking each inspection that you want to disable.
 
 ## Demo
 
