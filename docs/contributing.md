@@ -55,7 +55,7 @@ There is a dropdown box labeled "Run tests using" and change it from "Gradle" to
 The only time when you would want to have Gradle run the tests is if you change the parser or lexer definition, in which case we would need Gradle to re-build the parser and lexer prior to running the tests.
 
 To run the tests the `elm`, `elm-format` and `elm-review` commands need to be on your `$PATH`.
-Lamdera also needs to be installed, but I managed to simply link `elm` to `lamdera`, like with:
+Lamdera also needs to be installed, but you can simply link `elm` to `lamdera`, e.g.,:
 
 ```bash
 sudo ln -s /usr/local/bin/elm /usr/local/bin/lamdera
@@ -71,4 +71,6 @@ https://docs.github.com/en/get-started/exploring-projects-on-github/contributing
 
 ## Questions
 
-Have a question? Try reaching out to us on [Elm Slack](https://elmlang.herokuapp.com/) or create a GitHub issue. 
+Have a question? Try reaching out to us on the [Incremental Elm Discord](https://incrementalelm.com/chat) (Specifically, the `#intellij-elm` channel): https://discord.com/channels/534524278847045633/727577900525682699.
+
+You can also open a [Discussion topic](https://github.com/elm-tooling/intellij-elm/discussions) on GitHub.
