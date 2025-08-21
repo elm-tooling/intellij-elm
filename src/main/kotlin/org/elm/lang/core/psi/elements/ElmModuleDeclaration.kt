@@ -45,13 +45,6 @@ class ElmModuleDeclaration : ElmStubbedElement<ElmModuleDeclarationStub>, ElmNam
         get() = PsiTreeUtil.getStubChildOfType(this, ElmExposingList::class.java)
 
 
-    /**
-     * Very rare. This will only appear in Effect Manager modules.
-     */
-    val effectModuleDetailRecord: ElmRecordExpr?
-        get() = findChildByClass(ElmRecordExpr::class.java)
-
-
     val exposesAll: Boolean
         get() = stub?.exposesAll
                 ?: (exposingList?.doubleDot != null)

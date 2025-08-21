@@ -3,12 +3,10 @@ package org.elm.lang.core.parser
 import com.intellij.lang.ASTNode
 import com.intellij.lang.ParserDefinition
 import com.intellij.lang.ParserDefinition.SpaceRequirements.MAY
-import com.intellij.lang.PsiBuilder
 import com.intellij.lang.PsiParser
 import com.intellij.openapi.project.Project
 import com.intellij.psi.FileViewProvider
 import com.intellij.psi.TokenType
-import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
 import org.elm.lang.core.lexer.ElmIncrementalLexer
 import org.elm.lang.core.lexer.ElmLayoutLexer
@@ -35,17 +33,15 @@ class ElmParserDefinition : ParserDefinition {
 
     override fun createParser(project: Project?) =
     // TODO [kl] factor this out
-            object : PsiParser {
-                override fun parse(root: IElementType, builder: PsiBuilder): ASTNode {
-                    builder.setTokenTypeRemapper { source, _, _, _ ->
-                        if (source == ElmTypes.NEWLINE || source == ElmTypes.TAB)
-                            TokenType.WHITE_SPACE
-                        else
-                            source
-                    }
-                    return ElmParser().parse(root, builder)
-                }
+        PsiParser { root, builder ->
+            builder.setTokenTypeRemapper { source, _, _, _ ->
+                if (source == ElmTypes.NEWLINE || source == ElmTypes.TAB)
+                    TokenType.WHITE_SPACE
+                else
+                    source
             }
+            ElmParser().parse(root, builder)
+        }
 
     override fun getFileNodeType() =
             ElmFileStub.Type
@@ -53,6 +49,7 @@ class ElmParserDefinition : ParserDefinition {
     override fun createFile(viewProvider: FileViewProvider) =
             ElmFile(viewProvider)
 
+    @Deprecated("Deprecated in Java")
     override fun spaceExistanceTypeBetweenTokens(left: ASTNode?, right: ASTNode?) =
             MAY
 

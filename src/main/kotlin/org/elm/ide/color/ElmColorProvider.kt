@@ -98,7 +98,7 @@ class ElmColorProvider : ElementColorProvider {
             element.project,
             command,
             // This is the message that the JavaColorProvider uses, value copied from JavaBundle.properties
-            "Change color",
+            "Change Color",
             null, // groupId
             document
         )

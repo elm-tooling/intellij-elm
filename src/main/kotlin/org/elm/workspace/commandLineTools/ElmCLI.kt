@@ -51,12 +51,9 @@ class ElmCLI(val elmExecutablePath: Path) {
         }
         if (elmProject == null) {
             // from ElmWorkSpaceService
-            if (!output.isSuccess) {
-                // TODO Lamdera
-                //  org.elm.workspace.log.error("Failed to install deps: Elm compiler failed: ${output.stderr}")
-                return false
-            }
-            return true
+            return output.isSuccess
+            // TODO Lamdera
+            //  org.elm.workspace.log.error("Failed to install deps: Elm compiler failed: ${output.stderr}")
         } else {
             fun postErrors() = project.messageBus.syncPublisher(ElmBuildAction.ERRORS_TOPIC).update(elmProject.projectDirPath, messages, targetPath!!, offset)
             when {

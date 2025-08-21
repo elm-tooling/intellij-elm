@@ -39,7 +39,7 @@ class ElmLanguageCodeStyleSettingsProvider : LanguageCodeStyleSettingsProvider()
 
     // If we ever add formatting support, we'll probably want to return a plain
     // `SmartIndentOptionsEditor()` rather than this custom one.
-    override fun getIndentOptionsEditor(): IndentOptionsEditor? = ElmOptionsEditor()
+    override fun getIndentOptionsEditor(): IndentOptionsEditor = ElmOptionsEditor()
 }
 
 

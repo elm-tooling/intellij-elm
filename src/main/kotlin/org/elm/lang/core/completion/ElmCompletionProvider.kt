@@ -19,7 +19,7 @@ interface Suggestor {
  */
 class ElmCompletionProvider : CompletionProvider<CompletionParameters>() {
 
-    val suggestors = listOf(ElmQualifiableRefSuggestor, ElmRecordFieldSuggestor, ElmRecordExprSuggestor, ElmKeywordSuggestor)
+    private val suggestors = listOf(ElmQualifiableRefSuggestor, ElmRecordFieldSuggestor, ElmRecordExprSuggestor, ElmKeywordSuggestor)
 
     override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
         suggestors.forEach { it.addCompletions(parameters, result) }

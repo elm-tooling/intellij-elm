@@ -9,7 +9,6 @@ import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.ui.content.impl.ContentImpl
 import com.intellij.util.ui.MessageCategory
-import org.elm.openapiext.findFileByPath
 import org.elm.workspace.compiler.ELM_BUILD_ACTION_ID
 import org.elm.workspace.compiler.ElmBuildAction
 import org.elm.workspace.compiler.ElmError

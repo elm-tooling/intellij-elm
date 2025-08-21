@@ -87,7 +87,7 @@ class ElmTestRunProfileState internal constructor(
         throw ExecutionException(errorMessage)
     }
 
-    override fun createConsole(executor: Executor): ConsoleView? {
+    override fun createConsole(executor: Executor): ConsoleView {
         if (elmProject == null) error("Missing ElmProject")
 
         val runConfiguration = environment.runProfile as RunConfiguration
@@ -97,7 +97,7 @@ class ElmTestRunProfileState internal constructor(
         return consoleView
     }
 
-    private class ConsoleProperties constructor(
+    private class ConsoleProperties(
             config: RunConfiguration,
             executor: Executor,
             private val testsRelativeDirPath: String
@@ -105,12 +105,12 @@ class ElmTestRunProfileState internal constructor(
 
         init {
 
-            setIfUndefined(TestConsoleProperties.TRACK_RUNNING_TEST, true)
-            setIfUndefined(TestConsoleProperties.OPEN_FAILURE_LINE, true)
-            setIfUndefined(TestConsoleProperties.HIDE_PASSED_TESTS, false)
-            setIfUndefined(TestConsoleProperties.SHOW_STATISTICS, true)
-            setIfUndefined(TestConsoleProperties.SELECT_FIRST_DEFECT, true)
-            setIfUndefined(TestConsoleProperties.SCROLL_TO_SOURCE, true)
+            setIfUndefined(TRACK_RUNNING_TEST, true)
+            setIfUndefined(OPEN_FAILURE_LINE, true)
+            setIfUndefined(HIDE_PASSED_TESTS, false)
+            setIfUndefined(SHOW_STATISTICS, true)
+            setIfUndefined(SELECT_FIRST_DEFECT, true)
+            setIfUndefined(SCROLL_TO_SOURCE, true)
             //            INCLUDE_NON_STARTED_IN_RERUN_FAILED
             //            setIdBasedTestTree(true);
             //            setPrintTestingStartedTime(false);

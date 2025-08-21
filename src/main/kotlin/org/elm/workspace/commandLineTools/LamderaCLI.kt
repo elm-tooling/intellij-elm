@@ -17,7 +17,7 @@ private val log = logger<LamderaCLI>()
 /**
  * Interact with external `lamdera` process (the compiler, package manager, etc.)
  */
-class LamderaCLI(val lamderaExecutablePath: Path) {
+class LamderaCLI(private val lamderaExecutablePath: Path) {
 
     fun make(project: Project, workDir: Path, elmProject: ElmProject?, entryPoints: List<Triple<Path, String?, Int>?>, jsonReport: Boolean = false, currentFile: VirtualFile? = null): Boolean {
 
