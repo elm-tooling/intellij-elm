@@ -22,7 +22,7 @@ import org.elm.workspace.elmWorkspace
 class ElmExternalReviewAction : AnAction() {
 
     override fun getActionUpdateThread(): ActionUpdateThread {
-        return ActionUpdateThread.BGT;
+        return ActionUpdateThread.BGT
     }
 
     override fun update(e: AnActionEvent) {
@@ -80,7 +80,7 @@ class ElmExternalReviewAction : AnAction() {
             if (compiledSuccessfully) {
                 elmReviewCLI.runReview(project, elmProject, project.elmToolchain.elmCLI, currentFileInEditor)
             }
-        } catch (e: ExecutionException) {
+        } catch (_: ExecutionException) {
             return showError(
                 project,
                 "Failed to 'make' or 'review'. Are the path settings correct ?",
