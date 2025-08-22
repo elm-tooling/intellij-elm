@@ -20,6 +20,10 @@ import org.elm.workspace.elmWorkspace
 
 class ElmExternalFormatAction : AnAction() {
 
+    override fun getActionUpdateThread(): ActionUpdateThread {
+        return ActionUpdateThread.BGT;
+    }
+
     override fun update(e: AnActionEvent) {
         super.update(e)
         e.presentation.isEnabled = getContext(e) != null
