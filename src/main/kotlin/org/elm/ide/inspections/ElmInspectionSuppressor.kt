@@ -16,9 +16,6 @@ import org.elm.lang.core.psi.elements.ElmTypeAnnotation
 import org.elm.lang.core.psi.elements.ElmValueDeclaration
 
 class ElmInspectionSuppressor : InspectionSuppressor {
-    companion object {
-        private val SUPPRESS_REGEX = Regex("--" + SuppressionUtil.COMMON_SUPPRESS_REGEXP)
-    }
 
     override fun getSuppressActions(element: PsiElement?, toolId: String): Array<out SuppressQuickFix> = arrayOf(
             SuppressInspectionFix(toolId),
@@ -68,3 +65,5 @@ class ElmInspectionSuppressor : InspectionSuppressor {
         }
     }
 }
+
+private val SUPPRESS_REGEX = Regex("--" + SuppressionUtil.COMMON_SUPPRESS_REGEXP)

@@ -7,7 +7,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
 import org.elm.openapiext.*
 import org.elm.workspace.*
-import org.elm.workspace.compiler.ElmBuildAction
+import org.elm.workspace.compiler.ERRORS_TOPIC
 import org.elm.workspace.compiler.ElmError
 import org.elm.workspace.compiler.elmJsonToCompilerMessages
 import java.nio.file.Path
@@ -57,7 +57,7 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
             }
             return true
         } else {
-            fun postErrors() = project.messageBus.syncPublisher(ElmBuildAction.ERRORS_TOPIC).update(elmProject.projectDirPath, messages, targetPath!!, offset)
+            fun postErrors() = project.messageBus.syncPublisher(ERRORS_TOPIC).update(elmProject.projectDirPath, messages, targetPath!!, offset)
             when {
                 isUnitTestMode -> postErrors()
                 else -> {
