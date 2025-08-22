@@ -161,6 +161,7 @@ class LamderaApplicationProject(
 /**
  * Represents an Elm package/library
  */
+@Suppress("unused")
 class ElmPackageProject(
         manifestPath: Path,
         val elmVersion: Constraint,

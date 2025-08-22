@@ -84,7 +84,8 @@ class ElmUnresolvedReferenceInspection : ElmLocalInspection() {
         return true
     }
 
-    private fun handleSafeToIgnore(ref: PsiReference, element: PsiElement, @Suppress("UNUSED_PARAMETER") holder: ProblemsHolder): Boolean {
+    @Suppress("unused")
+    private fun handleSafeToIgnore(ref: PsiReference, element: PsiElement, holder: ProblemsHolder): Boolean {
         // Ignore refs to Kernel (JavaScript) modules
         when {
             element is ElmValueExpr && element.qid.isKernelModule -> return true

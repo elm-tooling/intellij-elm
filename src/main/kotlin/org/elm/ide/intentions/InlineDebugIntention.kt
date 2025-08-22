@@ -69,6 +69,7 @@ class InlineDebugIntention : ElmAtCaretIntentionActionBase<InlineDebugIntention.
     }
 
 
+    @Suppress("unused", "unused", "unused")
     private fun getContext(project: Project, editor: Editor, element: PsiElement): Pair<Context, MessageContext>? {
         element.ancestors.forEach { currentExpr ->
             when (currentExpr) {

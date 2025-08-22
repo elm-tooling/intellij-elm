@@ -70,6 +70,7 @@ class ElmBuildAction : AnAction() {
             ?: FileEditorManager.getInstance(project).selectedFiles.firstOrNull { it.fileType == ElmFileType }
 
     interface ElmErrorsListener {
+        @Suppress("unused", "unused")
         fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int)
     }
 
