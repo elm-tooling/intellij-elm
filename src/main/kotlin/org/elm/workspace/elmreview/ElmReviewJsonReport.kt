@@ -25,7 +25,7 @@ data class Location(
 
 sealed class Chunk {
     data class Unstyled(var str: String) : Chunk()
-    @Suppress("unused", "unused")
+    @Suppress("unused")
     data class Styled(var string: String? = null, var bold: Boolean? = null, var underline: Boolean? = null, var color: String? = null, var href: String? = null) : Chunk()
 }
 

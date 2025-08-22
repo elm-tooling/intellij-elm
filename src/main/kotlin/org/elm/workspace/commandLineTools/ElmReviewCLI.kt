@@ -187,6 +187,6 @@ fun executeReviewAsync(
 val ELM_REVIEW_ERRORS_TOPIC = Topic("elm-review errors", ElmReviewErrorsListener::class.java)
 
 interface ElmReviewErrorsListener {
-    @Suppress("unused", "unused")
+    @Suppress("unused")
     fun update(baseDirPath: Path, messages: List<ElmReviewError>, targetPath: String?, offset: Int)
 }

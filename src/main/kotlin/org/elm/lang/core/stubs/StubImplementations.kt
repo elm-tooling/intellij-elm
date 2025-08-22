@@ -30,7 +30,7 @@ class ElmFileStub(file: ElmFile?) : PsiFileStubImpl<ElmFile>(file) {
             // no data to write
         }
 
-        @Suppress("unused", "unused")
+        @Suppress("unused")
         override fun deserialize(dataStream: StubInputStream, parentStub: StubElement<*>?): ElmFileStub {
             // no data to read
             return ElmFileStub(null)
