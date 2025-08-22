@@ -6,6 +6,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import org.elm.lang.core.psi.ElmExposableTag
 import org.elm.lang.core.psi.elements.*
+import com.intellij.codeInsight.intention.preview.IntentionPreviewUtils
 
 /**
  * An intention action that adds a function to a module's `exposing` list.
@@ -24,19 +25,11 @@ open class ExposeIntention : ExposureIntentionBase<ExposeIntention.Context>() {
         if (decl.nameIdentifier != element) return null
 
         return when {
-            decl is ElmUnionVariant -> {
-                // might be nice to support this in the future (making a union type fully exposed)
-                null
-            }
-
-            decl is ElmFunctionDeclarationLeft && !decl.isTopLevel ->
-                null
-
-            !exposingList.exposes(decl) ->
-                createContext(decl, exposingList)
-
-            else ->
-                null
+            // might be nice to support this in the future (making a union type fully exposed)
+            decl is ElmUnionVariant -> null
+            decl is ElmFunctionDeclarationLeft && !decl.isTopLevel -> null
+            !exposingList.exposes(decl) -> createContext(decl, exposingList)
+            else -> null
         }
     }
 
@@ -48,8 +41,24 @@ open class ExposeIntention : ExposureIntentionBase<ExposeIntention.Context>() {
         Context(decl.name, exposingList)
 
     override fun invoke(project: Project, editor: Editor, context: Context) {
-        WriteCommandAction.writeCommandAction(project).run<Throwable> {
+        // The actual mutation (no write wrappers inside this lambda)
+        fun applyEdits() {
             context.exposingList.addItem(context.nameToExpose)
         }
+
+        if (IntentionPreviewUtils.isIntentionPreviewActive()) {
+            // Preview: we're on a non-physical PSI copy under a read action.
+            // Do NOT start write/command actions here.
+            applyEdits()
+        } else {
+            // Real run: perform under a write command so it’s undoable.
+            WriteCommandAction.writeCommandAction(project)
+                .withName(text)
+                .run<RuntimeException> { applyEdits() }
+        }
     }
+
+    // (Optional) Keep this true so real runs happen in write context;
+    // the platform still won't give you a write action during preview.
+    override fun startInWriteAction(): Boolean = true
 }
