@@ -20,6 +20,7 @@ open class ExposeIntention : ExposureIntentionBase<ExposeIntention.Context>() {
     override fun findApplicableContext(project: Project, editor: Editor, element: PsiElement): Context? {
         val exposingList = getExposingList(element) ?: return null
 
+        // check if the caret is on the identifier that names the exposable declaration
         val decl = element.parent as? ElmExposableTag ?: return null
         if (decl.nameIdentifier != element) return null
 
@@ -32,6 +33,10 @@ open class ExposeIntention : ExposureIntentionBase<ExposeIntention.Context>() {
         }
     }
 
+    /**
+     * Creates a [Context] based on the passed in parameters. Overriding subclasses can return null if they find that
+     * the passed in [decl] isn't valid for their particular intention.
+     */
     protected open fun createContext(decl: ElmExposableTag, exposingList: ElmExposingList): Context? =
         Context(decl.name, exposingList)
 
