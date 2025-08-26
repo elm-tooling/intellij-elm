@@ -30,6 +30,7 @@ class ElmPlaceholderStub(
             // nothing extra to write
         }
 
+        @Suppress("unused")
         override fun deserialize(dataStream: StubInputStream, parentStub: StubElement<*>?) =
                 ElmPlaceholderStub(parentStub, this) // nothing extra to read
 

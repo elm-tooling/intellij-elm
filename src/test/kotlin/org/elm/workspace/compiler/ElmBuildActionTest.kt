@@ -103,7 +103,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
     private fun doTest(file: VirtualFile, expectedNumErrors: Int, expectedOffset: Int) {
         var succeeded = false
         with(project.messageBus.connect(testRootDisposable)) {
-            subscribe(ElmBuildAction.ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
+            subscribe(ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
                 override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int) {
                     TestCase.assertEquals(expectedNumErrors, messages.size)
                     TestCase.assertEquals("src/Main.elm", targetPath)
@@ -124,7 +124,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
     private fun doTest(files: List<VirtualFile>, expectedNumErrors: Int, expectedOffset: List<Int>, source: List<String> = listOf("src/Mail.elm")) {
         var succeeded = false
         with(project.messageBus.connect(testRootDisposable)) {
-            subscribe(ElmBuildAction.ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
+            subscribe(ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
                 override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int ) {
                     TestCase.assertEquals(expectedNumErrors, messages.size)
                     TestCase.assertTrue(source.contains(targetPath))

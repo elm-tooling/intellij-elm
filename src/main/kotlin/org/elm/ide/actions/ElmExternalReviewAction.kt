@@ -2,6 +2,7 @@ package org.elm.ide.actions
 
 import com.intellij.execution.ExecutionException
 import com.intellij.notification.NotificationType
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -19,6 +20,10 @@ import org.elm.workspace.elmToolchain
 import org.elm.workspace.elmWorkspace
 
 class ElmExternalReviewAction : AnAction() {
+
+    override fun getActionUpdateThread(): ActionUpdateThread {
+        return ActionUpdateThread.BGT
+    }
 
     override fun update(e: AnActionEvent) {
         super.update(e)
@@ -75,7 +80,7 @@ class ElmExternalReviewAction : AnAction() {
             if (compiledSuccessfully) {
                 elmReviewCLI.runReview(project, elmProject, project.elmToolchain.elmCLI, currentFileInEditor)
             }
-        } catch (e: ExecutionException) {
+        } catch (_: ExecutionException) {
             return showError(
                 project,
                 "Failed to 'make' or 'review'. Are the path settings correct ?",

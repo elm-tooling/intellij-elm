@@ -217,6 +217,7 @@ private class InferenceScope(
         return InferenceResult(expressionTypes, diagnostics, recordDiffs, ty)
     }
 
+    @Suppress("unused")
     private inline fun inferChild(
             activeScopes: MutableSet<ElmValueDeclaration> = this.activeScopes.toMutableSet(),
             recursionAllowed: Boolean = this.recursionAllowed,
@@ -1426,7 +1427,7 @@ private sealed class ParameterBindingResult {
 
     data class Annotated(val ty: Ty, override val count: Int) : ParameterBindingResult()
     data class Unannotated(val params: List<Ty>, override val count: Int) : ParameterBindingResult()
-    data class Other(override val count: Int) : ParameterBindingResult()
+    data class Other(@Suppress("unused") override val count: Int) : ParameterBindingResult()
 }
 
 /** dangerous shallow copy of a mutable record for performance, use `toRecord` if the result isn't discarded. */

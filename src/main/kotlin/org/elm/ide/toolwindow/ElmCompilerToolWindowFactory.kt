@@ -10,6 +10,7 @@ import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.ui.content.impl.ContentImpl
 import com.intellij.util.ui.MessageCategory
 import org.elm.workspace.compiler.ELM_BUILD_ACTION_ID
+import org.elm.workspace.compiler.ERRORS_TOPIC
 import org.elm.workspace.compiler.ElmBuildAction
 import org.elm.workspace.compiler.ElmError
 import java.nio.file.Path
@@ -24,7 +25,7 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
 
         
         with(project.messageBus.connect()) {
-            subscribe(ElmBuildAction.ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
+            subscribe(ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
                 override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int) {
                     errorTreeViewPanel.clearMessages()
 

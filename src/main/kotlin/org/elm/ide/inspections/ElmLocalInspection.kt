@@ -17,6 +17,7 @@ abstract class ElmLocalInspection : LocalInspectionTool() {
         }
     }
 
+    @Suppress("unused")
     abstract fun visitElement(element: ElmPsiElement, holder: ProblemsHolder, isOnTheFly: Boolean)
 }
 

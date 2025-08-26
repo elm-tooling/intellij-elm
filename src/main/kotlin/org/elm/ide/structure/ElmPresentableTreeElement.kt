@@ -42,7 +42,7 @@ class ElmPresentableTreeElement(val element: ElmPsiElement)
 
 }
 
-/** Like [PsiElement.descendants], but stops at any [ElmValueDeclaration]s */
+/** Like [PsiElement.directChildren], but stops at any [ElmValueDeclaration]s */
 private val PsiElement.directChildDecls: Sequence<ElmValueDeclaration>
     get() = directChildren.flatMap {
         when (it) {

@@ -204,7 +204,7 @@ data class TyFunction(
 }
 
 /** The [Ty] representing `()` */
-data class TyUnit(override val alias: AliasInfo? = null) : Ty() {
+data class TyUnit(@Suppress("unused") override val alias: AliasInfo? = null) : Ty() {
     override fun withAlias(alias: AliasInfo): TyUnit = copy(alias = alias)
     override fun toString(): String = javaClass.simpleName
 }

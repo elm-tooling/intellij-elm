@@ -112,7 +112,8 @@ class IndentedTextBuilder(startLevel: Int, private val indentSize: Int) {
  *
  * @see ElmPsiElement.textWithNormalizedIndents
  */
-fun buildIndentedText(element: ElmPsiElement, builder: (IndentedTextBuilder).() -> Unit): String {
+@Suppress("unused")
+fun buildIndentedText(element: ElmPsiElement, @Suppress("unused") builder: (IndentedTextBuilder).() -> Unit): String {
     val doc = PsiDocumentManager.getInstance(element.project).getDocument(element.elmFile)
             ?: error("Failed to find document for $element")
     val existingIndent = doc.getIndent(element.startOffset)

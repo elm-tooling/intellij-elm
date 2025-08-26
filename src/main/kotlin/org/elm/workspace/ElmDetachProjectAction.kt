@@ -25,11 +25,9 @@ class ElmDetachProjectAction : AnAction() {
         get() = dataContext.getData(DATA_KEY)
 
 
-    companion object {
-        val DATA_KEY = DataKey.create<ElmProject>("ELM_PROJECT_TO_DETACH")
-    }
-
     override fun getActionUpdateThread(): ActionUpdateThread {
         return ActionUpdateThread.BGT
     }
 }
+
+val DATA_KEY = DataKey.create<ElmProject>("ELM_PROJECT_TO_DETACH")
