@@ -5,7 +5,6 @@ import com.intellij.execution.process.ProcessNotCreatedException
 import com.intellij.execution.process.ProcessOutput
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.CommandProcessor
-import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
@@ -17,8 +16,6 @@ import org.elm.openapiext.execute
 import org.elm.openapiext.isNotSuccess
 import org.elm.workspace.*
 import java.nio.file.Path
-
-private val log = logger<ElmFormatCLI>()
 
 
 /**
@@ -38,7 +35,7 @@ class ElmFormatCLI(private val elmFormatExecutablePath: Path) {
             .execute(elmFormatTool, project, stdIn = document.text)
     }
 
-    sealed class ElmFormatResult(val msg: String, val cause: Throwable? = null) {
+    sealed class ElmFormatResult(val msg: String, @Suppress("unused") val cause: Throwable? = null) {
         class Success : ElmFormatResult("ok")
         class BadSyntax : ElmFormatResult("elm-format encountered syntax errors that it could not fix")
         class FailedToStart : ElmFormatResult("Failed to launch elm-format. Is the path correct?")

@@ -95,7 +95,7 @@ private abstract class ElmSmartEnterFixer : SmartEnterProcessorWithFixers.Fixer<
     final override fun apply(editor: Editor, processor: ElmSmartEnterProcessor, element: PsiElement) {
         apply(editor, processor, element, element.indentStyle.oneLevelOfIndentation)
     }
-
+    @Suppress("unused")
     abstract fun apply(editor: Editor, processor: ElmSmartEnterProcessor, element: PsiElement, indent: String)
 }
 

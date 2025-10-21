@@ -40,10 +40,10 @@ class ElmLibrary(
     override fun getLocationString(): String? =
             null
 
-    override fun getIcon(unused: Boolean): Icon? =
+    override fun getIcon(unused: Boolean): Icon =
             ElmIcons.FILE
 
-    override fun getPresentableText(): String? =
+    override fun getPresentableText(): String =
             name
 
     companion object {

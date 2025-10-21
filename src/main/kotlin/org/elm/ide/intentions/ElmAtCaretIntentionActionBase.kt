@@ -41,6 +41,8 @@ abstract class ElmAtCaretIntentionActionBase<Ctx> : BaseElementAtCaretIntentionA
 
     abstract fun invoke(project: Project, editor: Editor, context: Ctx)
 
+    override fun startInWriteAction(): Boolean = true
+
     final override fun invoke(project: Project, editor: Editor, element: PsiElement) {
         val context = findApplicableContext(project, editor, element) ?: return
         checkWriteAccessAllowed()

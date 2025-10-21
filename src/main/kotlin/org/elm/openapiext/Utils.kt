@@ -9,48 +9,39 @@ package org.elm.openapiext
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
-import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.JDOMUtil
-import com.intellij.openapi.util.RecursionManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
-import com.intellij.psi.PsiDocumentManager
-import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
-import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.stubs.StubIndex
-import com.intellij.psi.stubs.StubIndexKey
+import com.intellij.codeInsight.intention.preview.IntentionPreviewUtils
 import org.jdom.Element
 import org.jdom.input.SAXBuilder
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.io.path.relativeTo
-import kotlin.reflect.KProperty
 
 
 fun <T> Project.runWriteCommandAction(command: () -> T): T {
-    return WriteCommandAction.runWriteCommandAction(this, Computable<T> { command() })
+    return WriteCommandAction.runWriteCommandAction(this, Computable { command() })
 }
 
 val Project.modules: Collection<Module>
     get() = ModuleManager.getInstance(this).modules.toList()
 
 
-fun <T> recursionGuard(key: Any, block: Computable<T>, memoize: Boolean = true): T? =
-    RecursionManager.doPreventingRecursion(key, memoize, block)
-
-
 fun checkWriteAccessAllowed() {
+    // In preview we must not assert write access; the platform runs without it.
+    if (IntentionPreviewUtils.isIntentionPreviewActive()) return
+
     check(ApplicationManager.getApplication().isWriteAccessAllowed) {
         "Needs write action"
     }
@@ -65,12 +56,6 @@ fun checkReadAccessAllowed() {
 fun checkIsEventDispatchThread() {
     check(ApplicationManager.getApplication().isDispatchThread) {
         "Needs to be on the Event Dispatch Thread (EDT)"
-    }
-}
-
-fun checkIsBackgroundThread() {
-    check(!ApplicationManager.getApplication().isDispatchThread) {
-        "Needs to be on a background thread"
     }
 }
 
@@ -102,38 +87,14 @@ fun VirtualFile.pathRelative(project: Project): Path {
 fun VirtualFile.toPsiFile(project: Project): PsiFile? =
     PsiManager.getInstance(project).findFile(this)
 
-fun Editor.toPsiFile(project: Project): PsiFile? =
-    PsiDocumentManager.getInstance(project).getPsiFile(document)
-
-
-inline fun <Key : Any, reified Psi : PsiElement> getElements(
-    indexKey: StubIndexKey<Key, Psi>,
-    key: Key, project: Project,
-    scope: GlobalSearchScope?
-): Collection<Psi> =
-    StubIndex.getElements(indexKey, key, project, scope, Psi::class.java)
-
 
 fun Element.toXmlString() =
     JDOMUtil.writeElement(this)
 
-fun elementFromXmlString(xml: String): org.jdom.Element =
+fun elementFromXmlString(xml: String): Element =
     // TODO(cies) Use JDOMUtil or JDK API (StAX) or XmlDomReader.readXmlAsModel instead (first decide which)
     SAXBuilder().build(xml.byteInputStream()).rootElement
 
-
-class CachedVirtualFile(private val url: String?) {
-    private val cache = AtomicReference<VirtualFile>()
-
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): VirtualFile? {
-        if (url == null) return null
-        val cached = cache.get()
-        if (cached != null && cached.isValid) return cached
-        val file = VirtualFileManager.getInstance().findFileByUrl(url)
-        cache.set(file)
-        return file
-    }
-}
 
 /**
  * Unless you are absolutely certain that the file will only ever exist

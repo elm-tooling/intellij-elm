@@ -40,8 +40,6 @@ data class Version(
     val xyz: Version by lazy { Version(x, y, z) }
 
     companion object {
-        val UNKNOWN: Version = Version(0, 0, 0)
-
         /** A weak definition of the version format defined in [the SemVer spec](https://semver.org) */
         private val PATTERN = Regex("""(\d+)\.(\d+)\.(\d+)(-[0-9A-Za-z\-.]+)?(\+[0-9A-Za-z\-.]+)?""")
 
@@ -144,7 +142,7 @@ data class Constraint(
     /**
      * Returns true if the constraint is satisfied using SemVer ordering (namely "1.0-beta" < "1.0")
      */
-    fun semVerContains(version: Version): Boolean =
+    private fun semVerContains(version: Version): Boolean =
             (lowOp.evaluate(low, version) && highOp.evaluate(version, high))
 
     /**

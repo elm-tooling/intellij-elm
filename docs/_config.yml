@@ -1,1 +1,4 @@
+title: Elm Language Plugin for JetBrains IDEs
+description: Provides support for the [Elm programming language](https://elm-lang.org). This plugin is developed by the [Elm Tooling community](https://github.com/elm-tooling/intellij-elm/).
+logo: /assets/pluginIcon.svg
 theme: jekyll-theme-minimal

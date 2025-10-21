@@ -30,6 +30,7 @@ class ElmFileStub(file: ElmFile?) : PsiFileStubImpl<ElmFile>(file) {
             // no data to write
         }
 
+        @Suppress("unused")
         override fun deserialize(dataStream: StubInputStream, parentStub: StubElement<*>?): ElmFileStub {
             // no data to read
             return ElmFileStub(null)
@@ -549,12 +550,3 @@ class ElmAsClauseStub(
 
 private fun StubInputStream.readUTFFastAsNullable(): String? = readNullable(this, this::readUTFFast)
 private fun StubOutputStream.writeUTFFastAsNullable(value: String?) = writeNullable(this, value, this::writeUTFFast)
-
-private fun <E : Enum<E>> StubOutputStream.writeEnum(e: E) = writeByte(e.ordinal)
-private inline fun <reified E : Enum<E>> StubInputStream.readEnum(): E = enumValues<E>()[readUnsignedByte()]
-
-private fun StubOutputStream.writeLongAsNullable(value: Long?) = writeNullable(this, value, this::writeLong)
-private fun StubInputStream.readLongAsNullable(): Long? = readNullable(this, this::readLong)
-
-private fun StubOutputStream.writeDoubleAsNullable(value: Double?) = writeNullable(this, value, this::writeDouble)
-private fun StubInputStream.readDoubleAsNullable(): Double? = readNullable(this, this::readDouble)

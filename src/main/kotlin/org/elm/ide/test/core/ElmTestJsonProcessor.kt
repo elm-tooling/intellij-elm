@@ -159,7 +159,7 @@ class ElmTestJsonProcessor(private val testsRelativeDirPath: String) {
                 null
         }
 
-        fun getReason(obj: JsonObject): JsonObject? {
+        private fun getReason(obj: JsonObject): JsonObject? {
             return if (getFirstFailure(obj).isJsonObject)
                 getFirstFailure(obj).asJsonObject.get("reason").asJsonObject
             else

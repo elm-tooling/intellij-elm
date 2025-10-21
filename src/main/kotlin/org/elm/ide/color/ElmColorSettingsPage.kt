@@ -7,7 +7,7 @@ import org.elm.ide.icons.ElmIcons
 
 class ElmColorSettingsPage : ColorSettingsPage {
 
-    private val ATTRS = ElmColor.values().map { it.attributesDescriptor }.toTypedArray()
+    private val ATTRS = ElmColor.entries.map { it.attributesDescriptor }.toTypedArray()
 
     override fun getDisplayName() =
         "Elm"

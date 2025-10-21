@@ -1,1 +1,8 @@
-<spot>encode</spot> : Int -> Encode.Value
+import Json.Encode as Encode
+
+type alias Person =
+    { name : String
+    , age : Int
+    }
+
+<spot>personEncoder</spot> : Person -> Encode.Value

@@ -14,22 +14,22 @@ import com.intellij.lang.parser.GeneratedParserUtilBase
  */
 object ElmManualParseRules : GeneratedParserUtilBase() {
     @JvmStatic
+    @Suppress("unused")
     fun parseTupleOrParenExpr(builder: PsiBuilder, level: Int, exprParser: Parser) =
             TupleOrParenExprParser(exprParser).parse(builder, level)
 
     @JvmStatic
+    @Suppress("unused")
     fun parseMinusWithoutTrailingWhitespace(builder: PsiBuilder, level: Int) =
             MinusWithoutTrailingWhitespaceParser.parse(builder, level)
 
     @JvmStatic
+    @Suppress("unused")
     fun parseDotWithoutTrailingWhitespace(builder: PsiBuilder, level: Int) =
             DotWithoutWhitespaceParser(allowLeadingWs = true, allowTrailingWs = false).parse(builder, level)
 
     @JvmStatic
-    fun parseDotWithoutLeadingWhitespace(builder: PsiBuilder, level: Int) =
-            DotWithoutWhitespaceParser(allowLeadingWs = false, allowTrailingWs = true).parse(builder, level)
-
-    @JvmStatic
+    @Suppress("unused")
     fun parseDotWithoutWhitespace(builder: PsiBuilder, level: Int) =
             DotWithoutWhitespaceParser(allowLeadingWs = false, allowTrailingWs = false).parse(builder, level)
 }

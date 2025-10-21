@@ -19,7 +19,7 @@ class ElmRenamePsiElementProcessor : RenamePsiFileProcessor() {
             element is ElmModuleDeclaration
 
 
-    override fun substituteElementToRename(element: PsiElement, editor: Editor?): PsiElement? {
+    override fun substituteElementToRename(element: PsiElement, editor: Editor?): PsiElement {
         return when (element) {
             is ElmModuleDeclaration -> element.elmFile
             else -> element

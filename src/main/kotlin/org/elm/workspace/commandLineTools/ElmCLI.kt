@@ -8,7 +8,7 @@ import org.elm.openapiext.*
 import org.elm.workspace.ElmProject
 import org.elm.workspace.ParseException
 import org.elm.workspace.Version
-import org.elm.workspace.compiler.ElmBuildAction
+import org.elm.workspace.compiler.ERRORS_TOPIC
 import org.elm.workspace.compiler.ElmError
 import org.elm.workspace.compiler.elmJsonToCompilerMessages
 import org.elm.workspace.elmCompilerTool
@@ -51,14 +51,11 @@ class ElmCLI(val elmExecutablePath: Path) {
         }
         if (elmProject == null) {
             // from ElmWorkSpaceService
-            if (!output.isSuccess) {
-                // TODO Lamdera
-                //  org.elm.workspace.log.error("Failed to install deps: Elm compiler failed: ${output.stderr}")
-                return false
-            }
-            return true
+            return output.isSuccess
+            // TODO Lamdera
+            //  org.elm.workspace.log.error("Failed to install deps: Elm compiler failed: ${output.stderr}")
         } else {
-            fun postErrors() = project.messageBus.syncPublisher(ElmBuildAction.ERRORS_TOPIC).update(elmProject.projectDirPath, messages, targetPath!!, offset)
+            fun postErrors() = project.messageBus.syncPublisher(ERRORS_TOPIC).update(elmProject.projectDirPath, messages, targetPath!!, offset)
             when {
                 isUnitTestMode -> postErrors()
                 else -> {

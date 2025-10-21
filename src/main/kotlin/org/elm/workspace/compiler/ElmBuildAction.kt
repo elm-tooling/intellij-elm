@@ -70,16 +70,8 @@ class ElmBuildAction : AnAction() {
             ?: FileEditorManager.getInstance(project).selectedFiles.firstOrNull { it.fileType == ElmFileType }
 
     interface ElmErrorsListener {
+        @Suppress("unused")
         fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int)
-    }
-
-    companion object {
-        val ERRORS_TOPIC = Topic("Elm compiler-messages", ElmErrorsListener::class.java)
-        val elmMainTypes = setOf(
-            "Platform" to "Program",
-            "Html" to "Html",
-            "VirtualDom" to "Node"
-        )
     }
 
     data class LookupClientLocation(
@@ -198,7 +190,7 @@ private fun findMainEntryPoint(project: Project, elmProject: ElmProject): List<E
                     is TyUnknown -> ty.alias?.let { it.module to it.name }
                     else -> null
                 }
-                key != null && key in ElmBuildAction.elmMainTypes && decl.isTopLevel
+                key != null && key in elmMainTypes && decl.isTopLevel
             }
     return elmEntries
 }
@@ -219,3 +211,9 @@ private fun showError(project: Project, message: String, includeFixAction: Boole
     project.showBalloon(message, NotificationType.ERROR, *actions)
 }
 
+val ERRORS_TOPIC = Topic("Elm compiler-messages", ElmBuildAction.ElmErrorsListener::class.java)
+val elmMainTypes = setOf(
+    "Platform" to "Program",
+    "Html" to "Html",
+    "VirtualDom" to "Node"
+)

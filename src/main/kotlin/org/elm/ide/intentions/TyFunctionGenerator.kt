@@ -25,7 +25,7 @@ abstract class TyFunctionGenerator(
 
     fun TyUnion.toRef() = Ref(module, name)
     fun AliasInfo.toRef() = Ref(module, name)
-    fun DeclarationInTy.toRef() = Ref(module, name)
+    private fun DeclarationInTy.toRef() = Ref(module, name)
 
     /** All types and aliases referenced in the root ty */
     protected val declarations by lazy { root.allDeclarations().toList() }

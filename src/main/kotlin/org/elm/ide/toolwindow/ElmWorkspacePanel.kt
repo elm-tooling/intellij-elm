@@ -16,7 +16,7 @@ import com.intellij.ui.components.JBList
 import org.elm.ide.icons.ElmIcons
 import org.elm.openapiext.checkIsEventDispatchThread
 import org.elm.openapiext.findFileByPath
-import org.elm.workspace.ElmDetachProjectAction
+import org.elm.workspace.DATA_KEY
 import org.elm.workspace.ElmProject
 import org.elm.workspace.ElmWorkspaceService
 import org.elm.workspace.elmWorkspace
@@ -104,7 +104,7 @@ class ElmWorkspacePanel(private val project: Project) : SimpleToolWindowPanel(tr
                 selectedProject?.manifestPath
                         ?.let { LocalFileSystem.getInstance().findFileByPath(it) }
                         ?.let { OpenFileDescriptor(project, it) }
-            ElmDetachProjectAction.DATA_KEY.`is`(dataId) ->
+            DATA_KEY.`is`(dataId) ->
                 selectedProject
             else ->
                 super.getData(dataId)

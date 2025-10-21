@@ -164,8 +164,6 @@ class ElmNeedsConfigNotificationProvider(
     }
 
 
-    companion object {
-        private val PROVIDER_KEY: Key<EditorNotificationPanel> = Key.create("Setup Elm toolchain")
-    }
-
 }
+
+private val PROVIDER_KEY: Key<EditorNotificationPanel> = Key.create("Setup Elm toolchain")

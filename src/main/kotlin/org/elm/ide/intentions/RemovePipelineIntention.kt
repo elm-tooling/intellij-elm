@@ -45,7 +45,7 @@ class RemovePipelineIntention : ElmAtCaretIntentionActionBase<RemovePipelineInte
         val isMultiline = isMultiline(originalPipeline)
         return originalPipeline.segments()
                 .withIndex()
-                .fold(initial, { functionCallSoFar, indexedSegment ->
+                .fold(initial) { functionCallSoFar, indexedSegment ->
                     val segment = indexedSegment.value
                     val indentation = existingIndent + "    ".repeat(indexedSegment.index)
                     val expressionString = segment.expressionParts.joinToString(" ") {
@@ -56,7 +56,12 @@ class RemovePipelineIntention : ElmAtCaretIntentionActionBase<RemovePipelineInte
                     }
                     val psi = when {
                         functionCallSoFar != null ->
-                            psiFactory.callFunctionWithArgumentAndComments(segment.comments, expressionString, functionCallSoFar, indentation)
+                            psiFactory.callFunctionWithArgumentAndComments(
+                                segment.comments,
+                                expressionString,
+                                functionCallSoFar,
+                                indentation
+                            )
 
                         isMultiline ->
                             psiFactory.createParensWithComments(segment.comments, expressionString, indentation)
@@ -65,7 +70,7 @@ class RemovePipelineIntention : ElmAtCaretIntentionActionBase<RemovePipelineInte
                             psiFactory.createParens(expressionString, indentation)
                     }
                     unwrapIfPossible(psi)
-                })!!
+                }!!
     }
 
     private fun isMultiline(pipeline: Pipeline): Boolean =

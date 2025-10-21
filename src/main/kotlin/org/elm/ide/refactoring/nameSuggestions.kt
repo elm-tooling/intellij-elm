@@ -26,7 +26,7 @@ fun ElmExpressionTag.suggestedNames(): SuggestedNames {
 
         is ElmFieldAccessExpr -> {
             // Suggest last field in a record chain: e.g. "title" in `model.currentPage.title`
-            this.lowerCaseIdentifier?.text?.let { names.addName(it) }
+            this.lowerCaseIdentifier.text?.let { names.addName(it) }
         }
     }
 

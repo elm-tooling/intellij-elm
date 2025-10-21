@@ -23,11 +23,7 @@ class ElmInfixDeclaration : ElmStubbedNamedElementImpl<ElmInfixDeclarationStub>,
     constructor(stub: ElmInfixDeclarationStub, stubType: IStubElementType<*, *>) :
             super(stub, stubType, IdentifierCase.OPERATOR)
 
-
-    val operatorIdentifier: PsiElement
-        get() = findNotNullChildByType(ElmTypes.OPERATOR_IDENTIFIER)
-
-    val precedenceElement: PsiElement
+    private val precedenceElement: PsiElement
         get() = findNotNullChildByType(ElmTypes.NUMBER_LITERAL)
 
     val precedence: Int?

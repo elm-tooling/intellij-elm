@@ -15,10 +15,8 @@ import com.intellij.openapi.ui.TextComponentAccessor
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.DocumentAdapter
-import com.intellij.ui.components.JBCheckBox
 import com.intellij.util.Alarm
 import javax.swing.event.DocumentEvent
-import kotlin.reflect.KProperty
 
 class UiDebouncer(
         private val parentDisposable: Disposable,
@@ -61,14 +59,4 @@ fun fileSystemPathTextField(
     })
 
     return component
-}
-
-class CheckboxDelegate(private val checkbox: JBCheckBox) {
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): Boolean {
-        return checkbox.isSelected
-    }
-
-    operator fun setValue(thisRef: Any?, property: KProperty<*>, value: Boolean) {
-        checkbox.isSelected = value
-    }
 }

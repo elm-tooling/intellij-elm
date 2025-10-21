@@ -18,7 +18,7 @@ import org.elm.lang.core.psi.tokenSetOf
 class ElmFindUsagesProvider : FindUsagesProvider {
 
 
-    override fun getWordsScanner(): WordsScanner? {
+    override fun getWordsScanner(): WordsScanner {
         return DefaultWordsScanner(
                 ElmIncrementalLexer(),
                 ELM_IDENTIFIERS,

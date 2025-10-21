@@ -12,7 +12,7 @@ class ElmRefactoringSupportProvider : RefactoringSupportProvider() {
         return true
     }
 
-    override fun getIntroduceVariableHandler(): RefactoringActionHandler? {
+    override fun getIntroduceVariableHandler(): RefactoringActionHandler {
         return ElmIntroduceVariableHandler()
     }
 }
