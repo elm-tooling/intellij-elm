@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+## [5.2.0] - 2025-10-21
+*   Major code review and clean-up (@ahankinson)
+*   Fixes a plugin crash when using the expose function (@ahankinson)
+*   Restored the [dedicated documentation site](https://elm-tooling.github.io/intellij-elm/) (@ahankinson)
 
 ## [5.1.0] - 2025-08-05
 *   Moved the plugin to [elm-tooling/intellij](https://github.com/elm-tooling/intellij-elm) (@lydell)
