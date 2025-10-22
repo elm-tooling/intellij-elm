@@ -14,8 +14,9 @@ const val elmCompilerTool = "elm"
 const val lamderaCompilerTool = "lamdera"
 const val elmFormatTool = "elm-format"
 const val elmTestTool = "elm-test"
+const val elmTestRsTool = "elm-test-rs"
 const val elmReviewTool = "elm-review"
-val elmTools = listOf(elmCompilerTool, lamderaCompilerTool, elmFormatTool, elmTestTool, elmReviewTool)
+val elmTools = listOf(elmCompilerTool, lamderaCompilerTool, elmFormatTool, elmTestTool, elmTestRsTool, elmReviewTool)
 
 data class ElmToolchain(
         val elmCompilerPath: Path?,
@@ -23,15 +24,17 @@ data class ElmToolchain(
         val elmFormatPath: Path?,
         val elmTestPath: Path?,
         val elmReviewPath: Path?,
+        val isElmTestRsEnabled: Boolean,
         val isElmFormatOnSaveEnabled: Boolean
 ) {
-    constructor(elmCompilerPath: String, lamderaCompilerPath: String, elmFormatPath: String, elmTestPath: String, elmReviewPath: String, isElmFormatOnSaveEnabled: Boolean) :
+    constructor(elmCompilerPath: String, lamderaCompilerPath: String, elmFormatPath: String, elmTestPath: String, elmReviewPath: String, isElmTestRsEnabled: Boolean, isElmFormatOnSaveEnabled: Boolean) :
             this(
                     if (elmCompilerPath.isNotBlank() && Files.exists(Paths.get(elmCompilerPath))) Paths.get(elmCompilerPath) else null,
                     if (lamderaCompilerPath.isNotBlank() && Files.exists(Paths.get(lamderaCompilerPath))) Paths.get(lamderaCompilerPath) else null,
                     if (elmFormatPath.isNotBlank() && Files.exists(Paths.get(elmFormatPath))) Paths.get(elmFormatPath) else null,
                     if (elmTestPath.isNotBlank() && Files.exists(Paths.get(elmTestPath))) Paths.get(elmTestPath) else null,
                     if (elmReviewPath.isNotBlank() && Files.exists(Paths.get(elmReviewPath))) Paths.get(elmReviewPath) else null,
+                    isElmTestRsEnabled,
                     isElmFormatOnSaveEnabled
             )
 
@@ -68,7 +71,7 @@ data class ElmToolchain(
                 elmCompilerPath = elmCompilerPath ?: suggestions[elmCompilerTool],
                 lamderaCompilerPath = lamderaCompilerPath ?: suggestions[lamderaCompilerTool],
                 elmFormatPath = elmFormatPath ?: suggestions[elmFormatTool],
-                elmTestPath = elmTestPath ?: suggestions[elmTestTool],
+                elmTestPath = if (isElmTestRsEnabled) elmTestPath ?: suggestions[elmTestRsTool] else elmTestPath ?: suggestions[elmTestTool],
                 elmReviewPath = elmReviewPath ?: suggestions[elmReviewTool]
         )
     }
@@ -86,6 +89,7 @@ data class ElmToolchain(
          */
         const val SIDECAR_FILENAME = "elm.intellij.json"
 
+        const val DEFAULT_ELM_TEST_RS = false
         const val DEFAULT_FORMAT_ON_SAVE = true
 
         /**
@@ -97,6 +101,7 @@ data class ElmToolchain(
                 elmFormatPath = null,
                 elmTestPath = null,
                 elmReviewPath = null,
+                isElmTestRsEnabled = DEFAULT_ELM_TEST_RS,
                 isElmFormatOnSaveEnabled = DEFAULT_FORMAT_ON_SAVE
         )
 

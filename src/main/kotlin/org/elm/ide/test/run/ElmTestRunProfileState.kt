@@ -63,7 +63,15 @@ class ElmTestRunProfileState internal constructor(
             return handleBadConfiguration(project, "Could not find the Elm compiler ")
         }
 
-        return elmTestCLI.runTestsProcessHandler(elmCompilerBinary, elmProject)
+        if (toolchain.isElmTestRsEnabled) {
+            // ensure that elm-test-rs is being used if the checkbox is enabled
+            val version = elmTestCLI.queryVersion(project)
+            if (version is org.elm.openapiext.Result.Err) return handleBadConfiguration(project, version.reason)
+        }
+
+        val filteredTest = (environment.runProfile as? ElmTestRunConfiguration)?.options?.filteredTestConfig
+
+        return elmTestCLI.runTestsProcessHandler(elmCompilerBinary, elmProject, filteredTest, toolchain.isElmTestRsEnabled)
     }
 
     @Throws(ExecutionException::class)

@@ -127,7 +127,7 @@ jobs:
           node-version: lts/*
 
       - name: Install elm tools
-        run: npm install --global elm elm-test elm-format elm-review lamdera
+        run: npm install --global elm elm-test elm-test-rs elm-format elm-review lamdera
 
       # Run tests
       - name: Run Tests

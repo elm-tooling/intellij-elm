@@ -17,16 +17,23 @@ import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import org.elm.ide.test.core.ElmProjectTestsHelper
+import org.elm.workspace.elmToolchain
 import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.JTextField
 
 class ElmTestSettingsEditor internal constructor(project: Project) : SettingsEditor<ElmTestRunConfiguration>() {
     private val helper: ElmProjectTestsHelper = ElmProjectTestsHelper(project)
     private var myPanel: JPanel? = null
     private var projectChooser: ComboBox<String>? = null
+    private var testFilePathField: JTextField? = null
+    private var testFilter: JTextField? = null
+    private var isElmTestRsEnabled: Boolean = project.elmToolchain.isElmTestRsEnabled
 
     override fun createEditor(): JComponent {
         helper.allNames().forEach { projectChooser!!.addItem(it) }
+        testFilter?.setEnabled(isElmTestRsEnabled)
+
         return this.myPanel!!
     }
 
@@ -35,12 +42,18 @@ class ElmTestSettingsEditor internal constructor(project: Project) : SettingsEdi
                 configuration.options.elmFolder?.let {
                     helper.nameByProjectDirPath(it)
                 }
+        this.testFilePathField!!.text = configuration.options.filteredTestConfig?.filePath
+        this.testFilter!!.text = configuration.options.filteredTestConfig?.filter
     }
 
     override fun applyEditorTo(configuration: ElmTestRunConfiguration) {
-        val selectedItem = projectChooser!!.selectedItem
-        if (selectedItem != null && selectedItem is String) {
-            configuration.options.elmFolder = helper.projectDirPathByName(selectedItem)
+        val selectedProject = projectChooser!!.selectedItem
+        if (selectedProject != null && selectedProject is String) {
+            configuration.options.elmFolder = helper.projectDirPathByName(selectedProject)
         }
+
+        val field = testFilePathField!!.text.trim().ifEmpty { null }
+        val filter = testFilter!!.text.trim().ifEmpty { null }
+        configuration.options.filteredTestConfig = ElmTestRunConfiguration.FilteredTest.from(field, configuration.project, filter)
     }
 }
