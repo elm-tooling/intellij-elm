@@ -494,7 +494,7 @@ private ParenthesizedPattern ::=
     LEFT_PARENTHESIS Pattern RIGHT_PARENTHESIS
 
 private SingularUnionPattern ::=
-    Pattern
+    NullaryConstructorArgumentPattern
 
 
 

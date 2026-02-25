@@ -882,6 +882,7 @@ private class InferenceScope(
                 pat.patternAs?.let { bindPattern(it, ty, isParameter) }
             }
             is ElmLowerPattern -> setBinding(pat, ty)
+            is ElmNullaryConstructorArgumentPattern -> bindNullaryConstructorPattern(pat, ty)
             is ElmRecordPattern -> bindRecordPattern(pat, ty, isParameter)
             is ElmTuplePattern -> bindTuplePattern(pat, ty, isParameter)
             is ElmUnionPattern -> bindUnionPattern(pat, ty, isParameter)
@@ -961,6 +962,20 @@ private class InferenceScope(
                 pat.namedParameters.forEach { setBinding(it, TyUnknown()) }
             }
         }
+    }
+
+    private fun bindNullaryConstructorPattern(pat: ElmNullaryConstructorArgumentPattern, type: Ty) {
+        val variant = pat.reference.resolve() as? ElmUnionVariant
+        val variantTy = variant?.typeExpressionInference()?.value
+        if (variantTy == null || !isInferable(variantTy)) return
+
+        if (variantTy is TyFunction) {
+            diagnostics += ArgumentCountError(pat, pat, 0, variantTy.parameters.size, true)
+            return
+        }
+
+        val ty = bindIfVar(pat, type) { variantTy }
+        requireAssignable(pat, ty, variantTy)
     }
 
     private fun bindTuplePattern(pat: ElmTuplePattern, type: Ty, isParameter: Boolean) {

@@ -4,11 +4,14 @@ import com.intellij.application.options.CodeStyleAbstractConfigurable
 import com.intellij.application.options.CodeStyleAbstractPanel
 import com.intellij.application.options.IndentOptionsEditor
 import com.intellij.application.options.TabbedLanguageCodeStylePanel
+import com.intellij.lang.Language
 import com.intellij.psi.codeStyle.*
 import org.elm.lang.core.ElmLanguage
 
 
 class ElmCodeStyleSettingsProvider : CodeStyleSettingsProvider() {
+    override fun getLanguage() = ElmLanguage
+
     override fun getConfigurableDisplayName() = ElmLanguage.displayName
 
     override fun createConfigurable(settings: CodeStyleSettings, modelSettings: CodeStyleSettings): CodeStyleConfigurable {
