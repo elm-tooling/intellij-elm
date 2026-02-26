@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.JsonNodeType
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.util.SystemInfo
-import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import org.elm.openapiext.refreshAndFindFileByPathTestAware
 import org.elm.workspace.ElmToolchain.Companion.SIDECAR_FILENAME
@@ -127,9 +126,9 @@ class ElmPackageRepository(override val elmCompilerVersion: Version) : Repositor
                 return elmHomeVar
 
             return when {
-                SystemInfo.isUnix -> FileUtil.expandUserHome("~/.elm")
-                SystemInfo.isMac -> FileUtil.expandUserHome("~/.elm")
-                SystemInfo.isWindows -> FileUtil.expandUserHome("~/AppData/Roaming/elm")
+                SystemInfo.isUnix -> Paths.get(System.getProperty("user.home"), ".elm").toString()
+                SystemInfo.isMac -> Paths.get(System.getProperty("user.home"), ".elm").toString()
+                SystemInfo.isWindows -> Paths.get(System.getProperty("user.home"), "AppData", "Roaming", "elm").toString()
                 else -> error("Unsupported platform")
             }
         }

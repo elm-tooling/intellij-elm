@@ -447,6 +447,95 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         )
     }
 
+    @Test
+    fun `parses review-errors with cliVersion metadata`() {
+        @Language("JSON")
+        val json = """
+{
+  "type": "review-errors",
+  "cliVersion": "2.13.0",
+  "errors": [
+    {
+      "path": "src/Main.elm",
+      "errors": [
+        {
+          "rule": "NoUnused.Variables",
+          "message": "Unused variable `x`",
+          "region": {
+            "start": { "line": 1, "column": 1 },
+            "end": { "line": 1, "column": 2 }
+          },
+          "formatted": ["Unused variable `x`"],
+          "suppressed": false
+        }
+      ]
+    }
+  ]
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.setStrictness(Strictness.LENIENT)
+        val report = reader.readErrorReport()
+
+        TestCase.assertEquals(1, report.size)
+        TestCase.assertEquals("src/Main.elm", report[0].path)
+        TestCase.assertEquals("NoUnused.Variables", report[0].rule)
+        TestCase.assertEquals("Unused variable `x`", report[0].message)
+    }
+
+    @Test
+    fun `parses top-level error object without type`() {
+        @Language("JSON")
+        val json = """
+{
+  "cliVersion": "2.13.0",
+  "title": "INCORRECT CONFIGURATION",
+  "path": "/tmp/elm.json",
+  "message": "Something went wrong"
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.setStrictness(Strictness.LENIENT)
+        val report = reader.readErrorReport()
+
+        TestCase.assertEquals(
+            listOf(
+                ElmReviewError(
+                    path = "/tmp/elm.json",
+                    rule = "INCORRECT CONFIGURATION",
+                    message = "Something went wrong",
+                    region = null,
+                    html = null
+                )
+            ),
+            report
+        )
+    }
+
+    @Test
+    fun `parses top-level error message array without type`() {
+        @Language("JSON")
+        val json = """
+{
+  "cliVersion": "2.13.0",
+  "title": "ERROR",
+  "path": "/tmp/review/ReviewConfig.elm",
+  "message": ["Line one", "Line two"]
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.setStrictness(Strictness.LENIENT)
+        val report = reader.readErrorReport()
+
+        TestCase.assertEquals(1, report.size)
+        TestCase.assertEquals("ERROR", report[0].rule)
+        TestCase.assertEquals("/tmp/review/ReviewConfig.elm", report[0].path)
+        TestCase.assertEquals("Line oneLine two", report[0].message)
+    }
+
     // TODO: complete this test, then add @Test annotation
     fun `parses type 'compile-errors' with errors array`() {
         @Language("JSON")
