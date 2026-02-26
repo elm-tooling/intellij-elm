@@ -2,10 +2,11 @@ package org.elm.workspace.compiler
 
 import com.intellij.notification.Notification
 import com.intellij.notification.Notifications
+import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.util.Ref
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.testFramework.MapDataContext
 import com.intellij.testFramework.TestActionEvent
 import junit.framework.TestCase
 import org.elm.workspace.ElmWorkspaceTestBase
@@ -155,14 +156,14 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
     }
 
 
-    private fun makeTestAction(file: VirtualFile): Pair<ElmBuildAction, TestActionEvent> {
-        val dataContext = MapDataContext(mapOf(
-                CommonDataKeys.PROJECT to project,
-                CommonDataKeys.VIRTUAL_FILE to file
-        ))
+    private fun makeTestAction(file: VirtualFile): Pair<ElmBuildAction, AnActionEvent> {
+        val dataContext = SimpleDataContext.builder()
+            .add(CommonDataKeys.PROJECT, project)
+            .add(CommonDataKeys.VIRTUAL_FILE, file)
+            .build()
         val action = ElmBuildAction()
-        val event = TestActionEvent(dataContext, action)
-        action.beforeActionPerformedUpdate(event)
+        val event = TestActionEvent.createTestEvent(action, dataContext)
+        action.update(event)
         return Pair(action, event)
     }
 

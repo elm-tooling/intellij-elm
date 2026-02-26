@@ -2,13 +2,14 @@ package org.elm.ide.actions
 
 import com.intellij.notification.Notification
 import com.intellij.notification.Notifications
+import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.command.undo.UndoManager
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.util.Ref
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.testFramework.MapDataContext
 import com.intellij.testFramework.TestActionEvent
 import junit.framework.TestCase
 import org.elm.workspace.ElmWorkspaceTestBase
@@ -137,15 +138,15 @@ class ElmExternalFormatActionTest : ElmWorkspaceTestBase() {
         action.actionPerformed(event)
     }
 
-    private fun makeTestAction(file: VirtualFile): Pair<ElmExternalFormatAction, TestActionEvent> {
-        val dataContext = MapDataContext(mapOf(
-                CommonDataKeys.PROJECT to project,
-                CommonDataKeys.VIRTUAL_FILE to file,
-                CommonDataKeys.EDITOR to editor
-        ))
+    private fun makeTestAction(file: VirtualFile): Pair<ElmExternalFormatAction, AnActionEvent> {
+        val dataContext = SimpleDataContext.builder()
+            .add(CommonDataKeys.PROJECT, project)
+            .add(CommonDataKeys.VIRTUAL_FILE, file)
+            .add(CommonDataKeys.EDITOR, editor)
+            .build()
         val action = ElmExternalFormatAction()
-        val event = TestActionEvent(dataContext, action)
-        action.beforeActionPerformedUpdate(event)
+        val event = TestActionEvent.createTestEvent(action, dataContext)
+        action.update(event)
         return Pair(action, event)
     }
 

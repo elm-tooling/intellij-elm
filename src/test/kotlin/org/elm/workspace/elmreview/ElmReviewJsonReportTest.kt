@@ -1,5 +1,6 @@
 package org.elm.workspace.elmreview
 
+import com.google.gson.Strictness
 import com.google.gson.stream.JsonReader
 import junit.framework.TestCase
 import org.elm.lang.ElmTestBase
@@ -134,7 +135,7 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         }""".trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.isLenient = true
+        reader.setStrictness(Strictness.LENIENT)
 
         TestCase.assertEquals(
             listOf(
@@ -279,7 +280,7 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         }""".trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.isLenient = true
+        reader.setStrictness(Strictness.LENIENT)
 
         TestCase.assertEquals(
             listOf(
@@ -319,7 +320,7 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         """.trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.isLenient = true
+        reader.setStrictness(Strictness.LENIENT)
         val report = reader.readErrorReport()
         TestCase.assertEquals(
             listOf(
@@ -430,7 +431,7 @@ class ElmReviewJsonReportTest : ElmTestBase() {
 }""".trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.isLenient = true
+        reader.setStrictness(Strictness.LENIENT)
         val report = reader.readErrorReport()
         TestCase.assertEquals(
             listOf(
@@ -508,7 +509,7 @@ class ElmReviewJsonReportTest : ElmTestBase() {
 ]""".trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.isLenient = true
+        reader.setStrictness(Strictness.LENIENT)
         val report = reader.readErrorReport()
         TestCase.assertEquals(
             emptyList<ElmReviewError>(),

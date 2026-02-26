@@ -1,6 +1,6 @@
 package org.elm.ide.docs
 
-import com.intellij.codeInsight.documentation.DocumentationManager
+import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.psi.PsiElement
 import com.intellij.testFramework.UsefulTestCase.assertSameLines
 import org.elm.lang.ElmTestBase
@@ -18,8 +18,9 @@ abstract class ElmDocumentationProviderTest : ElmTestBase() {
         addFileToFixture(code)
 
         val (originalElement, _, offset) = findElementWithDataAndOffsetInEditor<PsiElement>()
-        val element = DocumentationManager.getInstance(project)
-                .findTargetElement(myFixture.editor, offset, myFixture.file, originalElement)!!
+        val element = TargetElementUtil.getInstance()
+            .findTargetElement(myFixture.editor, TargetElementUtil.getInstance().allAccepted, offset)
+            ?: originalElement
 
         val actual = ElmDocumentationProvider().block(element, originalElement)?.trim()!!
         assertSameLines(expected.trimIndent(), actual)
