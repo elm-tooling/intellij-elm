@@ -15,7 +15,9 @@ import org.elm.workspace.compiler.ElmBuildAction
 import org.elm.workspace.compiler.ElmError
 import java.nio.file.Path
 
+@Suppress("DEPRECATION")
 class ElmCompilerToolWindowFactory : ToolWindowFactory {
+    override suspend fun isApplicableAsync(project: Project): Boolean = true
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val errorTreeViewPanel = object : ElmErrorTreeViewPanel(project, "Elm Compiler", createExitAction = false, createToolbar = true) {

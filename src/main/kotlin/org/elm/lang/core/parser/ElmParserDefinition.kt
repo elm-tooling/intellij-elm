@@ -49,8 +49,7 @@ class ElmParserDefinition : ParserDefinition {
     override fun createFile(viewProvider: FileViewProvider) =
             ElmFile(viewProvider)
 
-    @Deprecated("Deprecated in Java")
-    override fun spaceExistanceTypeBetweenTokens(left: ASTNode?, right: ASTNode?) =
+    override fun spaceExistenceTypeBetweenTokens(left: ASTNode, right: ASTNode) =
             MAY
 
     override fun createElement(node: ASTNode) = ElmPsiFactory.createElement(node)

@@ -4,17 +4,17 @@ import com.intellij.execution.process.ProcessIOExecutorService
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.logger
-import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.EditorNotificationPanel
+import com.intellij.ui.EditorNotificationProvider
 import com.intellij.ui.EditorNotifications
 import org.elm.lang.core.psi.isElmFile
 import org.elm.openapiext.findFileByPath
 import org.elm.workspace.*
+import java.util.function.Function
 
 sealed class VersionCheck {
     object NotChecked : VersionCheck()
@@ -28,11 +28,9 @@ private val log = logger<ElmNeedsConfigNotificationProvider>()
  * Presents actionable notifications at the top of an Elm file whenever the Elm plugin
  * needs configuration (e.g. the path to the Elm compiler).
  */
-// TODO(cies): Replace deprecated Provider with {@link EditorNotificationProvider}
-@Suppress("DEPRECATION")
 class ElmNeedsConfigNotificationProvider(
     private val project: Project
-) : EditorNotifications.Provider<EditorNotificationPanel>() {
+) : EditorNotificationProvider {
 
     private val notifications = EditorNotifications.getInstance(project)
 
@@ -54,11 +52,15 @@ class ElmNeedsConfigNotificationProvider(
         }
     }
 
+    override fun collectNotificationData(
+        project: Project,
+        file: VirtualFile
+    ): Function<in com.intellij.openapi.fileEditor.FileEditor, out javax.swing.JComponent?> {
+        val panel = createNotificationPanel(file)
+        return if (panel == null) Function { null } else Function { panel }
+    }
 
-    override fun getKey(): Key<EditorNotificationPanel> = PROVIDER_KEY
-
-
-    override fun createNotificationPanel(file: VirtualFile, fileEditor: FileEditor): EditorNotificationPanel? {
+    private fun createNotificationPanel(file: VirtualFile): EditorNotificationPanel? {
         if (!file.isElmFile)
             return null
 
@@ -166,5 +168,3 @@ class ElmNeedsConfigNotificationProvider(
 
 
 }
-
-private val PROVIDER_KEY: Key<EditorNotificationPanel> = Key.create("Setup Elm toolchain")

@@ -9,7 +9,6 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
-import com.intellij.openapi.startup.StartupManager
 import com.intellij.openapi.util.io.FileUtil.join
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
@@ -41,35 +40,32 @@ class ElmWebProjectTemplate : WebProjectTemplate<Any>(), CustomStepProjectGenera
 
     override fun generateProject(project: Project, baseDir: VirtualFile, settings: Any, module: Module) {
         log.debug("Generating a new project")
-        StartupManager.getInstance(project).runAfterOpened {
-            val rootModel = ModuleRootManager.getInstance(module).modifiableModel
-            val contentEntry = rootModel.contentEntries.single()
-            val root = contentEntry.file ?: return@runAfterOpened
+        val rootModel = ModuleRootManager.getInstance(module).modifiableModel
+        val contentEntry = rootModel.contentEntries.single()
+        val root = contentEntry.file ?: return
 
-            project.runWriteCommandAction {
-                // Generate the project skeleton
-                VfsUtil.saveText(root.createChildData(this, "elm.json"), elmJson)
-                val srcDir = root.createChildDirectory(this, "src")
-                VfsUtil.saveText(srcDir.createChildData(this, "Main.elm"), elmMain)
+        project.runWriteCommandAction {
+            // Generate the project skeleton
+            VfsUtil.saveText(root.createChildData(this, "elm.json"), elmJson)
+            val srcDir = root.createChildDirectory(this, "src")
+            VfsUtil.saveText(srcDir.createChildData(this, "Main.elm"), elmMain)
 
-                // Mark the source roots, etc.
-                with(contentEntry) {
-                    addSourceFolder(join(root.url, "src"), /* p1 = */ false)
-                    addSourceFolder(join(root.url, DEFAULT_TESTS_DIR_NAME), /* p1 = */ true)
-                    addExcludeFolder(join(root.url, "elm-stuff"))
-                }
-
-                rootModel.commit()
+            // Mark the source roots, etc.
+            with(contentEntry) {
+                addSourceFolder(join(root.url, "src"), /* p1 = */ false)
+                addSourceFolder(join(root.url, DEFAULT_TESTS_DIR_NAME), /* p1 = */ true)
+                addExcludeFolder(join(root.url, "elm-stuff"))
             }
-            project.save()
+            rootModel.commit()
+        }
+        project.save()
 
-            // attempt to autoconfigure the Elm toolchain and attach `elm.json`.
-            asyncAutoDiscoverWorkspace(project, explicitRequest = true).whenCompleteAsync { _, _ ->
-                // open the Elm source file that we just created
-                val vFile = VfsUtil.findRelativeFile(root, "src", "Main.elm") ?: return@whenCompleteAsync
-                project.runWriteCommandAction {
-                    FileEditorManager.getInstance(project).openFile(vFile, /*focusEditor*/ true)
-                }
+        // attempt to autoconfigure the Elm toolchain and attach `elm.json`.
+        asyncAutoDiscoverWorkspace(project, explicitRequest = true).whenCompleteAsync { _, _ ->
+            // open the Elm source file that we just created
+            val vFile = VfsUtil.findRelativeFile(root, "src", "Main.elm") ?: return@whenCompleteAsync
+            project.runWriteCommandAction {
+                FileEditorManager.getInstance(project).openFile(vFile, /*focusEditor*/ true)
             }
         }
     }

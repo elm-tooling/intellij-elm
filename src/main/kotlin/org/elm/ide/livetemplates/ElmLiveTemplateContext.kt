@@ -14,11 +14,12 @@ import org.elm.lang.core.psi.elements.ElmLetInExpr
 import org.elm.lang.core.psi.elements.ElmStringConstantExpr
 import org.elm.lang.core.psi.elements.ElmTypeExpression
 
-@Suppress("DEPRECATION")
 sealed class ElmLiveTemplateContext(
         id: String,
-        presentableName: String
-) : TemplateContextType(id, presentableName) {
+        private val presentableName: String
+) : TemplateContextType(id) {
+    override fun getPresentableName(): String = presentableName
+
     override fun isInContext(templateActionContext: TemplateActionContext): Boolean {
         val file = templateActionContext.file
         val offset = templateActionContext.startOffset

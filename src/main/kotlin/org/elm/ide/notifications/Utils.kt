@@ -51,5 +51,5 @@ fun executeAction(action: AnAction, place: String, dataContext: DataContext) {
             ActionUiKind.NONE,
             null
     )
-    ActionUtil.performActionDumbAwareWithCallbacks(action, event)
+    ActionUtil.invokeAction(action, event, null)
 }
