@@ -10,7 +10,6 @@ import org.elm.lang.core.psi.startOffset
 import org.elm.lang.core.types.Ty
 import org.elm.lang.core.types.findTy
 import org.elm.lang.core.types.renderedText
-import org.elm.openapiext.runWriteCommandAction
 import org.elm.utils.getIndent
 
 class MakeAnnotationIntention : ElmAtCaretIntentionActionBase<MakeAnnotationIntention.Context>() {
@@ -41,7 +40,7 @@ class MakeAnnotationIntention : ElmAtCaretIntentionActionBase<MakeAnnotationInte
         val (fdl, valueDeclaration, ty) = context
         val indent = editor.getIndent(valueDeclaration.startOffset)
         val code = "${fdl.name} : ${ty.renderedText(elmFile = fdl.elmFile).replace("→", "->")}\n$indent"
-        project.runWriteCommandAction {
+        runPreviewSafeWrite(project) {
             editor.document.insertString(valueDeclaration.startOffset, code)
         }
     }

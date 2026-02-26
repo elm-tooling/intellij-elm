@@ -11,7 +11,6 @@ import org.elm.lang.core.psi.elements.*
 import org.elm.lang.core.psi.startOffset
 import org.elm.lang.core.withoutExtraParens
 import org.elm.lang.core.withoutParens
-import org.elm.openapiext.runWriteCommandAction
 
 /**
  * An intention action that transforms a series of function applications from a pipeline.
@@ -32,7 +31,7 @@ class RemovePipelineIntention : ElmAtCaretIntentionActionBase<RemovePipelineInte
                     ?.asPipeline()?.let { Context(it) }
 
     override fun invoke(project: Project, editor: Editor, context: Context) {
-        project.runWriteCommandAction {
+        runPreviewSafeWrite(project) {
             val pipe = context.pipeline
             replaceUnwrapped(pipe.pipeline, normalizePipeline(pipe, project, editor))
         }

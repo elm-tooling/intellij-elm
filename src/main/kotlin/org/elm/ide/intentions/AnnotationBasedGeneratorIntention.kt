@@ -12,7 +12,6 @@ import org.elm.lang.core.psi.parentOfType
 import org.elm.lang.core.psi.startOffset
 import org.elm.lang.core.types.Ty
 import org.elm.lang.core.types.typeExpressionInference
-import org.elm.openapiext.runWriteCommandAction
 import org.elm.utils.getIndent
 
 abstract class AnnotationBasedGeneratorIntention : ElmAtCaretIntentionActionBase<AnnotationBasedGeneratorIntention.Context>() {
@@ -46,7 +45,7 @@ abstract class AnnotationBasedGeneratorIntention : ElmAtCaretIntentionActionBase
         val indent = editor.getIndent(context.startOffset)
         val (generatedCode, imports) = generator.run()
         val code = generatedCode.replace(Regex("\n(?![\r\n])"), "\n$indent")
-        project.runWriteCommandAction {
+        runPreviewSafeWrite(project) {
             editor.document.insertString(context.endOffset, "$indent$code")
             if (imports.isNotEmpty()) {
                 // Commit the string changes so we can work with the new PSI
