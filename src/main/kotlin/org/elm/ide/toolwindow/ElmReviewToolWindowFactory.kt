@@ -1,51 +1,60 @@
 package org.elm.ide.toolwindow
 
 import com.intellij.ide.DataManager
-import com.intellij.openapi.actionSystem.ActionManager
-import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.ui.content.impl.ContentImpl
 import com.intellij.util.ui.MessageCategory
-import org.elm.openapiext.findFileByPath
-import org.elm.workspace.commandLineTools.ELM_REVIEW_ERRORS_TOPIC
-import org.elm.workspace.commandLineTools.ElmReviewErrorsListener
+import org.elm.workspace.ElmReviewService
 import org.elm.workspace.elmreview.ElmReviewError
 import java.nio.file.Path
 
 class ElmReviewToolWindowFactory : ToolWindowFactory {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val errorTreeViewPanel = object : ElmErrorTreeViewPanel(project, "elm-review", createExitAction = false, createToolbar = true) {
-            override fun getRerunAction(): AnAction? = ActionManager.getInstance().getAction("Elm.RunExternalElmReview")
-        }
+        val errorTreeViewPanel = object : ElmErrorTreeViewPanel(project, "elm-review", createExitAction = false, createToolbar = true) {}
         toolWindow.contentManager.addContent(ContentImpl(errorTreeViewPanel, "elm-review Watchmode Result", true))
 
         with(project.messageBus.connect()) {
-            subscribe(ELM_REVIEW_ERRORS_TOPIC, object : ElmReviewErrorsListener {
+            subscribe(ElmReviewService.ELM_REVIEW_WATCH_TOPIC, object : ElmReviewService.ElmReviewWatchListener {
 
-                override fun update(baseDirPath: Path, messages: List<ElmReviewError>, targetPath: String?, offset: Int) {
-                    errorTreeViewPanel.clearMessages()
+                override fun update(baseDirPath: Path, messages: List<ElmReviewError>) {
+                    invokeLater {
+                        errorTreeViewPanel.clearMessages()
 
-                    messages.forEachIndexed { index, elmReviewError ->
-                        val sourceLocation = elmReviewError.path!!
-                        val virtualFile = baseDirPath.resolve(sourceLocation).let {
-                            LocalFileSystem.getInstance().findFileByPath(it)
+                        val renderedDetails = mutableListOf<String>()
+                        messages.forEachIndexed { index, elmReviewError ->
+                            val sourceLocation = elmReviewError.path ?: return@forEachIndexed
+                            val virtualFile = baseDirPath.resolve(sourceLocation).let {
+                                LocalFileSystem.getInstance().findFileByPath(it.toString())
+                            }
+                            renderedDetails += elmReviewError.html ?: (elmReviewError.message ?: "")
+                            val encodedIndex = "\u200B".repeat(index)
+                            updateErrorTree(errorTreeViewPanel, encodedIndex, elmReviewError, virtualFile)
                         }
-                        val encodedIndex = "\u200B".repeat(index)
-                        updateErrorTree(errorTreeViewPanel, encodedIndex, elmReviewError, virtualFile)
-                    }
 
-                    errorTreeViewPanel.reload()
-                    toolWindow.show(null)
-                    errorTreeViewPanel.expandAll()
-                    errorTreeViewPanel.requestFocus()
-                    focusEditor(project)
+                        errorTreeViewPanel.reload()
+                        ToolWindowManager.getInstance(project).getToolWindow("Friendly Messages")?.let { friendly ->
+                            val reportPanel = friendly.contentManager.contents.firstOrNull()?.component as? ReportPanel
+                            reportPanel?.reportUI?.apply {
+                                text = renderedDetails.firstOrNull().orEmpty()
+                                caretPosition = 0
+                            }
+                        }
+                        if (toolWindow.isVisible) {
+                            toolWindow.show(null)
+                            errorTreeViewPanel.expandAll()
+                            errorTreeViewPanel.requestFocus()
+                            focusEditor(project)
+                        }
+                    }
                 }
             })
         }

@@ -23,16 +23,26 @@ data class ElmToolchain(
         val elmFormatPath: Path?,
         val elmTestPath: Path?,
         val elmReviewPath: Path?,
-        val isElmFormatOnSaveEnabled: Boolean
+        val isElmFormatOnSaveEnabled: Boolean,
+        val isElmReviewOnTheFlyEnabled: Boolean = DEFAULT_REVIEW_ON_THE_FLY
 ) {
-    constructor(elmCompilerPath: String, lamderaCompilerPath: String, elmFormatPath: String, elmTestPath: String, elmReviewPath: String, isElmFormatOnSaveEnabled: Boolean) :
+    constructor(
+        elmCompilerPath: String,
+        lamderaCompilerPath: String,
+        elmFormatPath: String,
+        elmTestPath: String,
+        elmReviewPath: String,
+        isElmFormatOnSaveEnabled: Boolean,
+        isElmReviewOnTheFlyEnabled: Boolean = DEFAULT_REVIEW_ON_THE_FLY
+    ) :
             this(
                     if (elmCompilerPath.isNotBlank() && Files.exists(Paths.get(elmCompilerPath))) Paths.get(elmCompilerPath) else null,
                     if (lamderaCompilerPath.isNotBlank() && Files.exists(Paths.get(lamderaCompilerPath))) Paths.get(lamderaCompilerPath) else null,
                     if (elmFormatPath.isNotBlank() && Files.exists(Paths.get(elmFormatPath))) Paths.get(elmFormatPath) else null,
                     if (elmTestPath.isNotBlank() && Files.exists(Paths.get(elmTestPath))) Paths.get(elmTestPath) else null,
                     if (elmReviewPath.isNotBlank() && Files.exists(Paths.get(elmReviewPath))) Paths.get(elmReviewPath) else null,
-                    isElmFormatOnSaveEnabled
+                    isElmFormatOnSaveEnabled,
+                    isElmReviewOnTheFlyEnabled
             )
 
     val elmCLI: ElmCLI? = elmCompilerPath?.let { ElmCLI(it) }
@@ -87,6 +97,7 @@ data class ElmToolchain(
         const val SIDECAR_FILENAME = "elm.intellij.json"
 
         const val DEFAULT_FORMAT_ON_SAVE = true
+        const val DEFAULT_REVIEW_ON_THE_FLY = true
 
         /**
          * A blank, default [ElmToolchain].
@@ -97,7 +108,8 @@ data class ElmToolchain(
                 elmFormatPath = null,
                 elmTestPath = null,
                 elmReviewPath = null,
-                isElmFormatOnSaveEnabled = DEFAULT_FORMAT_ON_SAVE
+                isElmFormatOnSaveEnabled = DEFAULT_FORMAT_ON_SAVE,
+                isElmReviewOnTheFlyEnabled = DEFAULT_REVIEW_ON_THE_FLY
         )
 
         val MIN_SUPPORTED_COMPILER_VERSION = Version(0, 19, 0)

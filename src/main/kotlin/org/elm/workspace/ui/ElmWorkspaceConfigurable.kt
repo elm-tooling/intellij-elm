@@ -60,6 +60,7 @@ class ElmWorkspaceConfigurable(
     private val elmFormatShortcutLabel = HyperlinkLabel()
     private val elmTestVersionLabel = JLabel()
     private val elmReviewVersionLabel = JLabel()
+    private val elmReviewOnTheFlyCheckbox = JCheckBox()
 
     override fun createComponent(): JComponent {
         elmFormatOnSaveCheckbox.addChangeListener { update() }
@@ -85,6 +86,7 @@ class ElmWorkspaceConfigurable(
             block(elmReviewTool) {
                 row("Location:", pathFieldPlusAutoDiscoverButton(elmReviewPathField, elmReviewTool))
                 row("Version:", elmReviewVersionLabel)
+                row("Enable watcher highlights on save?", elmReviewOnTheFlyCheckbox)
             }
             block("Lamdera Compiler") {
                 row("Location:", pathFieldPlusAutoDiscoverButton(lamderaPathField, lamderaCompilerTool))
@@ -301,6 +303,7 @@ class ElmWorkspaceConfigurable(
         val lamderaCompilerPath = settings?.lamderaCompilerPath
         val elmFormatPath = settings?.elmFormatPath
         val isElmFormatOnSaveEnabled = settings?.isElmFormatOnSaveEnabled
+        val isElmReviewOnTheFlyEnabled = settings?.isElmReviewOnTheFlyEnabled
         val elmTestPath = settings?.elmTestPath
         val elmReviewPath = settings?.elmReviewPath
 
@@ -320,6 +323,7 @@ class ElmWorkspaceConfigurable(
         if (elmReviewPath != null) {
             elmReviewPathField.text = elmReviewPath
         }
+        elmReviewOnTheFlyCheckbox.isSelected = isElmReviewOnTheFlyEnabled != false
 
         update()
     }
@@ -331,7 +335,8 @@ class ElmWorkspaceConfigurable(
                     elmFormatPath = elmFormatPathField.text,
                     elmTestPath = elmTestPathField.text,
                     elmReviewPath = elmReviewPathField.text,
-                    isElmFormatOnSaveEnabled = isOnSaveHookEnabledAndSelected()
+                    isElmFormatOnSaveEnabled = isOnSaveHookEnabledAndSelected(),
+                    isElmReviewOnTheFlyEnabled = elmReviewOnTheFlyCheckbox.isSelected
             )
         }
     }
@@ -346,6 +351,7 @@ class ElmWorkspaceConfigurable(
                 || elmFormatPathField.text != settings.elmFormatPath
                 || elmTestPathField.text != settings.elmTestPath
                 || elmReviewPathField.text != settings.elmReviewPath
+                || elmReviewOnTheFlyCheckbox.isSelected != settings.isElmReviewOnTheFlyEnabled
                 || isOnSaveHookEnabledAndSelected() != settings.isElmFormatOnSaveEnabled
     }
 

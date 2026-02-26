@@ -27,10 +27,9 @@ abstract class ElmErrorTreeViewPanel(project: Project, helpId: String?, createEx
     }
 
     private fun connectFriendlyMessages(project: Project) {
+        addSelectionListener(ErrorTreeSelectionListener(project, messages))
         ToolWindowManager.getInstance(project).getToolWindow("Friendly Messages")?.let {
-            val reportUI = (it.contentManager.contents[0].component as ReportPanel).reportUI
-            val selectionListener = ErrorTreeSelectionListener(messages, reportUI, it)
-            addSelectionListener(selectionListener)
+            val reportUI = (it.contentManager.contents.firstOrNull()?.component as? ReportPanel)?.reportUI ?: return@let
             reportUI.background = background
             reportUI.text = ""
         }
@@ -44,10 +43,11 @@ abstract class ElmErrorTreeViewPanel(project: Project, helpId: String?, createEx
         }
     }
 
-    abstract fun getRerunAction(): AnAction?
+    open fun getRerunAction(): AnAction? = null
 
     fun clearMessages() {
         errorViewStructure.clear()
+        messages.clear()
     }
 
     override fun canHideWarnings(): Boolean = false

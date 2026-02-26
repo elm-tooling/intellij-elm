@@ -19,7 +19,8 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val errorTreeViewPanel = object : ElmErrorTreeViewPanel(project, "Elm Compiler", createExitAction = false, createToolbar = true) {
-            override fun getRerunAction(): AnAction? = ActionManager.getInstance().getAction(ELM_BUILD_ACTION_ID)
+            override fun getRerunAction(): AnAction? =
+                ActionManager.getInstance().getAction(ELM_BUILD_ACTION_ID) ?: ElmBuildAction()
         }
         toolWindow.contentManager.addContent(ContentImpl(errorTreeViewPanel, "Compilation Result", true))
 
@@ -48,10 +49,6 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
 
                     // Ensure UI updates happen on the Event Dispatch Thread
                     ToolWindowManager.getInstance(project).invokeLater {
-                        toolWindow.contentManager.removeAllContents(true)
-                        toolWindow.contentManager.addContent(
-                            ContentImpl(errorTreeViewPanel, "Compilation Result", true)
-                        )
                         errorTreeViewPanel.reload()
                         toolWindow.show(null)
                         errorTreeViewPanel.expandAll()

@@ -2,25 +2,55 @@ package org.elm.workspace.elmreview
 
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
+import com.intellij.openapi.editor.Document
+import com.intellij.openapi.util.TextRange
 
 data class ElmReviewError(
-    // TODO Add a optional fix field (For later)
     var suppressed: Boolean? = null,
     var path: String? = null,
     var rule: String? = null,
     var message: String? = null,
     var region: Region? = null,
     var html: String? = null
-)
+) {
+    var ruleLink: String? = null
+    var details: List<String>? = null
+    var fix: List<Fix>? = null
+}
 
 data class Region(
     var start: Location? = null,
     var end: Location? = null
-)
+) {
+    fun toTextRange(document: Document): TextRange? {
+        val startOffset = toOffset(document, start?.line ?: return null, start?.column ?: return null)
+        val endOffset = toOffset(document, end?.line ?: return null, end?.column ?: return null)
+        return if (startOffset != null && endOffset != null && startOffset <= endOffset) {
+            TextRange(startOffset, endOffset)
+        } else {
+            null
+        }
+    }
+
+    companion object {
+        fun toOffset(document: Document, line: Int, column: Int): Int? {
+            val line0 = line - 1
+            val column0 = column - 1
+            if (line0 < 0 || line0 >= document.lineCount || column0 < 0) return null
+            val offset = document.getLineStartOffset(line0) + column0
+            return offset.takeIf { it <= document.textLength }
+        }
+    }
+}
 
 data class Location(
     var line: Int = 0,
     var column: Int = 0
+)
+
+data class Fix(
+    var range: Region = Region(),
+    var string: String = ""
 )
 
 sealed class Chunk {
@@ -68,6 +98,8 @@ fun JsonReader.readErrorReport(): List<ElmReviewError> {
     if (this.peek() == JsonToken.END_DOCUMENT) return emptyList()
 
     var type: ReviewOutputType? = null
+    val topLevelError = ElmReviewError()
+    var hasTopLevelErrorData = false
     readProperties { property ->
         when (property) {
             "type" -> {
@@ -91,15 +123,18 @@ fun JsonReader.readErrorReport(): List<ElmReviewError> {
                                                     "suppressed" -> elmReviewError.suppressed = nextBoolean()
                                                     "rule" -> elmReviewError.rule = nextString()
                                                     "message" -> elmReviewError.message = nextString()
+                                                    "ruleLink" -> elmReviewError.ruleLink = nextString()
+                                                    "details" -> elmReviewError.details = readStringArray()
                                                     "region" -> {
                                                         elmReviewError.region = readRegion()
                                                     }
+                                                    "fix" -> elmReviewError.fix = readFixList()
                                                     "formatted" -> {
                                                         val chunkList = readChunkList()
                                                         elmReviewError.html = chunksToHtml(chunkList)
                                                     }
                                                     else -> {
-                                                        // TODO "fix", "details", "ruleLink", "originallySuppressed"
+                                                        // "originallySuppressed"
                                                         skipValue()
                                                     }
                                                 }
@@ -130,7 +165,6 @@ fun JsonReader.readErrorReport(): List<ElmReviewError> {
                                                 when (innerProperty) {
                                                     "title" -> elmReviewError.rule = nextString()
                                                     else -> {
-                                                        // TODO "fix", "details", "ruleLink", "originallySuppressed"
                                                         skipValue()
                                                     }
                                                 }
@@ -148,23 +182,66 @@ fun JsonReader.readErrorReport(): List<ElmReviewError> {
                     null -> println("ERROR: no report 'type'")
                 }
             }
-            else -> {
-                // TODO make resilient against property order, title is expected first !
-                val elmReviewError = ElmReviewError(rule = nextString())
-                while (hasNext()) {
-                    when (nextName()) {
-                        "path" -> elmReviewError.path = nextString()
-                        "message" -> {
-                            val chunkList = readChunkList()
-                            elmReviewError.message = chunksToLines(chunkList).joinToString("\n")
-                        }
+            "title" -> {
+                topLevelError.rule = nextString()
+                hasTopLevelErrorData = true
+            }
+            "path" -> {
+                topLevelError.path = nextString()
+                hasTopLevelErrorData = true
+            }
+            "message" -> {
+                topLevelError.message = when (peek()) {
+                    JsonToken.BEGIN_ARRAY -> {
+                        val chunkList = readChunkList()
+                        chunksToLines(chunkList).joinToString("\n")
+                    }
+                    JsonToken.STRING -> nextString()
+                    else -> {
+                        skipValue()
+                        null
                     }
                 }
-                errors.add(elmReviewError)
+                hasTopLevelErrorData = true
+            }
+            else -> {
+                // Ignore top-level metadata fields such as `cliVersion`.
+                skipValue()
             }
         }
     }
+    if (hasTopLevelErrorData) {
+        errors.add(topLevelError)
+    }
     return errors
+}
+
+private fun JsonReader.readStringArray(): List<String> {
+    val values = mutableListOf<String>()
+    beginArray()
+    while (hasNext()) {
+        values.add(nextString())
+    }
+    endArray()
+    return values
+}
+
+private fun JsonReader.readFixList(): List<Fix> {
+    val fixes = mutableListOf<Fix>()
+    beginArray()
+    while (hasNext()) {
+        val fix = Fix()
+        readProperties { property ->
+            when (property) {
+                "range" -> fix.range = readRegion()
+                "string" -> fix.string = nextString()
+                else -> skipValue()
+            }
+        }
+        fixes.add(fix)
+    }
+    endArray()
+    return fixes
 }
 
 private fun JsonReader.readChunkList(): List<Chunk> {

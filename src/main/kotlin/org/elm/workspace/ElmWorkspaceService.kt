@@ -35,6 +35,7 @@ import org.elm.utils.MyDirectoryIndex
 import org.elm.utils.joinAll
 import org.elm.utils.runAsyncTask
 import org.elm.workspace.ElmToolchain.Companion.DEFAULT_FORMAT_ON_SAVE
+import org.elm.workspace.ElmToolchain.Companion.DEFAULT_REVIEW_ON_THE_FLY
 import org.elm.workspace.ElmToolchain.Companion.ELM_JSON
 import org.elm.workspace.commandLineTools.ElmCLI
 import org.elm.workspace.ui.ElmWorkspaceConfigurable
@@ -96,7 +97,8 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         val elmFormatPath: String = "",
         val elmTestPath: String = "",
         val elmReviewPath: String = "",
-        val isElmFormatOnSaveEnabled: Boolean = DEFAULT_FORMAT_ON_SAVE
+        val isElmFormatOnSaveEnabled: Boolean = DEFAULT_FORMAT_ON_SAVE,
+        val isElmReviewOnTheFlyEnabled: Boolean = DEFAULT_REVIEW_ON_THE_FLY
     )
 
 
@@ -109,7 +111,8 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 elmFormatPath = raw.elmFormatPath,
                 elmTestPath = raw.elmTestPath,
                 elmReviewPath = raw.elmReviewPath,
-                isElmFormatOnSaveEnabled = raw.isElmFormatOnSaveEnabled
+                isElmFormatOnSaveEnabled = raw.isElmFormatOnSaveEnabled,
+                isElmReviewOnTheFlyEnabled = raw.isElmReviewOnTheFlyEnabled
             )
             return Settings(toolchain = toolchain)
         }
@@ -139,7 +142,8 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 elmFormatPath = toolchain.elmFormatPath.toString(),
                 elmTestPath = toolchain.elmTestPath.toString(),
                 elmReviewPath = toolchain.elmReviewPath.toString(),
-                isElmFormatOnSaveEnabled = toolchain.isElmFormatOnSaveEnabled
+                isElmFormatOnSaveEnabled = toolchain.isElmFormatOnSaveEnabled,
+                isElmReviewOnTheFlyEnabled = toolchain.isElmReviewOnTheFlyEnabled
             )
         }
     }
@@ -444,6 +448,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         settingsElement.setAttribute("elmTestPath", raw.elmTestPath)
         settingsElement.setAttribute("elmReviewPath", raw.elmReviewPath)
         settingsElement.setAttribute("isElmFormatOnSaveEnabled", raw.isElmFormatOnSaveEnabled.toString())
+        settingsElement.setAttribute("isElmReviewOnTheFlyEnabled", raw.isElmReviewOnTheFlyEnabled.toString())
 
         return state
     }
@@ -465,6 +470,10 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             .getAttributeValue("isElmFormatOnSaveEnabled")
             .takeIf { it != null && it.isNotBlank() }?.toBoolean()
             ?: DEFAULT_FORMAT_ON_SAVE
+        val isElmReviewOnTheFlyEnabled = settingsElement
+            .getAttributeValue("isElmReviewOnTheFlyEnabled")
+            .takeIf { it != null && it.isNotBlank() }?.toBoolean()
+            ?: DEFAULT_REVIEW_ON_THE_FLY
 
         modifySettings(notify = false) {
             RawSettings(
@@ -473,7 +482,8 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 elmFormatPath = elmFormatPath,
                 elmTestPath = elmTestPath,
                 elmReviewPath = elmReviewPath,
-                isElmFormatOnSaveEnabled = isElmFormatOnSaveEnabled
+                isElmFormatOnSaveEnabled = isElmFormatOnSaveEnabled,
+                isElmReviewOnTheFlyEnabled = isElmReviewOnTheFlyEnabled
             )
         }
 

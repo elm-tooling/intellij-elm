@@ -104,11 +104,7 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
         val command: List<String> = listOf(elmReviewExecutablePath.absolutePathString(), *arguments.toTypedArray())
 
         executeReviewAsync(project) { indicator ->
-
-            val elmReviewService = project.getService(ElmReviewService::class.java)
-            elmReviewService.activeWatchmodeProcess?.destroyForcibly()
             val process = startProcess(command, elmProject)
-            elmReviewService.activeWatchmodeProcess = process
 
             Disposer.register(project) { process.destroyForcibly() }
 
@@ -132,6 +128,7 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
                             if (!isUnitTestMode) {
                                 indicator.text = "review has ${msgs.size} messages"
                                 project.messageBus.syncPublisher(ELM_REVIEW_ERRORS_TOPIC).update(elmProject.projectDirPath, msgsSorted, null, 0)
+                                project.messageBus.syncPublisher(ElmReviewService.ELM_REVIEW_WATCH_TOPIC).update(elmProject.projectDirPath, msgsSorted)
                             }
                         }
                     }
@@ -179,7 +176,7 @@ fun executeReviewAsync(
     task: (indicator: ProgressIndicator) -> Unit
 ) {
     if (!isUnitTestMode) {
-        val toolWindow = ToolWindowManager.getInstance(project).getToolWindow(elmReviewTool)!!
+        val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Elm Review")!!
         toolWindow.show()
     }
     runBackgroundableTask(elmReviewTool, project, true, task)
