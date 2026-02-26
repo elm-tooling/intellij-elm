@@ -27,7 +27,6 @@ SOFTWARE.
 package org.elm.lang.core.psi
 
 import com.intellij.application.options.CodeStyle
-import com.intellij.extapi.psi.StubBasedPsiElementBase
 import com.intellij.psi.*
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings
 import com.intellij.psi.impl.source.PsiFileImpl
@@ -99,9 +98,8 @@ fun <T : PsiElement> getStubDescendantsOfType(
         aClass: Class<T>
 ): Collection<T> {
     if (element == null) return emptyList()
-    @Suppress("DEPRECATION")
-    val stub = (element as? PsiFileImpl)?.greenStub
-            ?: (element as? StubBasedPsiElement<*>)?.greenStub
+    val stub = (element as? PsiFileImpl)?.stub
+            ?: (element as? StubBasedPsiElement<*>)?.stub
             ?: return PsiTreeUtil.findChildrenOfAnyType(element, strict, aClass)
 
     val result = SmartList<T>()
@@ -126,11 +124,6 @@ fun <T : PsiElement> getStubDescendantsOfType(
 
     return result
 }
-
-@Suppress("UNCHECKED_CAST")
-inline val <T : StubElement<*>> StubBasedPsiElement<T>.greenStub: T?
-    @Suppress("DEPRECATION")
-    get() = (this as? StubBasedPsiElementBase<T>)?.greenStub
 
 
 val PsiElement.startOffset: Int

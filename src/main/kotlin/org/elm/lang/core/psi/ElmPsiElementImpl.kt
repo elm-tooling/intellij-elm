@@ -83,7 +83,7 @@ abstract class ElmStubbedElement<StubT : StubElement<*>>
 
     // this is needed to match how [ASTWrapperPsiElement] implements `toString()`
     override fun toString(): String =
-            "${javaClass.simpleName}($elementType)"
+            "${javaClass.simpleName}(${node.elementType})"
 }
 
 private val EMPTY_REFERENCE_ARRAY = emptyArray<ElmReference>()

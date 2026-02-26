@@ -3,26 +3,45 @@ package org.elm.workspace
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.util.SystemInfo
-import com.intellij.openapi.util.io.FileUtil
 import kotlin.io.path.isDirectory
 import org.elm.openapiext.modules
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
 
 
 /**
  * Provides suggestions about where Elm tools may be installed
  */
 object ElmSuggest {
+    private const val SUGGESTION_CACHE_TTL_MS = 10_000L
+    private const val NPM_SEARCH_MAX_DEPTH = 6
+    private val suggestionsCache = ConcurrentHashMap<String, CachedSuggestions>()
+
+    private data class CachedSuggestions(
+        val timestampMs: Long,
+        val suggestions: Map<String, Path?>
+    )
 
     /**
      * Suggest paths to common Elm tools. This performs file I/O
      * in order to determine that the file exists and that it is executable.
      */
-    fun suggestTools(project: Project) =
-            elmTools.associateWith { programPath(it, project) }
+    fun suggestTools(project: Project): Map<String, Path?> {
+        val cacheKey = project.basePath ?: project.name
+        val now = System.currentTimeMillis()
+        val cached = suggestionsCache[cacheKey]
+        if (cached != null && now - cached.timestampMs <= SUGGESTION_CACHE_TTL_MS) {
+            return cached.suggestions
+        }
+
+        val binDirs = binDirSuggestions(project).distinct().toList()
+        val suggestions = elmTools.associateWith { programPath(it, binDirs.asSequence()) }
+        suggestionsCache[cacheKey] = CachedSuggestions(now, suggestions)
+        return suggestions
+    }
 
     /**
      * Checks the system's path to verify whether the Elm compiler is present. The search locations are overridable so
@@ -52,9 +71,9 @@ object ElmSuggest {
     /**
      * Attempt to find the path to [programName].
      */
-    private fun programPath(programName: String, project: Project): Path? {
+    private fun programPath(programName: String, binDirSuggestions: Sequence<Path>): Path? {
         val programNameVariants = executableNamesFor(programName)
-        return binDirSuggestions(project)
+        return binDirSuggestions
                 .flatMap { binDir ->
                     programNameVariants.map { filename ->
                         binDir.resolve(filename)
@@ -87,12 +106,27 @@ object ElmSuggest {
         return project.modules
                 .asSequence()
                 .flatMap { ModuleRootManager.getInstance(it).contentRoots.asSequence() }
-                .flatMap { innerIt ->
-                    FileUtil.fileTraverser(File(innerIt.path))
-                            .filter { it.name == "node_modules" && it.isDirectory }
-                            .bfsTraversal()
-                            .asSequence()
-                }.map { Paths.get(it.absolutePath, ".bin") }
+                .flatMap { contentRoot ->
+                    val rootPath = Paths.get(contentRoot.path)
+                    val bins = linkedSetOf<Path>()
+
+                    val directBin = rootPath.resolve("node_modules").resolve(".bin")
+                    if (directBin.isDirectory()) {
+                        bins.add(directBin)
+                    }
+
+                    runCatching {
+                        Files.walk(rootPath, NPM_SEARCH_MAX_DEPTH).use { walk ->
+                            walk
+                                .filter { Files.isDirectory(it) && it.fileName?.toString() == "node_modules" }
+                                .forEach { nodeModulesDir ->
+                                    val bin = nodeModulesDir.resolve(".bin")
+                                    if (bin.isDirectory()) bins.add(bin)
+                                }
+                        }
+                    }
+                    bins.asSequence()
+                }
     }
 
     private fun suggestionsFromNVM(): Sequence<Path> {
@@ -122,7 +156,10 @@ object ElmSuggest {
 
     private fun suggestionsForMac(): Sequence<Path> {
         if (!SystemInfo.isMac) return emptySequence()
-        return sequenceOf(Paths.get("/usr/local/bin"))
+        return sequenceOf(
+            Paths.get("/opt/homebrew/bin"),
+            Paths.get("/usr/local/bin")
+        )
     }
 
     private fun suggestionsForUnix(): Sequence<Path> {

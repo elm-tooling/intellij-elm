@@ -18,6 +18,7 @@ import com.intellij.openapi.ui.TextComponentAccessor
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.DocumentAdapter
 import com.intellij.util.Alarm
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.JTextField
 import javax.swing.event.DocumentEvent
 
@@ -26,19 +27,25 @@ class UiDebouncer(
         private val delayMillis: Int = 200
 ) {
     private val alarm = Alarm(Alarm.ThreadToUse.POOLED_THREAD, parentDisposable)
+    private val disposed = AtomicBoolean(false)
+
+    init {
+        Disposer.register(parentDisposable) {
+            disposed.set(true)
+        }
+    }
 
     /**
      * @param onUiThread: callback to be executed in EDT with **any** modality state.
      * Use it only for UI updates
      */
-    @Suppress("DEPRECATION")
     fun <T> run(onPooledThread: () -> T, onUiThread: (T) -> Unit) {
-        if (Disposer.isDisposed(parentDisposable)) return
+        if (disposed.get()) return
         alarm.cancelAllRequests()
         alarm.addRequest({
             val r = onPooledThread()
             ApplicationManager.getApplication().invokeLater({
-                if (!Disposer.isDisposed(parentDisposable)) {
+                if (!disposed.get()) {
                     onUiThread(r)
                 }
             }, ModalityState.any())

@@ -234,7 +234,7 @@ private fun JsonNode.toExposedModuleMap(): List<String> {
         }
 
         JsonNodeType.OBJECT -> {
-            this.fields().asSequence().flatMap { (_, nameNodes) ->
+            this.elements().asSequence().flatMap { nameNodes ->
                 nameNodes.asSequence().map { it.textValue() }
             }.toList()
         }

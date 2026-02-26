@@ -27,6 +27,7 @@ import org.elm.workspace.commandLineTools.ElmTestCLI
 import org.elm.workspace.commandLineTools.LamderaCLI
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
 import javax.swing.*
 
 class ElmWorkspaceConfigurable(
@@ -44,7 +45,7 @@ class ElmWorkspaceConfigurable(
                 FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
                         .withFileFilter { it.name in ElmSuggest.executableNamesFor(programName) }
                         .also { it.isForcedToUseIdeaFileChooser = true })
-        { update() }
+        { update(setOf(programName)) }
     }
 
     private val elmPathField = toolPathTextField(elmCompilerTool)
@@ -61,9 +62,11 @@ class ElmWorkspaceConfigurable(
     private val elmTestVersionLabel = JLabel()
     private val elmReviewVersionLabel = JLabel()
     private val elmReviewOnTheFlyCheckbox = JCheckBox()
+    private val versionCache = ConcurrentHashMap<Pair<String, String>, Result<Version>>()
+    private val latestResults = ConcurrentHashMap<String, Result<Version>>()
 
     override fun createComponent(): JComponent {
-        elmFormatOnSaveCheckbox.addChangeListener { update() }
+        elmFormatOnSaveCheckbox.addChangeListener { update(emptySet()) }
         elmFormatShortcutLabel.addHyperlinkListener {
             showActionShortcut(ElmExternalFormatAction.ID)
         }
@@ -86,7 +89,7 @@ class ElmWorkspaceConfigurable(
             block(elmReviewTool) {
                 row("Location:", pathFieldPlusAutoDiscoverButton(elmReviewPathField, elmReviewTool))
                 row("Version:", elmReviewVersionLabel)
-                row("Enable watcher highlights on save?", elmReviewOnTheFlyCheckbox)
+                row("Run when file saved?", elmReviewOnTheFlyCheckbox)
             }
             block("Lamdera Compiler") {
                 row("Location:", pathFieldPlusAutoDiscoverButton(lamderaPathField, lamderaCompilerTool))
@@ -103,7 +106,7 @@ class ElmWorkspaceConfigurable(
         // For IntelliJ Platform >2022.2.4:
         //    UiNotifyConnector.installOn(panel, object : Activatable {
         UiNotifyConnector.installOn(panel, object : Activatable {
-            override fun showNotify() = update()
+            override fun showNotify() = update(null)
         }, true)  // `true` for parentDisposable auto-registration
 
         return panel
@@ -129,158 +132,21 @@ class ElmWorkspaceConfigurable(
             keymapPanel.selectAction(actionId)
         }
     }
-    data class Results(
-            val compilerResult: Result<Version>,
-            val lamderaResult: Result<Version>,
-            val elmFormatResult: Result<Version>,
-            val elmTestResult: Result<Version>,
-            val elmReviewResult: Result<Version>
-    )
-    
-    private fun update() {
-        val elmCompilerPath = Paths.get(elmPathField.text)
-        val lamderaCompilerPath = Paths.get(lamderaPathField.text)
-        val elmFormatPath = Paths.get(elmFormatPathField.text)
-        val elmTestPath = Paths.get(elmTestPathField.text)
-        val elmReviewPath = Paths.get(elmReviewPathField.text)
-        val elmCLI = ElmCLI(elmCompilerPath)
-        val lamderaCLI = LamderaCLI(lamderaCompilerPath)
-        val elmFormatCLI = ElmFormatCLI(elmFormatPath)
-        val elmTestCLI = ElmTestCLI(elmTestPath)
-        val elmReviewCLI = ElmReviewCLI(elmReviewPath)
-        uiDebouncer.run(
+    private fun update(changedTools: Set<String>? = null) {
+        val toolsToUpdate = changedTools ?: elmTools.toSet()
+        if (toolsToUpdate.isNotEmpty()) {
+            uiDebouncer.run(
                 onPooledThread = {
-                    Results(
-                            elmCLI.queryVersion(project),
-                            lamderaCLI.queryVersion(project),
-                            elmFormatCLI.queryVersion(project),
-                            elmTestCLI.queryVersion(project),
-                            elmReviewCLI.queryVersion(project)
-                    )
+                    toolsToUpdate.associateWith { tool ->
+                        queryVersion(tool, getToolPathText(tool))
+                    }
                 },
-                onUiThread = { (compilerResult, lamderaCompilerResult, elmFormatResult, elmTestResult, elmReviewResult) ->
-                    with(elmVersionLabel) {
-                        when (compilerResult) {
-                            is Result.Ok ->
-                                when {
-                                    compilerResult.value < ElmToolchain.MIN_SUPPORTED_COMPILER_VERSION -> {
-                                        text = "${compilerResult.value} (not supported)"
-                                        foreground = JBColor.RED
-                                    }
-                                    else -> {
-                                        text = compilerResult.value.toString()
-                                        foreground = JBColor.foreground()
-                                    }
-                                }
-                            is Result.Err -> {
-                                when {
-                                    !elmCompilerPath.isValidFor(elmCompilerTool) -> {
-                                        text = ""
-                                        foreground = JBColor.foreground()
-                                    }
-                                    else -> {
-                                        text = compilerResult.reason
-                                        foreground = JBColor.RED
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    with(lamderaVersionLabel) {
-                        when (lamderaCompilerResult) {
-                            is Result.Ok ->
-                                when {
-                                    lamderaCompilerResult.value < ElmToolchain.MIN_SUPPORTED_LAMDERA_COMPILER_VERSION -> {
-                                        text = "${lamderaCompilerResult.value} (not supported)"
-                                        foreground = JBColor.RED
-                                    }
-                                    else -> {
-                                        text = lamderaCompilerResult.value.toString()
-                                        foreground = JBColor.foreground()
-                                    }
-                                }
-                            is Result.Err -> {
-                                when {
-                                    !elmCompilerPath.isValidFor(elmCompilerTool) -> {
-                                        text = ""
-                                        foreground = JBColor.foreground()
-                                    }
-                                    else -> {
-                                        text = lamderaCompilerResult.reason
-                                        foreground = JBColor.RED
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    with(elmFormatVersionLabel) {
-                        when (elmFormatResult) {
-                            is Result.Ok -> {
-                                text = elmFormatResult.value.toString()
-                                foreground = JBColor.foreground()
-                            }
-                            is Result.Err -> {
-                                when {
-                                    !elmFormatPath.isValidFor(elmFormatTool) -> {
-                                        text = ""
-                                        foreground = JBColor.foreground()
-                                    }
-                                    else -> {
-                                        text = elmFormatResult.reason
-                                        foreground = JBColor.RED
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    with(elmTestVersionLabel) {
-                        when (elmTestResult) {
-                            is Result.Ok -> {
-                                text = elmTestResult.value.toString()
-                                foreground = JBColor.foreground()
-                            }
-                            is Result.Err -> {
-                                when {
-                                    !elmTestPath.isValidFor(elmTestTool) -> {
-                                        text = ""
-                                        foreground = JBColor.foreground()
-                                    }
-                                    else -> {
-                                        text = elmTestResult.reason
-                                        foreground = JBColor.RED
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    with(elmReviewVersionLabel) {
-                        when (elmReviewResult) {
-                            is Result.Ok -> {
-                                text = elmReviewResult.value.toString()
-                                foreground = JBColor.foreground()
-                            }
-                            is Result.Err -> {
-                                when {
-                                    !elmReviewPath.isValidFor(elmReviewTool) -> {
-                                        text = ""
-                                        foreground = JBColor.foreground()
-                                    }
-                                    else -> {
-                                        text = elmReviewResult.reason
-                                        foreground = JBColor.RED
-                                    }
-                                }
-                            }
-                        }
-                    }
+                onUiThread = { queried ->
+                    queried.forEach { (tool, result) -> latestResults[tool] = result }
+                    queried.keys.forEach { renderToolVersion(it) }
                 }
-        )
-
-
+            )
+        }
         val shortcuts = KeymapUtil.getActiveKeymapShortcuts(ElmExternalFormatAction.ID).shortcuts
         val shortcutStatus = when {
             shortcuts.isEmpty() -> "No Shortcut"
@@ -288,6 +154,115 @@ class ElmWorkspaceConfigurable(
         }
         elmFormatShortcutLabel.setTextWithHyperlink("$shortcutStatus <hyperlink>Change</hyperlink>")
     }
+
+    private fun renderToolVersion(toolName: String) {
+        when (toolName) {
+            elmCompilerTool -> {
+                val result = latestResults[elmCompilerTool]
+                val path = parsePath(elmPathField.text)
+                renderVersionLabel(
+                    elmVersionLabel,
+                    result,
+                    path,
+                    elmCompilerTool,
+                    ElmToolchain.MIN_SUPPORTED_COMPILER_VERSION
+                )
+            }
+
+            lamderaCompilerTool -> {
+                val result = latestResults[lamderaCompilerTool]
+                val path = parsePath(lamderaPathField.text)
+                renderVersionLabel(
+                    lamderaVersionLabel,
+                    result,
+                    path,
+                    lamderaCompilerTool,
+                    ElmToolchain.MIN_SUPPORTED_LAMDERA_COMPILER_VERSION
+                )
+            }
+
+            elmFormatTool -> {
+                val result = latestResults[elmFormatTool]
+                val path = parsePath(elmFormatPathField.text)
+                renderVersionLabel(elmFormatVersionLabel, result, path, elmFormatTool)
+            }
+
+            elmTestTool -> {
+                val result = latestResults[elmTestTool]
+                val path = parsePath(elmTestPathField.text)
+                renderVersionLabel(elmTestVersionLabel, result, path, elmTestTool)
+            }
+
+            elmReviewTool -> {
+                val result = latestResults[elmReviewTool]
+                val path = parsePath(elmReviewPathField.text)
+                renderVersionLabel(elmReviewVersionLabel, result, path, elmReviewTool)
+            }
+        }
+    }
+
+    private fun renderVersionLabel(
+        label: JLabel,
+        result: Result<Version>?,
+        configuredPath: Path?,
+        programName: String,
+        minSupportedVersion: Version? = null
+    ) {
+        when (result) {
+            is Result.Ok -> {
+                if (minSupportedVersion != null && result.value < minSupportedVersion) {
+                    label.text = "${result.value} (not supported)"
+                    label.foreground = JBColor.RED
+                } else {
+                    label.text = result.value.toString()
+                    label.foreground = JBColor.foreground()
+                }
+            }
+
+            is Result.Err -> {
+                if (configuredPath == null || !configuredPath.isValidFor(programName)) {
+                    label.text = ""
+                    label.foreground = JBColor.foreground()
+                } else {
+                    label.text = result.reason
+                    label.foreground = JBColor.RED
+                }
+            }
+
+            null -> {
+                label.text = ""
+                label.foreground = JBColor.foreground()
+            }
+        }
+    }
+
+    private fun queryVersion(programName: String, pathText: String): Result<Version> {
+        if (pathText.isBlank()) return Result.Err("Not configured")
+        val key = programName to pathText
+        return versionCache.computeIfAbsent(key) {
+            val path = parsePath(pathText) ?: return@computeIfAbsent Result.Err("Invalid path")
+            when (programName) {
+                elmCompilerTool -> ElmCLI(path).queryVersion(project)
+                lamderaCompilerTool -> LamderaCLI(path).queryVersion(project)
+                elmFormatTool -> ElmFormatCLI(path).queryVersion(project)
+                elmTestTool -> ElmTestCLI(path).queryVersion(project)
+                elmReviewTool -> ElmReviewCLI(path).queryVersion(project)
+                else -> Result.Err("Unknown tool: $programName")
+            }
+        }
+    }
+
+    private fun getToolPathText(programName: String): String =
+        when (programName) {
+            elmCompilerTool -> elmPathField.text
+            lamderaCompilerTool -> lamderaPathField.text
+            elmFormatTool -> elmFormatPathField.text
+            elmTestTool -> elmTestPathField.text
+            elmReviewTool -> elmReviewPathField.text
+            else -> ""
+        }
+
+    private fun parsePath(pathText: String): Path? = runCatching { Paths.get(pathText) }.getOrNull()
 
     override fun dispose() {
         // needed for the UIDebouncer, but nothing needs to be done here
@@ -325,7 +300,7 @@ class ElmWorkspaceConfigurable(
         }
         elmReviewOnTheFlyCheckbox.isSelected = isElmReviewOnTheFlyEnabled != false
 
-        update()
+        update(null)
     }
 
     override fun apply() {
