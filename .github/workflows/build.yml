@@ -180,7 +180,7 @@ jobs:
 
   # Run plugin structure verification along with IntelliJ Plugin Verifier
   verify:
-    if: false # Temporarily disable (re-enable also in `needs` of `releaseDraft`)
+#    if: false # Temporarily disable (re-enable also in `needs` of `releaseDraft`)
     name: Verify plugin
     needs: [ build ]
     runs-on: ubuntu-latest
