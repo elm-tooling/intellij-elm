@@ -239,9 +239,6 @@
         <projectConfigurable instance="org.elm.workspace.ui.ElmWorkspaceConfigurable" displayName="Elm"
                              groupId="language"/>
         <editorNotificationProvider implementation="org.elm.ide.notifications.ElmNeedsConfigNotificationProvider"/>
-        <statusBarWidgetFactory id="elmReviewWidget"
-                                implementation="org.elm.ide.status.ElmReviewWidgetFactory"
-                                order="first"/>
         <toolWindow id="Elm" anchor="right" icon="/icons/elm-toolwindow.svg"
                     factoryClass="org.elm.ide.toolwindow.ElmToolWindowFactory"/>
         <toolWindow id="Elm Compiler" anchor="bottom" icon="/icons/elm-toolwindow.svg"
@@ -329,10 +326,5 @@
             <add-to-group group-id="Elm.WorkspaceToolsGroup"/>
         </group>
     </actions>
-
-    <projectListeners>
-        <listener class="org.elm.ide.status.ElmReviewWidgetUpdater"
-                  topic="org.elm.workspace.ElmReviewService$ElmReviewWatchListener"/>
-    </projectListeners>
 
 </idea-plugin>
