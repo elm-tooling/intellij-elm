@@ -127,7 +127,7 @@ jobs:
 
       # Run tests
       - name: Run Tests
-        run: ./gradlew check
+        run: ./gradlew check koverXmlReport
 
       # Collect Tests Result of failed tests
       - name: Collect Tests Result
@@ -138,10 +138,31 @@ jobs:
           path: ${{ github.workspace }}/build/reports/tests
 
       # Upload the Kover report to CodeCov
+      - name: Check Coverage Report
+        id: coverage
+        shell: bash
+        run: |
+          REPORT="${{ github.workspace }}/build/reports/kover/report.xml"
+          if [[ -f "$REPORT" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "report=$REPORT" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Coverage report not found at $REPORT"
+          fi
+
       - name: Upload Code Coverage Report
+        if: steps.coverage.outputs.exists == 'true'
         uses: codecov/codecov-action@v4
         with:
-          files: ${{ github.workspace }}/build/reports/kover/report.xml
+          files: ${{ steps.coverage.outputs.report }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: Skip Codecov Upload (No Coverage File)
+        if: steps.coverage.outputs.exists != 'true'
+        run: echo "Skipping Codecov upload because coverage XML was not generated."
 
   # Run Qodana inspections and provide report
   inspectCode:
