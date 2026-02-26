@@ -99,6 +99,7 @@ fun <T : PsiElement> getStubDescendantsOfType(
         aClass: Class<T>
 ): Collection<T> {
     if (element == null) return emptyList()
+    @Suppress("DEPRECATION")
     val stub = (element as? PsiFileImpl)?.greenStub
             ?: (element as? StubBasedPsiElement<*>)?.greenStub
             ?: return PsiTreeUtil.findChildrenOfAnyType(element, strict, aClass)
@@ -128,6 +129,7 @@ fun <T : PsiElement> getStubDescendantsOfType(
 
 @Suppress("UNCHECKED_CAST")
 inline val <T : StubElement<*>> StubBasedPsiElement<T>.greenStub: T?
+    @Suppress("DEPRECATION")
     get() = (this as? StubBasedPsiElementBase<T>)?.greenStub
 
 

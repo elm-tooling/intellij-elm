@@ -98,6 +98,7 @@ class ElmWorkspacePanel(private val project: Project) : SimpleToolWindowPanel(tr
         return toolbar.component
     }
 
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
     override fun getData(dataId: String): Any? {
         return when {
             CommonDataKeys.NAVIGATABLE.`is`(dataId) ->

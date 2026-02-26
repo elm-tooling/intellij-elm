@@ -11,8 +11,8 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
-import com.intellij.openapi.ui.TextComponentAccessor
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
+import com.intellij.openapi.ui.TextBrowseFolderListener
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.DocumentAdapter
 import com.intellij.util.Alarm
@@ -28,6 +28,7 @@ class UiDebouncer(
      * @param onUiThread: callback to be executed in EDT with **any** modality state.
      * Use it only for UI updates
      */
+    @Suppress("DEPRECATION")
     fun <T> run(onPooledThread: () -> T, onUiThread: (T) -> Unit) {
         if (Disposer.isDisposed(parentDisposable)) return
         alarm.cancelAllRequests()
@@ -51,7 +52,8 @@ fun fileSystemPathTextField(
 ): TextFieldWithBrowseButton {
 
     val component = TextFieldWithBrowseButton(null, disposable)
-    component.addBrowseFolderListener(title, null, null, fileDescriptor, TextComponentAccessor.TEXT_FIELD_WHOLE_TEXT)
+    val descriptor = fileDescriptor.withTitle(title)
+    component.addBrowseFolderListener(TextBrowseFolderListener(descriptor))
     component.childComponent.document.addDocumentListener(object : DocumentAdapter() {
         override fun textChanged(e: DocumentEvent) {
             onTextChanged()

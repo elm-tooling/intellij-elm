@@ -23,7 +23,6 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.codeInsight.intention.preview.IntentionPreviewUtils
 import org.jdom.Element
-import org.jdom.input.SAXBuilder
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
@@ -92,8 +91,7 @@ fun Element.toXmlString() =
     JDOMUtil.writeElement(this)
 
 fun elementFromXmlString(xml: String): Element =
-    // TODO(cies) Use JDOMUtil or JDK API (StAX) or XmlDomReader.readXmlAsModel instead (first decide which)
-    SAXBuilder().build(xml.byteInputStream()).rootElement
+    JDOMUtil.load(xml)
 
 
 /**

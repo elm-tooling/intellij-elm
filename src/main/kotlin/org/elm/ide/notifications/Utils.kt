@@ -10,6 +10,7 @@ package org.elm.ide.notifications
 import com.intellij.notification.*
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.project.Project
@@ -43,6 +44,13 @@ fun Project.showBalloon(
 }
 
 fun executeAction(action: AnAction, place: String, dataContext: DataContext) {
-    val event = AnActionEvent.createFromAnAction(action, null, place, dataContext)
+    val event = AnActionEvent.createEvent(
+            action,
+            dataContext,
+            action.templatePresentation.clone(),
+            place,
+            ActionUiKind.NONE,
+            null
+    )
     ActionUtil.performActionDumbAwareWithCallbacks(action, event)
 }

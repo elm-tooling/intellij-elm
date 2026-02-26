@@ -1,5 +1,6 @@
 package org.elm.workspace.commandLineTools
 
+import com.google.gson.Strictness
 import com.google.gson.stream.JsonReader
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.process.CapturingProcessHandler
@@ -66,7 +67,7 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
                     emptyList()
                 else {
                     val reader = JsonReader(json.byteInputStream().bufferedReader())
-                    reader.isLenient = true
+                    reader.setStrictness(Strictness.LENIENT)
                     val msgs = reader.readErrorReport().sortedWith(
                         compareBy(
                             { it.path },
@@ -114,7 +115,7 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
             try {
                 indicator.text = "Review started in watchmode"
                 val reader = JsonReader(process.inputStream.bufferedReader())
-                reader.isLenient = true
+                reader.setStrictness(Strictness.LENIENT)
                 val exitCode = parseReviewJsonStream(reader, process) { reviewErrors ->
                     val msgs = reviewErrors.filterNot { it.suppressed != null && it.suppressed!! }.sortedWith(errorComparator(reviewErrors))
                     if (msgs.isNotEmpty()) {

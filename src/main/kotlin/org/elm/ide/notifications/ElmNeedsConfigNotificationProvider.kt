@@ -29,6 +29,7 @@ private val log = logger<ElmNeedsConfigNotificationProvider>()
  * needs configuration (e.g. the path to the Elm compiler).
  */
 // TODO(cies): Replace deprecated Provider with {@link EditorNotificationProvider}
+@Suppress("DEPRECATION")
 class ElmNeedsConfigNotificationProvider(
     private val project: Project
 ) : EditorNotifications.Provider<EditorNotificationPanel>() {

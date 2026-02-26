@@ -41,11 +41,10 @@ class ElmWebProjectTemplate : WebProjectTemplate<Any>(), CustomStepProjectGenera
 
     override fun generateProject(project: Project, baseDir: VirtualFile, settings: Any, module: Module) {
         log.debug("Generating a new project")
-        // `runWhenProjectIsInitialized` is deprecated: Consider using extension point {@link ProjectActivity} instead
-        StartupManager.getInstance(project).runWhenProjectIsInitialized {
+        StartupManager.getInstance(project).runAfterOpened {
             val rootModel = ModuleRootManager.getInstance(module).modifiableModel
             val contentEntry = rootModel.contentEntries.single()
-            val root = contentEntry.file ?: return@runWhenProjectIsInitialized
+            val root = contentEntry.file ?: return@runAfterOpened
 
             project.runWriteCommandAction {
                 // Generate the project skeleton
