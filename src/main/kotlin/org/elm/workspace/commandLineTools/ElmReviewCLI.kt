@@ -8,22 +8,18 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.logger
-import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.runBackgroundableTask
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
-import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.messages.Topic
 import org.elm.openapiext.*
 import org.elm.workspace.*
 import org.elm.workspace.elmreview.ElmReviewError
-import org.elm.workspace.elmreview.parseReviewJsonStream
 import org.elm.workspace.elmreview.readErrorReport
 import java.nio.file.Path
-import kotlin.io.path.absolutePathString
 
 private val log = logger<ElmReviewCLI>()
 
@@ -91,64 +87,6 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
             }
         }
     }
-
-    fun watchReview(project: Project, elmProject: ElmProject, elmCompiler: ElmCLI?) {
-
-        // This option makes the CLI output non-JSON output, but can be useful to debug what is happening
-        // "--debug",
-
-        val arguments = listOf("--watch", "--report=json", "--namespace=intellij-elm") +
-                if (elmProject is ElmApplicationProject) "--config=." else "" +
-                        if (elmCompiler == null) "" else "--compiler=${elmCompiler.elmExecutablePath}"
-
-        val command: List<String> = listOf(elmReviewExecutablePath.absolutePathString(), *arguments.toTypedArray())
-
-        executeReviewAsync(project) { indicator ->
-            val process = startProcess(command, elmProject)
-
-            Disposer.register(project) { process.destroyForcibly() }
-
-            try {
-                indicator.text = "Review started in watchmode"
-                val reader = JsonReader(process.inputStream.bufferedReader())
-                reader.setStrictness(Strictness.LENIENT)
-                val exitCode = parseReviewJsonStream(reader, process) { reviewErrors ->
-                    val msgs = reviewErrors.filterNot { it.suppressed != null && it.suppressed!! }.sortedWith(errorComparator(reviewErrors))
-                    if (msgs.isNotEmpty()) {
-                        ApplicationManager.getApplication().invokeLater {
-                            val currentDoc = FileEditorManager.getInstance(project).selectedTextEditor?.document
-                            val msgsSorted =
-                                if (currentDoc != null) {
-                                    val path = PsiDocumentManager.getInstance(project).getPsiFile(currentDoc)?.originalFile?.virtualFile?.pathRelative(project)
-                                    if (path != null) {
-                                        val pathFilter: (ElmReviewError) -> Boolean = { it.path == path.toString() }
-                                        msgs.filter(pathFilter) + msgs.filterNot(pathFilter)
-                                    } else msgs
-                                } else msgs
-                            if (!isUnitTestMode) {
-                                indicator.text = "review has ${msgs.size} messages"
-                                project.messageBus.syncPublisher(ELM_REVIEW_ERRORS_TOPIC).update(elmProject.projectDirPath, msgsSorted, null, 0)
-                                project.messageBus.syncPublisher(ElmReviewService.ELM_REVIEW_WATCH_TOPIC).update(elmProject.projectDirPath, msgsSorted)
-                            }
-                        }
-                    }
-                }
-                if (exitCode != 0) log.warn("elm-review exited with code $exitCode")
-            } finally {
-                process.destroyForcibly()
-            }
-        }
-    }
-
-    private fun errorComparator(reviewErrors: List<ElmReviewError>): Comparator<ElmReviewError> {
-        return if (reviewErrors.isEmpty() || reviewErrors[0].region == null)
-            compareBy { it.path }
-        else
-            compareBy({ it.path }, { it.region!!.start!!.line }, { it.region!!.start!!.column })
-    }
-
-    private fun startProcess(cmd: List<String>, elmProject: ElmProject): Process =
-        ProcessBuilder(cmd).directory(elmProject.projectDirPath.toFile()).start()
 
     fun queryVersion(project: Project): Result<Version> {
         val firstLine = try {

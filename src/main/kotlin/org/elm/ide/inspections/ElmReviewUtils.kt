@@ -16,14 +16,17 @@ import java.nio.file.Path
 fun highlightsForFile(
     project: Project,
     basePath: Path,
-    annotationResult: ElmReviewResult
+    annotationResult: ElmReviewResult,
+    targetVirtualFilePath: String? = null
 ): List<Pair<PsiFile, HighlightInfo>> {
     return annotationResult.messages.mapNotNull { message ->
         val rule = message.rule ?: return@mapNotNull null
         val summary = message.message ?: return@mapNotNull null
-        if (message.path == null) return@mapNotNull null
+        val messagePath = message.path ?: return@mapNotNull null
+        val resolvedPath = Path.of(basePath.toString(), messagePath).toString()
+        if (targetVirtualFilePath != null && targetVirtualFilePath != resolvedPath) return@mapNotNull null
         val fileWithError: VirtualFile = LocalFileSystem.getInstance()
-            .findFileByPath(Path.of(basePath.toString(), message.path).toString())
+            .findFileByPath(resolvedPath)
             ?: return@mapNotNull null
         val psiFile = PsiManager.getInstance(project).findFile(fileWithError) ?: return@mapNotNull null
         val doc = fileWithError.findDocument() ?: return@mapNotNull null
@@ -50,7 +53,6 @@ fun highlightsForFile(
             .severity(HighlightSeverity.WARNING)
             .description(summary)
             .escapedToolTip(tooltipHtml)
-            .needsUpdateOnTyping(true)
 
         val textRange = message.region?.toTextRange(doc) ?: return@mapNotNull null
         if (textRange.startOffset < 0 || textRange.startOffset > textRange.endOffset) return@mapNotNull null
