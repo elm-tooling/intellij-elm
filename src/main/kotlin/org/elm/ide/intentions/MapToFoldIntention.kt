@@ -13,6 +13,7 @@ import org.elm.lang.core.textWithNormalizedIndents
 class MapToFoldIntention : ElmAtCaretIntentionActionBase<MapToFoldIntention.Context>() {
     data class Context(val mapInvocation: ElmFunctionCallExpr)
 
+    @Suppress("DialogTitleCapitalization")
     override fun getText() = "Convert List.map to List.foldr"
     override fun getFamilyName() = text
 

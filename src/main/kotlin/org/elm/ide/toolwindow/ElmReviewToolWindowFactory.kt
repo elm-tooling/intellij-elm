@@ -21,7 +21,7 @@ class ElmReviewToolWindowFactory : ToolWindowFactory {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val errorTreeViewPanel = object : ElmErrorTreeViewPanel(project, "elm-review", false, true) {}
-        toolWindow.contentManager.addContent(ContentImpl(errorTreeViewPanel, "elm-review Results", true))
+        toolWindow.contentManager.addContent(ContentImpl(errorTreeViewPanel, "Elm Review Results", true))
 
         with(project.messageBus.connect()) {
             subscribe(ElmReviewService.ELM_REVIEW_WATCH_TOPIC, object : ElmReviewService.ElmReviewWatchListener {

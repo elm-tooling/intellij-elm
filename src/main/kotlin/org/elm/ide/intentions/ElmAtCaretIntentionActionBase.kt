@@ -34,6 +34,9 @@ import org.elm.openapiext.checkWriteAccessAllowed
  * [findApplicableContext] is executed under a read action, and [invoke] under a write action.
  */
 abstract class ElmAtCaretIntentionActionBase<Ctx> : BaseElementAtCaretIntentionAction() {
+    companion object {
+        private const val COMMAND_NAME = "Apply Intention"
+    }
 
     /**
      * Return `null` if the intention is not applicable, otherwise collect and return
@@ -49,7 +52,7 @@ abstract class ElmAtCaretIntentionActionBase<Ctx> : BaseElementAtCaretIntentionA
             return
         }
         WriteCommandAction.writeCommandAction(project)
-            .withName(text)
+            .withName(COMMAND_NAME)
             .run<RuntimeException> { mutate() }
     }
 

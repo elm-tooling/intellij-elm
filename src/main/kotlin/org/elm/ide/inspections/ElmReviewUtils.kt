@@ -61,6 +61,7 @@ fun highlightsForFile(
         val fixes = message.fix.orEmpty()
         if (fixes.isNotEmpty()) {
             val fixPatches = fixes.map { fix -> fix.string to fix.range }
+            @Suppress("DialogTitleCapitalization")
             val key = HighlightDisplayKey.findOrRegister(ELM_EXTERNAL_LINTER_ID, "elm-review")
             val action = ApplySuggestionFix(
                 "Apply elm-review $rule fix",

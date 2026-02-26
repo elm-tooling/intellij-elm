@@ -14,6 +14,7 @@ import org.elm.workspace.ElmToolchain.Companion.ELM_JSON
 
 class ElmAttachProjectAction : AnAction() {
 
+    @Suppress("DialogTitleCapitalization")
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project
                 ?: return

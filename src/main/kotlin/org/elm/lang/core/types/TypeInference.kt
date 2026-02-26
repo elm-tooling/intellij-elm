@@ -1139,8 +1139,8 @@ private class InferenceScope(
                     && allAssignable(ty1.parameters, ty2.parameters)
             is TyFunction -> ty2 is TyFunction && funcsAssignable(ty1, ty2)
             is TyUnit -> ty2 is TyUnit
-            is TyUnknown -> true
             TyInProgressBinding -> error("should never try to assign $ty1")
+            else -> false
         }
 
         if (result) trackReplacement(ty1, ty2)
@@ -1229,9 +1229,8 @@ private class InferenceScope(
                         !ty2.rigid && typeclassesConstrainToCompappend(tc1, tc2)
             }
             ty1.rigid && tc1 == null -> !ty2.rigid && tc2 == null
-            ty1.rigid && ty2.rigid -> tc1 == tc2
-            ty1.rigid && !ty2.rigid -> typeclassesCompatable(tc1!!, tc2, unconstrainedAllowed = true)
-            else -> error("impossible")
+            ty2.rigid -> tc1 == tc2
+            else -> typeclassesCompatable(tc1!!, tc2, unconstrainedAllowed = true)
         }
     }
 

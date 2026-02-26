@@ -7,6 +7,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.event.TreeSelectionListener;
@@ -47,7 +48,7 @@ public abstract class ElmErrorTreeViewPanel extends NewErrorTreeViewPanel {
     }
 
     @Override
-    protected void fillRightToolbarGroup(DefaultActionGroup group) {
+    protected void fillRightToolbarGroup(@NotNull DefaultActionGroup group) {
         AnAction rerunAction = getRerunAction();
         if (rerunAction != null) {
             group.addSeparator();

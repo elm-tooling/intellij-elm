@@ -35,9 +35,6 @@ abstract class ElmReferenceBase<T : ElmReferenceElement>(element: T)
             ElmTypes.LOWER_CASE_IDENTIFIER ->
                 factory.createLowerCaseIdentifier(newElementName)
 
-            ElmTypes.UPPER_CASE_IDENTIFIER ->
-                factory.createUpperCaseIdentifier(newElementName)
-
             ElmTypes.OPERATOR_IDENTIFIER ->
                 factory.createOperatorIdentifier(newElementName)
 

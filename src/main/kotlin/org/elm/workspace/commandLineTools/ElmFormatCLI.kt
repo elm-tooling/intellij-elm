@@ -47,6 +47,7 @@ class ElmFormatCLI(private val elmFormatExecutablePath: Path) {
                 || msg.contains("Unable to parse file")  // Elm-format 0.8.5 and above
     }
 
+    @Suppress("DialogTitleCapitalization")
     fun formatDocumentAndSetText(project: Project, document: Document, version: Version, addToUndoStack: Boolean): ElmFormatResult {
         val processOutput = try {
             ProgressManager.getInstance().runProcessWithProgressSynchronously<ProcessOutput, ExecutionException>({
