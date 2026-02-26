@@ -66,7 +66,7 @@ abstract class ElmRealProjectTestBase : ElmWorkspaceTestBase() {
             fullyRefreshDirectoryInUnitTests(elmWorkspaceDirectory)
         }
 
-        project.elmWorkspace.asyncDiscoverAndRefresh()
+        awaitWorkspaceLoaded()
         UIUtil.dispatchAllInvocationEvents()
         return elmWorkspaceDirectory
     }

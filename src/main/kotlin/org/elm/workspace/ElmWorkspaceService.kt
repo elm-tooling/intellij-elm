@@ -67,7 +67,10 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     init {
         with(intellijProject.messageBus.connect()) {
             subscribe(VirtualFileManager.VFS_CHANGES, ElmProjectWatcher {
-                asyncRefreshAllProjects()
+                asyncRefreshAllProjects().exceptionally {
+                    log.warn("Could not refresh Elm projects after VFS change", it)
+                    emptyList()
+                }
             })
         }
     }

@@ -10,11 +10,10 @@ package org.elm.workspace
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.builders.ModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.CodeInsightFixtureTestCase
-import org.elm.FileTree
 import org.elm.FileTreeBuilder
 import org.elm.TestProject
 import org.elm.fileTree
-import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 
 /**
  * Base class for "heavy" integration tests such as those that depend on the Elm toolchain
@@ -30,15 +29,19 @@ abstract class ElmWorkspaceTestBase : CodeInsightFixtureTestCase<ModuleFixtureBu
     protected val elmWorkspaceDirectory: VirtualFile
         get() = myFixture.findFileInTempDir(".")
 
-    fun buildProject(builder: FileTreeBuilder.() -> Unit): TestProject {
-        val result = fileTree(builder).asyncCreateWithAutoDiscover().get()
-        require(project.elmWorkspace.allProjects.isNotEmpty()) { "no Elm project was loaded" }
-        return result
+    protected fun awaitWorkspaceLoaded(retries: Int = 3, timeoutSeconds: Long = 30): Boolean {
+        repeat(retries) {
+            project.elmWorkspace.asyncDiscoverAndRefresh().get(timeoutSeconds, TimeUnit.SECONDS)
+            if (project.elmWorkspace.allProjects.isNotEmpty()) return true
+        }
+        return false
     }
 
-    private fun FileTree.asyncCreateWithAutoDiscover(): CompletableFuture<TestProject> {
-        val testProject = create(project, elmWorkspaceDirectory)
-        return project.elmWorkspace.asyncDiscoverAndRefresh().thenApply { testProject }
+    fun buildProject(builder: FileTreeBuilder.() -> Unit): TestProject {
+        val result = fileTree(builder).create(project, elmWorkspaceDirectory)
+        if (awaitWorkspaceLoaded()) return result
+        require(project.elmWorkspace.allProjects.isNotEmpty()) { "no Elm project was loaded" }
+        return result
     }
 
     override fun setUp() {
