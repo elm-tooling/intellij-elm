@@ -1,7 +1,6 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
-import org.jetbrains.intellij.platform.gradle.models.ProductRelease
 import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -62,12 +61,6 @@ intellijPlatform {
             // Earliest and latest stable IC releases from the current compatibility window.
             ide(properties("platformType"), "2024.3.7", useInstaller = false)
             ide(properties("platformType"), "2025.3.3", useInstaller = false)
-            // In CI, also verify against the current EAP line.
-            if (providers.environmentVariable("CI").orNull == "true") {
-                select {
-                    channels.set(listOf(ProductRelease.Channel.EAP))
-                }
-            }
         }
     }
 }
