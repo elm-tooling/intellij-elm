@@ -4,7 +4,6 @@ import com.intellij.application.options.CodeStyleAbstractConfigurable
 import com.intellij.application.options.CodeStyleAbstractPanel
 import com.intellij.application.options.IndentOptionsEditor
 import com.intellij.application.options.TabbedLanguageCodeStylePanel
-import com.intellij.lang.Language
 import com.intellij.psi.codeStyle.*
 import org.elm.lang.core.ElmLanguage
 

@@ -57,7 +57,7 @@ val ELM_TOP_LEVEL_DECLARATIONS = tokenSetOf(
         TYPE_ANNOTATION, PORT_ANNOTATION
 )
 
-/** the virtual tokens which can be synthesized by [ElmLayoutLexer] */
+/** the virtual tokens which can be synthesized by [org.elm.lang.core.lexer.ElmLayoutLexer] */
 val ELM_VIRTUAL_TOKENS = tokenSetOf(
         VIRTUAL_OPEN_SECTION,
         VIRTUAL_END_SECTION,

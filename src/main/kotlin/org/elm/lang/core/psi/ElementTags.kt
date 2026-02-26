@@ -33,7 +33,7 @@ interface ElmFunctionCallTargetTag : ElmAtomTag
 /** An element that is either an [ElmFunctionParamTag], a [ElmPatternChildTag], or both. No elements implement this directly. */
 interface ElmFunctionParamOrPatternChildTag : ElmPsiElement
 
-/** An element that can be a top-level parameter to a [ElmFunctionDeclarationLeft] or [ElmOperatorDeclarationLeft] */
+/** An element that can be a top-level parameter to a [ElmFunctionDeclarationLeft] or [ElmInfixDeclaration] */
 interface ElmFunctionParamTag : ElmFunctionParamOrPatternChildTag
 
 /** An element that can be the direct child of an [ElmPattern] */

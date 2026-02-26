@@ -4,7 +4,6 @@ import com.intellij.codeInsight.daemon.impl.actions.AbstractBatchSuppressByNoIns
 import com.intellij.codeInspection.InspectionSuppressor
 import com.intellij.codeInspection.SuppressQuickFix
 import com.intellij.codeInspection.SuppressionUtil
-import com.intellij.codeInspection.SuppressionUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
@@ -57,7 +56,7 @@ class ElmInspectionSuppressor : InspectionSuppressor {
 
         override fun createSuppression(project: Project, element: PsiElement, container: PsiElement) {
             val anchor = (container as? ElmValueDeclaration)?.typeAnnotation ?: container
-            val text = SuppressionUtilCore.SUPPRESS_INSPECTIONS_TAG_NAME + " " + myID
+            val text = "noinspection $myID"
             val comment = SuppressionUtil.createComment(project, text + "\n", ElmLanguage)
             val parent = anchor.parent
             parent.addBefore(comment, anchor)

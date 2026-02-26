@@ -7,7 +7,6 @@ import com.intellij.openapi.wm.ToolWindowFactory
 /**
  * Boilerplate to connect tool window content to IntelliJ.
  */
-@Suppress("DEPRECATION")
 class ElmToolWindowFactory : ToolWindowFactory {
     override suspend fun isApplicableAsync(project: Project): Boolean = true
 

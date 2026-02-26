@@ -1229,8 +1229,8 @@ private class InferenceScope(
                         !ty2.rigid && typeclassesConstrainToCompappend(tc1, tc2)
             }
             ty1.rigid && tc1 == null -> !ty2.rigid && tc2 == null
-            ty1.rigid && tc1 != null && ty2.rigid -> tc1 == tc2
-            ty1.rigid && tc1 != null && !ty2.rigid -> typeclassesCompatable(tc1, tc2, unconstrainedAllowed = true)
+            ty1.rigid && ty2.rigid -> tc1 == tc2
+            ty1.rigid && !ty2.rigid -> typeclassesCompatable(tc1!!, tc2, unconstrainedAllowed = true)
             else -> error("impossible")
         }
     }

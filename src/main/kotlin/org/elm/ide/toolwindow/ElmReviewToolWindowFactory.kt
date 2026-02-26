@@ -16,12 +16,11 @@ import org.elm.workspace.ElmReviewService
 import org.elm.workspace.elmreview.ElmReviewError
 import java.nio.file.Path
 
-@Suppress("DEPRECATION")
 class ElmReviewToolWindowFactory : ToolWindowFactory {
     override suspend fun isApplicableAsync(project: Project): Boolean = true
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val errorTreeViewPanel = object : ElmErrorTreeViewPanel(project, "elm-review", createExitAction = false, createToolbar = true) {}
+        val errorTreeViewPanel = object : ElmErrorTreeViewPanel(project, "elm-review", false, true) {}
         toolWindow.contentManager.addContent(ContentImpl(errorTreeViewPanel, "elm-review Results", true))
 
         with(project.messageBus.connect()) {

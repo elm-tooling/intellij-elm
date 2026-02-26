@@ -23,7 +23,7 @@ import javax.swing.JTextField
 import javax.swing.event.DocumentEvent
 
 class UiDebouncer(
-        private val parentDisposable: Disposable,
+        parentDisposable: Disposable,
         private val delayMillis: Int = 200
 ) {
     private val alarm = Alarm(Alarm.ThreadToUse.POOLED_THREAD, parentDisposable)

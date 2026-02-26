@@ -11,7 +11,7 @@ import org.elm.lang.core.stubs.ElmFileStub
 /**
  * An index of all Elm named things across the entire IntelliJ project.
  *
- * IMPORTANT: See [ElmLookup] for an alternative API that properly
+ * IMPORTANT: See [org.elm.lang.core.lookup.ElmLookup] for an alternative API that properly
  * handles visibility of named things based on the Elm project which
  * wants to access it.
  *

@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElementResolveResult
 import com.intellij.psi.PsiPolyVariantReferenceBase
 import com.intellij.psi.ResolveResult
 import org.elm.lang.core.psi.*
+import org.elm.lang.core.psi.elements.ElmUpperCaseQID
 import org.elm.lang.core.resolve.ElmReferenceElement
 
 
@@ -28,15 +29,14 @@ abstract class ElmReferenceBase<T : ElmReferenceElement>(element: T)
     override fun handleElementRename(newElementName: String): PsiElement {
         val factory = ElmPsiFactory(element.project)
         val identifier = element.referenceNameElement
-        val newId = when (identifier.elementType) {
+        val newId = if (identifier is ElmUpperCaseQID) {
+            factory.createUpperCaseQID(newElementName)
+        } else when (identifier.elementType) {
             ElmTypes.LOWER_CASE_IDENTIFIER ->
                 factory.createLowerCaseIdentifier(newElementName)
 
             ElmTypes.UPPER_CASE_IDENTIFIER ->
                 factory.createUpperCaseIdentifier(newElementName)
-
-            ElmTypes.UPPER_CASE_QID ->
-                factory.createUpperCaseQID(newElementName)
 
             ElmTypes.OPERATOR_IDENTIFIER ->
                 factory.createOperatorIdentifier(newElementName)

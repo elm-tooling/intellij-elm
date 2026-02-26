@@ -25,7 +25,6 @@ class ElmExternalFormatAction : AnAction() {
     }
 
     override fun update(e: AnActionEvent) {
-        super.update(e)
         e.presentation.isEnabled = getContext(e) != null
     }
 

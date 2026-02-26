@@ -96,10 +96,6 @@ class ElmReviewService(private val project: Project) {
         }
     }
 
-    fun stopAll() {
-        runningReviews.clear()
-    }
-
     private fun showError(message: String, includeFixAction: Boolean = false) {
         val actions = if (includeFixAction) {
             arrayOf("Fix" to { project.elmWorkspace.showConfigureToolchainUI() })

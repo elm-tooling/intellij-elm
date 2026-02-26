@@ -26,7 +26,6 @@ class ElmExternalReviewAction : AnAction() {
     }
 
     override fun update(e: AnActionEvent) {
-        super.update(e)
         e.presentation.isEnabled = e.project != null
     }
 

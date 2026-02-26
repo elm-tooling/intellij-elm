@@ -15,13 +15,12 @@ import org.elm.workspace.compiler.ElmBuildAction
 import org.elm.workspace.compiler.ElmError
 import java.nio.file.Path
 
-@Suppress("DEPRECATION")
 class ElmCompilerToolWindowFactory : ToolWindowFactory {
     override suspend fun isApplicableAsync(project: Project): Boolean = true
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val errorTreeViewPanel = object : ElmErrorTreeViewPanel(project, "Elm Compiler", createExitAction = false, createToolbar = true) {
-            override fun getRerunAction(): AnAction? =
+        val errorTreeViewPanel = object : ElmErrorTreeViewPanel(project, "Elm Compiler", false, true) {
+            override fun getRerunAction(): AnAction =
                 ActionManager.getInstance().getAction(ELM_BUILD_ACTION_ID) ?: ElmBuildAction()
         }
         toolWindow.contentManager.addContent(ContentImpl(errorTreeViewPanel, "Compilation Result", true))

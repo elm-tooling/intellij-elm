@@ -304,6 +304,12 @@
             <add-to-group group-id="CodeMenu" anchor="last"/>
         </action>
 
+        <action id="Elm.RunExternalElmReview"
+                class="org.elm.ide.actions.ElmExternalReviewAction"
+                text="Run elm-review on current file">
+            <add-to-group group-id="CodeMenu" anchor="last"/>
+        </action>
+
         <group id="Elm.WorkspaceToolsGroup" text="Elm" popup="true">
             <reference ref="Elm.RefreshElmProjects"/>
             <separator/>
@@ -323,6 +329,7 @@
 
         <group id="Elm.CompilerToolsGroup" text="Elm Compiler" popup="true">
             <reference ref="Elm.Build"/>
+            <reference ref="Elm.RunExternalElmReview"/>
             <add-to-group group-id="Elm.WorkspaceToolsGroup"/>
         </group>
     </actions>
