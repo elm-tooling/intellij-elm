@@ -3,7 +3,7 @@
 # - run 'test' and 'verifyPlugin' tasks,
 # - run Qodana inspections,
 # - run 'buildPlugin' task and prepare artifact for the further tests,
-# - run 'runPluginVerifier' task,
+# - run plugin verification tasks,
 # - create a draft release.
 #
 # Workflow is triggered on push and pull_request events.
@@ -215,9 +215,9 @@ jobs:
           path: ${{ needs.build.outputs.pluginVerifierHomeDir }}/ides
           key: plugin-verifier-${{ hashFiles('build/listProductsReleases.txt') }}
 
-      # Run Verify Plugin task and IntelliJ Plugin Verifier tool
+      # Run plugin verification tasks (configuration, structure, and IntelliJ Plugin Verifier)
       - name: Run Plugin Verification tasks
-        run: ./gradlew runPluginVerifier -Dplugin.verifier.home.dir=${{ needs.build.outputs.pluginVerifierHomeDir }}
+        run: ./gradlew verifyPluginProjectConfiguration verifyPluginStructure verifyPlugin -Dplugin.verifier.home.dir=${{ needs.build.outputs.pluginVerifierHomeDir }}
 
       # Collect Plugin Verifier Result
       - name: Collect Plugin Verifier Result
