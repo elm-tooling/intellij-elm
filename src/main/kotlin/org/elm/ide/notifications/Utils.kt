@@ -45,7 +45,6 @@ fun Project.showBalloon(
 
 fun executeAction(action: AnAction, place: String, dataContext: DataContext) {
     val event = AnActionEvent.createEvent(
-            action,
             dataContext,
             action.templatePresentation.clone(),
             place,
