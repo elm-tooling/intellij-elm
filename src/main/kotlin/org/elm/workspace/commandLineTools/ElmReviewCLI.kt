@@ -63,7 +63,7 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
                     emptyList()
                 else {
                     val reader = JsonReader(json.byteInputStream().bufferedReader())
-                    reader.setStrictness(Strictness.LENIENT)
+                    reader.strictness = Strictness.LENIENT
                     val msgs = reader.readErrorReport().sortedWith(
                         compareBy(
                             { it.path },

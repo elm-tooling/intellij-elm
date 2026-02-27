@@ -125,7 +125,7 @@ class ElmNeedsConfigNotificationProvider(
 
     private fun badToolchainPanel(message: String) =
         EditorNotificationPanel().apply {
-            setText(message)
+            text = message
             createActionLabel("Setup toolchain") {
                 project.elmWorkspace.showConfigureToolchainUI()
             }
@@ -134,7 +134,7 @@ class ElmNeedsConfigNotificationProvider(
 
     private fun noElmProjectPanel(message: String) =
         EditorNotificationPanel().apply {
-            setText(message)
+            text = message
             createActionLabel("Attach elm.json", "Elm.AttachElmProject")
         }
 
@@ -152,7 +152,7 @@ class ElmNeedsConfigNotificationProvider(
         }
         val manifestFileName = elmProject.manifestPath.fileName.toString()
         return EditorNotificationPanel().apply {
-            setText("Your $manifestFileName file requires Elm $expectedVersionText but your Elm compiler is $compilerVersion")
+            text = "Your $manifestFileName file requires Elm $expectedVersionText but your Elm compiler is $compilerVersion"
             createActionLabel("Open $manifestFileName") {
                 val didNavigate = LocalFileSystem.getInstance().findFileByPath(elmProject.manifestPath)
                     ?.let { OpenFileDescriptor(project, it) }

@@ -22,7 +22,6 @@ import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.util.TextRange
 import com.intellij.ui.content.impl.ContentImpl
-import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
 import com.intellij.util.ui.MessageCategory
 import org.elm.workspace.ElmReviewService
@@ -157,7 +156,7 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
     }
 
     private fun selectedIssue(): ElmReviewIssue? {
-        val selected = TreeUtil.collectSelectedUserObjects(myTree as Tree).firstOrNull() as? ErrorTreeNodeDescriptor
+        val selected = TreeUtil.collectSelectedUserObjects(myTree).firstOrNull() as? ErrorTreeNodeDescriptor
             ?: return null
         val prefixedErrorMessage = selected.element.text.firstOrNull() ?: return null
         val index = prefixedErrorMessage.count { it == '\u200B' }

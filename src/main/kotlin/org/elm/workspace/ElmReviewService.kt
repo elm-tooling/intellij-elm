@@ -69,7 +69,7 @@ class ElmReviewService(private val project: Project) {
                 val json = output.stderr.ifBlank { output.stdout }.trim()
                 val reviewErrors = if (json.startsWith("{")) {
                     val reader = com.google.gson.stream.JsonReader(json.reader())
-                    reader.setStrictness(Strictness.LENIENT)
+                    reader.strictness = Strictness.LENIENT
                     reader.readErrorReport()
                 } else {
                     if (output.exitCode != 0 && json.isNotBlank()) {

@@ -26,9 +26,12 @@ abstract class ElmReferenceBase<T : ElmReferenceElement>(element: T)
         return TextRange(startOffset, startOffset + nameElement.textLength)
     }
 
+    @Suppress("KotlinConstantConditions")
     override fun handleElementRename(newElementName: String): PsiElement {
         val factory = ElmPsiFactory(element.project)
         val identifier = element.referenceNameElement
+        // IDEA's DFA occasionally treats token-type branches here as unreachable, but rename tests
+        // exercise LOWER/UPPER/OPERATOR identifier replacements via this code path.
         val newId = if (identifier is ElmUpperCaseQID) {
             factory.createUpperCaseQID(newElementName)
         } else when (identifier.elementType) {

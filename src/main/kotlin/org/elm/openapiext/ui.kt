@@ -64,7 +64,7 @@ fun fileSystemPathTextField(
     val component = TextFieldWithBrowseButton(null, disposable)
     val descriptor = fileDescriptor.withTitle(title)
     component.addActionListener(
-        ComponentWithBrowseButton.BrowseFolderActionListener<JTextField>(
+        ComponentWithBrowseButton.BrowseFolderActionListener(
             component,
             null,
             descriptor,

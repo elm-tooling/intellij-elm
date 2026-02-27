@@ -27,7 +27,10 @@ class ElmLayoutLexer(private val lexer: Lexer) : LexerBase() {
     private val currentToken: Token
         get() = tokens[currentTokenIndex]
 
-    @Deprecated("")
+    @Deprecated(
+        message = "Use start(CharSequence, Int, Int, Int) instead.",
+        replaceWith = ReplaceWith("start(CharArrayCharSequence(*buffer), startOffset, endOffset, initialState)")
+    )
     fun start(buffer: CharArray, startOffset: Int, endOffset: Int, initialState: Int) {
         start(CharArrayCharSequence(*buffer), startOffset, endOffset, initialState)
     }
@@ -212,7 +215,7 @@ private fun isSingleLineLetIn(index: Int, tokens: List<Token>): Boolean {
         val t = tokens[i--]
         if (t.elementType == LET)
             return true
-    } while (t.line == thisLine && i in 0 until tokens.size)
+    } while (t.line == thisLine && i in tokens.indices)
 
     return false
 }
