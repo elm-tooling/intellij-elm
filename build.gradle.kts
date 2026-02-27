@@ -28,6 +28,20 @@ plugins {
 group = properties("pluginGroup")
 version = properties("pluginVersion")
 
+kover {
+    currentProject {
+        instrumentation {
+            // Velocity uses strict reflective checks over its own runtime constants.
+            // Instrumenting these classes breaks template initialization in IntelliJ tests.
+            excludedClasses.addAll(
+                "org.apache.velocity.*",
+                "org.apache.velocity.runtime.*",
+                "org.apache.velocity.util.*"
+            )
+        }
+    }
+}
+
 // Configure project's dependencies
 repositories {
     mavenCentral()
