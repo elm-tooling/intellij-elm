@@ -13,6 +13,8 @@ plugins {
     id("java")
     // Kotlin support
     id("org.jetbrains.kotlin.jvm") version "2.2.0"
+    // Kotlin code coverage
+    id("org.jetbrains.kotlinx.kover") version "0.9.1"
     // Gradle IntelliJ Plugin
     id("org.jetbrains.intellij.platform") version "2.6.0"
     // GrammarKit Plugin

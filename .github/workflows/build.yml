@@ -127,7 +127,7 @@ jobs:
 
       # Run tests
       - name: Run Tests
-        run: ./gradlew check koverXmlReport
+        run: ./gradlew check koverXmlReportJvm
 
       # Collect Tests Result of failed tests
       - name: Collect Tests Result
@@ -142,13 +142,17 @@ jobs:
         id: coverage
         shell: bash
         run: |
-          REPORT="${{ github.workspace }}/build/reports/kover/report.xml"
-          if [[ -f "$REPORT" ]]; then
+          REPORT_MAIN="${{ github.workspace }}/build/reports/kover/report.xml"
+          REPORT_JVM="${{ github.workspace }}/build/reports/kover/reportJvm.xml"
+          if [[ -f "$REPORT_MAIN" ]]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "report=$REPORT" >> "$GITHUB_OUTPUT"
+            echo "report=$REPORT_MAIN" >> "$GITHUB_OUTPUT"
+          elif [[ -f "$REPORT_JVM" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "report=$REPORT_JVM" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "Coverage report not found at $REPORT"
+            echo "Coverage report not found at $REPORT_MAIN or $REPORT_JVM"
           fi
 
       - name: Upload Code Coverage Report
