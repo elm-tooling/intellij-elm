@@ -11,8 +11,11 @@ import org.elm.openapiext.GeneralCommandLine
 import org.elm.openapiext.execute
 import com.intellij.util.messages.Topic
 import org.elm.ide.notifications.showBalloon
+import org.elm.ide.statusbar.elmTaskStatus
 import org.elm.workspace.elmreview.ElmReviewError
 import org.elm.workspace.elmreview.readErrorReport
+import org.elm.workspace.compiler.toPathOrNull
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.exists
@@ -37,6 +40,10 @@ class ElmReviewService(private val project: Project) {
         messages[path] ?: emptyList()
 
     fun runReview(projectBasePath: Path) {
+        runReview(projectBasePath, elmProjectHint = null, compilerPathHint = null)
+    }
+
+    fun runReview(projectBasePath: Path, elmProjectHint: ElmProject?, compilerPathHint: Path? = null) {
         if (!project.elmSettings.toolchain.isElmReviewOnTheFlyEnabled) return
         if (!projectBasePath.resolve("elm.json").exists()) return
         if (!projectBasePath.resolve("review").exists()) return
@@ -48,16 +55,25 @@ class ElmReviewService(private val project: Project) {
             showError("Could not find elm-review executable", includeFixAction = true)
             return
         }
-        val arguments = listOf("--report=json", "--namespace=intellij-elm") +
-            "--config=./review" +
-            if (project.elmToolchain.compilerPath == null) "" else "--compiler=${project.elmToolchain.compilerPath}"
-
         ApplicationManager.getApplication().executeOnPooledThread {
+            project.elmTaskStatus.reviewStarted()
             try {
+                val compilerPathForReview = resolveCompilerPathForReview(
+                    projectBasePath = projectBasePath,
+                    elmProjectHint = elmProjectHint,
+                    compilerPathHint = compilerPathHint
+                )
+                val arguments = buildList {
+                    add("--report=json")
+                    add("--namespace=intellij-elm")
+                    add("--config=./review")
+                    compilerPathForReview?.let { add("--compiler=$it") }
+                }
+                val commandText = buildCommandText(elmReviewExecutablePath, projectBasePath, arguments)
                 val command = GeneralCommandLine(elmReviewExecutablePath)
                     .withWorkDirectory(projectBasePath.toString())
                     .withParameters(arguments)
-                augmentPathForCliTools(command.environment)
+                augmentPathForCliTools(command.environment, compilerPathForReview)
 
                 val output = command.execute(
                     elmReviewTool,
@@ -65,14 +81,25 @@ class ElmReviewService(private val project: Project) {
                     timeoutInMilliseconds = 120_000
                 )
 
-                val json = output.stderr.ifBlank { output.stdout }.trim()
-                val reviewErrors = if (json.startsWith("{")) {
+                val json = extractElmReviewJson(output.stdout, output.stderr)
+                val reviewErrors = if (json != null) {
                     val reader = com.google.gson.stream.JsonReader(json.reader())
                     reader.strictness = Strictness.LENIENT
                     reader.readErrorReport()
                 } else {
-                    if (output.exitCode != 0 && json.isNotBlank()) {
-                        log.warn("elm-review run failed for $projectBasePath: $json")
+                    if (output.exitCode != 0) {
+                        val stderr = output.stderr.trim()
+                        val stdout = output.stdout.trim()
+                        val details = when {
+                            stderr.isNotBlank() -> stderr
+                            stdout.isNotBlank() -> stdout
+                            else -> "<no output>"
+                        }
+                        log.warn("elm-review run failed for $projectBasePath: $details")
+                        if (!project.isDisposed) {
+                            val firstLine = details.lineSequence().firstOrNull().orEmpty()
+                            showError("elm-review failed: $firstLine\n$commandText")
+                        }
                     }
                     emptyList()
                 }
@@ -86,11 +113,24 @@ class ElmReviewService(private val project: Project) {
                 project.messageBus.syncPublisher(ELM_REVIEW_WATCH_TOPIC).update(projectBasePath, reviewErrors)
             } catch (t: Throwable) {
                 if (!project.isDisposed) {
-                    showError("elm-review failed: ${t.message}")
+                    val compilerPathForReview = resolveCompilerPathForReview(
+                        projectBasePath = projectBasePath,
+                        elmProjectHint = elmProjectHint,
+                        compilerPathHint = compilerPathHint
+                    )
+                    val args = buildList {
+                        add("--report=json")
+                        add("--namespace=intellij-elm")
+                        add("--config=./review")
+                        compilerPathForReview?.let { add("--compiler=$it") }
+                    }
+                    val commandText = buildCommandText(elmReviewExecutablePath, projectBasePath, args)
+                    showError("elm-review failed: ${t.message}\n$commandText")
                 }
                 log.warn("elm-review run failed", t)
             } finally {
                 runningReviews.remove(projectBasePath)
+                project.elmTaskStatus.reviewFinished()
             }
         }
     }
@@ -104,18 +144,81 @@ class ElmReviewService(private val project: Project) {
         project.showBalloon(message, NotificationType.ERROR, *actions)
     }
 
-    private fun augmentPathForCliTools(env: MutableMap<String, String>) {
+    private fun augmentPathForCliTools(env: MutableMap<String, String>, compilerPath: Path?) {
         val existing = env["PATH"].orEmpty()
         val separator = java.io.File.pathSeparator
         val extraDirs = linkedSetOf<String>()
         extraDirs += "/opt/homebrew/bin"
         project.elmToolchain.elmReviewPath?.parent?.toString()?.let(extraDirs::add)
+        compilerPath?.parent?.toString()?.let(extraDirs::add)
         project.elmToolchain.compilerPath?.parent?.toString()?.let(extraDirs::add)
+        ElmSuggest.suggestTools(project)[elmCompilerTool]?.parent?.toString()?.let(extraDirs::add)
+        ElmSuggest.suggestTools(project)[lamderaCompilerTool]?.parent?.toString()?.let(extraDirs::add)
+        ElmSuggest.suggestTools(project)[elmWrapCompilerTool]?.parent?.toString()?.let(extraDirs::add)
 
         val prefix = extraDirs.filter { it.isNotBlank() }.joinToString(separator)
         env["PATH"] = if (existing.isBlank()) prefix else "$prefix$separator$existing"
 
     }
+
+    private fun resolveCompilerPathForReview(
+        projectBasePath: Path,
+        elmProjectHint: ElmProject?,
+        compilerPathHint: Path?
+    ): Path? {
+        if (compilerPathHint != null && Files.isExecutable(compilerPathHint)) return compilerPathHint
+
+        val fromToolchain = project.elmToolchain.compilerPath
+        if (fromToolchain != null && Files.isExecutable(fromToolchain)) return fromToolchain
+
+        val elmProject = elmProjectHint
+            ?: project.elmWorkspace.allProjects.firstOrNull { it.projectDirPath.normalize() == projectBasePath.normalize() }
+        if (elmProject != null) {
+            val fromTargets = project.elmWorkspace.buildTargetConfigsFor(elmProject)
+                .asSequence()
+                .mapNotNull { target ->
+                    val raw = target.compilerPath.trim()
+                    if (raw.isBlank()) return@mapNotNull null
+                    val path = raw.toPathOrNull() ?: return@mapNotNull null
+                    when {
+                        path.isAbsolute && Files.isExecutable(path) -> path
+                        !path.isAbsolute -> projectBasePath.resolve(path).normalize().takeIf { Files.isExecutable(it) }
+                        else -> null
+                    }
+                }
+                .firstOrNull()
+            if (fromTargets != null) return fromTargets
+        }
+
+        val suggested = ElmSuggest.suggestTools(project)
+        return sequenceOf(elmCompilerTool, lamderaCompilerTool, elmWrapCompilerTool)
+            .mapNotNull { suggested[it] }
+            .firstOrNull { Files.isExecutable(it) }
+    }
+}
+
+private fun buildCommandText(executable: Path, workingDir: Path, arguments: List<String>): String {
+    val cmd = buildList {
+        add(executable.toString())
+        addAll(arguments)
+    }.joinToString(" ")
+    return "Command (cwd=$workingDir): $cmd"
+}
+
+private fun extractElmReviewJson(stdout: String, stderr: String): String? {
+    fun from(text: String): String? {
+        val trimmed = text.trim()
+        if (trimmed.isBlank()) return null
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed
+        val start = trimmed.indexOf('{')
+        val end = trimmed.lastIndexOf('}')
+        if (start < 0 || end <= start) return null
+        return trimmed.substring(start, end + 1)
+    }
+
+    return from(stdout)
+        ?: from(stderr)
+        ?: from("$stdout\n$stderr")
 }
 
 val Project.elmReviewService: ElmReviewService

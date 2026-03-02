@@ -9,13 +9,11 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import org.elm.ide.notifications.showBalloon
 import org.elm.lang.core.ElmFileType
 import org.elm.openapiext.saveAllDocuments
 import org.elm.workspace.commandLineTools.makeProject
-import org.elm.workspace.compiler.findEntrypoints
 import org.elm.workspace.elmToolchain
 import org.elm.workspace.elmWorkspace
 
@@ -66,18 +64,20 @@ class ElmExternalReviewAction : AnAction() {
 
         val elmProject = project.elmWorkspace.findProjectForFile(activeFile)
             ?: return showError(project, "Could not determine active Elm project")
-
-        val projectDir = VfsUtil.findFile(elmProject.projectDirPath, true)
-            ?: return showError(project, "Could not determine active Elm project's path")
-
-        val entryPoints = // list of (filePathToCompile, targetPath, offset)
-            findEntrypoints(elmProject, project, projectDir, activeFile)
+        val entryPoints = when (val result = project.elmWorkspace.resolveBuildTargets(elmProject, compileOnSaveOnly = false)) {
+            is org.elm.openapiext.Result.Ok -> result.value
+            is org.elm.openapiext.Result.Err -> {
+                val suffix = if (result.reason.isBlank()) "" else "\n${result.reason}"
+                return showError(project, "Invalid build target configuration.$suffix", includeFixAction = true)
+            }
+        }
 
         try {
             val currentFileInEditor: VirtualFile? = e.getData(PlatformDataKeys.VIRTUAL_FILE)
             val compiledSuccessfully = makeProject(elmProject, project, entryPoints, currentFileInEditor)
             if (compiledSuccessfully) {
-                elmReviewCLI.runReview(project, elmProject, project.elmToolchain.compilerPath, currentFileInEditor)
+                val reviewCompilerPath = entryPoints.firstOrNull()?.compilerPath ?: project.elmToolchain.compilerPath
+                elmReviewCLI.runReview(project, elmProject, reviewCompilerPath, currentFileInEditor)
             }
         } catch (_: ExecutionException) {
             return showError(

@@ -9,6 +9,7 @@ import org.elm.openapiext.execute
 import org.elm.workspace.ElmProject
 import org.elm.workspace.ParseException
 import org.elm.workspace.Version
+import org.elm.workspace.compiler.ResolvedBuildTarget
 import org.elm.workspace.elmCompilerTool
 import java.nio.file.Path
 
@@ -21,7 +22,7 @@ class WrapCLI(private val wrapExecutablePath: Path) {
         project: Project,
         workDir: Path,
         elmProject: ElmProject?,
-        entryPoints: List<Triple<Path, String?, Int>?>,
+        entryPoints: List<ResolvedBuildTarget>,
         jsonReport: Boolean = false,
         currentFile: VirtualFile? = null
     ): Boolean =

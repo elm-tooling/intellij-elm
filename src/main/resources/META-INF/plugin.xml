@@ -245,6 +245,7 @@
                     factoryClass="org.elm.ide.toolwindow.ElmCompilerToolWindowFactory"/>
         <toolWindow id="Elm Review" anchor="bottom" secondary="false" icon="/icons/elm-toolwindow.svg"
                     factoryClass="org.elm.ide.toolwindow.ElmReviewToolWindowFactory"/>
+        <statusBarWidgetFactory implementation="org.elm.ide.statusbar.ElmTaskStatusBarWidgetFactory"/>
 
 
         <!-- STUBS -->

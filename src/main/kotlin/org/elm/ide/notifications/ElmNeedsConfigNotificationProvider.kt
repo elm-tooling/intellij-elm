@@ -64,50 +64,15 @@ class ElmNeedsConfigNotificationProvider(
         if (!file.isElmFile)
             return null
 
-        val toolchain = project.elmToolchain
-        if (!toolchain.looksLikeValidToolchain()) {
-            return badToolchainPanel("You must specify a path to the Elm compiler")
-        }
-
         val workspace = project.elmWorkspace
         if (!workspace.hasAtLeastOneValidProject()) {
             return noElmProjectPanel("No Elm projects found")
         }
 
-        val elmProject = project.elmWorkspace.findProjectForFile(file)
+        project.elmWorkspace.findProjectForFile(file)
             ?: return noElmProjectPanel("Could not find Elm project for this file")
 
-        // Check that the toolchain path to the Elm binary corresponds to a version of the compiler
-        // that is compatible with the Elm project. We have to do this async because this function
-        // was called by IntelliJ while holding a Read Action. And we are forbidden from invoking
-        // an external process while holding a Read Action.
-        synchronized(lock) {
-            when (val vc = versionCheck) {
-                VersionCheck.NotChecked -> {
-                    log.debug("Querying the version")
-                    versionCheck = VersionCheck.Checking
-                    asyncQueryElmCompilerVersion(toolchain)
-                    return null
-                }
-
-                VersionCheck.Checking -> {
-                    log.debug("Skipping version check")
-                    return null
-                }
-
-                is VersionCheck.Checked -> {
-                    log.debug("Using cached version ${vc.version}")
-                    val compilerVersion = vc.version
-                        ?: return badToolchainPanel("Could not determine Elm compiler version")
-
-                    if (!elmProject.isCompatibleWith(compilerVersion)) {
-                        return versionConflictPanel(project, elmProject, compilerVersion)
-                    }
-
-                    return null
-                }
-            }
-        }
+        return null
     }
 
     private fun asyncQueryElmCompilerVersion(toolchain: ElmToolchain) {

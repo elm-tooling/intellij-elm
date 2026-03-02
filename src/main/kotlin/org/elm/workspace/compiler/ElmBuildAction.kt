@@ -46,12 +46,13 @@ class ElmBuildAction : AnAction() {
 
         val elmProject = project.elmWorkspace.findProjectForFile(activeFile)
             ?: return showError(project, "Could not determine active Elm project")
-
-        val projectDir = VfsUtil.findFile(elmProject.projectDirPath, true)
-            ?: return showError(project, "Could not determine active Elm project's path")
-
-        val entryPoints = // list of (filePathToCompile, targetPath, offset)
-            findEntrypoints(elmProject, project, projectDir, activeFile)
+        val entryPoints = when (val result = project.elmWorkspace.resolveBuildTargets(elmProject, compileOnSaveOnly = false)) {
+            is org.elm.openapiext.Result.Ok -> result.value
+            is org.elm.openapiext.Result.Err -> {
+                val suffix = if (result.reason.isBlank()) "" else "\n${result.reason}"
+                return showError(project, "Invalid build target configuration.$suffix", includeFixAction = true)
+            }
+        }
 
         try {
             val currentFileInEditor: VirtualFile? = e.getData(PlatformDataKeys.VIRTUAL_FILE)

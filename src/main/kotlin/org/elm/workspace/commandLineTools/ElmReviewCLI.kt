@@ -14,6 +14,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.messages.Topic
+import org.elm.ide.statusbar.elmTaskStatus
 import org.elm.openapiext.*
 import org.elm.workspace.*
 import org.elm.workspace.elmreview.ElmReviewError
@@ -33,56 +34,61 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
         // This option makes the CLI output non-JSON output, but can be useful to debug what is happening
         // "--debug",
 
-        val arguments = listOf("--report=json", "--namespace=intellij-elm") +
-                if (elmProject is ElmApplicationProject) "--config=." else "" +
-                        if (compilerPath == null) "" else "--compiler=$compilerPath"
+        val arguments = buildList {
+            add("--report=json")
+            add("--namespace=intellij-elm")
+            if (elmProject is ElmApplicationProject) add("--config=.")
+            if (compilerPath != null) add("--compiler=$compilerPath")
+        }
 
         val generalCommandLine = GeneralCommandLine(elmReviewExecutablePath).withWorkDirectory(elmProject.projectDirPath.toString()).withParameters(arguments)
 
         executeReviewAsync(project) { indicator ->
-
-            indicator.text = "reviewing ${elmProject.projectDirPath}"
-            val handler = CapturingProcessHandler(generalCommandLine)
-            val processKiller = Disposable { handler.destroyProcess() }
-
-            Disposer.register(project, processKiller)
+            project.elmTaskStatus.reviewStarted()
             try {
-                val output = handler.runProcess()
-                val alreadyDisposed = runReadAction { project.isDisposed }
-                if (alreadyDisposed) {
-                    throw ExecutionException("External command failed to start")
-                }
-                if (output.exitCode != 0) {
-                    log.warn("elm-review exited with code ${output.exitCode} and output ${output.stdoutLines}")
-                }
-                val json = output.stderr.ifEmpty {
-                    output.stdout
-                }
-                val messages = if (json.isEmpty())
-                    emptyList()
-                else {
-                    val reader = JsonReader(json.byteInputStream().bufferedReader())
-                    reader.strictness = Strictness.LENIENT
-                    val msgs = reader.readErrorReport().sortedWith(
-                        compareBy(
-                            { it.path },
-                            { it.region!!.start!!.line },
-                            { it.region!!.start!!.column }
-                        ))
-                    if (currentFile != null) {
-                        val predicate: (ElmReviewError) -> Boolean = { it.path == currentFile.pathRelative(project).toString() }
-                        val sortedMessages = msgs.filter(predicate) + msgs.filterNot(predicate)
-                        sortedMessages
-                    } else msgs
-                }
-                if (!isUnitTestMode) {
-                    indicator.text = "Review finished"
-                    ApplicationManager.getApplication().invokeLater {
-                        project.messageBus.syncPublisher(ELM_REVIEW_ERRORS_TOPIC).update(elmProject.projectDirPath, messages, null, 0)
+                indicator.text = "reviewing ${elmProject.projectDirPath}"
+                val handler = CapturingProcessHandler(generalCommandLine)
+                val processKiller = Disposable { handler.destroyProcess() }
+
+                Disposer.register(project, processKiller)
+                try {
+                    val output = handler.runProcess()
+                    val alreadyDisposed = runReadAction { project.isDisposed }
+                    if (alreadyDisposed) {
+                        throw ExecutionException("External command failed to start")
                     }
+                    if (output.exitCode != 0) {
+                        log.warn("elm-review exited with code ${output.exitCode} and output ${output.stdoutLines}")
+                    }
+                    val json = extractElmReviewJson(output.stdout, output.stderr)
+                    val messages = if (json.isNullOrBlank())
+                        emptyList()
+                    else {
+                        val reader = JsonReader(json.byteInputStream().bufferedReader())
+                        reader.strictness = Strictness.LENIENT
+                        val msgs = reader.readErrorReport().sortedWith(
+                            compareBy(
+                                { it.path },
+                                { it.region!!.start!!.line },
+                                { it.region!!.start!!.column }
+                            ))
+                        if (currentFile != null) {
+                            val predicate: (ElmReviewError) -> Boolean = { it.path == currentFile.pathRelative(project).toString() }
+                            val sortedMessages = msgs.filter(predicate) + msgs.filterNot(predicate)
+                            sortedMessages
+                        } else msgs
+                    }
+                    if (!isUnitTestMode) {
+                        indicator.text = "Review finished"
+                        ApplicationManager.getApplication().invokeLater {
+                            project.messageBus.syncPublisher(ELM_REVIEW_ERRORS_TOPIC).update(elmProject.projectDirPath, messages, null, 0)
+                        }
+                    }
+                } finally {
+                    Disposer.dispose(processKiller)
                 }
             } finally {
-                Disposer.dispose(processKiller)
+                project.elmTaskStatus.reviewFinished()
             }
         }
     }
@@ -120,4 +126,20 @@ val ELM_REVIEW_ERRORS_TOPIC = Topic("elm-review errors", ElmReviewErrorsListener
 interface ElmReviewErrorsListener {
     @Suppress("unused")
     fun update(baseDirPath: Path, messages: List<ElmReviewError>, targetPath: String?, offset: Int)
+}
+
+private fun extractElmReviewJson(stdout: String, stderr: String): String? {
+    fun from(text: String): String? {
+        val trimmed = text.trim()
+        if (trimmed.isBlank()) return null
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed
+        val start = trimmed.indexOf('{')
+        val end = trimmed.lastIndexOf('}')
+        if (start < 0 || end <= start) return null
+        return trimmed.substring(start, end + 1)
+    }
+
+    return from(stdout)
+        ?: from(stderr)
+        ?: from("$stdout\n$stderr")
 }

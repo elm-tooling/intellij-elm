@@ -2,105 +2,167 @@ package org.elm.workspace.ui
 
 import com.intellij.ide.DataManager
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.keymap.impl.ui.KeymapPanel
+import com.intellij.openapi.actionSystem.ActionToolbarPosition
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ex.Settings
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
-import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.ui.HyperlinkLabel
+import com.intellij.ui.JBSplitter
 import com.intellij.ui.JBColor
+import com.intellij.ui.ToolbarDecorator
 import com.intellij.util.ui.update.Activatable
 import com.intellij.util.ui.update.UiNotifyConnector
 import org.elm.ide.actions.ElmExternalFormatAction
 import org.elm.openapiext.Result
 import org.elm.openapiext.UiDebouncer
 import org.elm.openapiext.fileSystemPathTextField
+import org.elm.openapiext.findFileByPathTestAware
 import org.elm.utils.layout
-import org.elm.workspace.*
-import org.elm.workspace.commandLineTools.ElmCLI
+import org.elm.workspace.ElmSuggest
+import org.elm.workspace.ElmWorkspaceService
+import org.elm.workspace.Version
+import org.elm.workspace.elmCompilerTool
+import org.elm.workspace.elmFormatTool
+import org.elm.workspace.elmWrapCompilerTool
+import org.elm.workspace.lamderaCompilerTool
+import org.elm.workspace.elmReviewTool
+import org.elm.workspace.elmTestTool
+import org.elm.workspace.elmWorkspace
 import org.elm.workspace.commandLineTools.ElmFormatCLI
 import org.elm.workspace.commandLineTools.ElmReviewCLI
 import org.elm.workspace.commandLineTools.ElmTestCLI
-import org.elm.workspace.commandLineTools.WrapCLI
-import java.nio.file.Path
+import org.elm.workspace.compiler.ElmBuildMode
+import org.elm.workspace.compiler.ElmBuildTargetConfig
+import org.elm.workspace.compiler.ElmCompilerKind
+import org.elm.workspace.compiler.ElmProjectBuildTargetConfig
+import java.awt.CardLayout
+import java.awt.BorderLayout
 import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
-import javax.swing.*
+import javax.swing.BoxLayout
+import javax.swing.JButton
+import javax.swing.JCheckBox
+import javax.swing.JComboBox
+import javax.swing.JComponent
+import javax.swing.JLabel
+import javax.swing.JList
+import javax.swing.JPanel
+import javax.swing.JTextField
+import javax.swing.ListSelectionModel
+import javax.swing.DefaultListModel
 
 class ElmWorkspaceConfigurable(
-        private val project: Project
+    private val project: Project
 ) : Configurable, Disposable {
 
-    init {
-        Disposer.register(project, this)
-    }
-
     private val uiDebouncer = UiDebouncer(this)
-    private val compilerToolKey = "compiler"
 
-    private fun toolPathTextField(programName: String, updateKey: String = programName): TextFieldWithBrowseButton {
-        return fileSystemPathTextField(this, "Select '$programName'",
-                FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
-                        .withFileFilter { it.name in ElmSuggest.executableNamesFor(programName) }
-                        .also { it.isForcedToUseIdeaFileChooser = true })
-        { update(setOf(updateKey)) }
+    private fun toolPathTextField(programName: String): TextFieldWithBrowseButton {
+        return fileSystemPathTextField(
+            this,
+            "Select '$programName'",
+            FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
+                .withFileFilter { it.name in ElmSuggest.executableNamesFor(programName) }
+                .also { it.isForcedToUseIdeaFileChooser = true }
+        ) { update(setOf(programName)) }
     }
 
-    private val compilerTypeDropdown = JComboBox(ElmCompilerType.entries.toTypedArray())
-    private val compilerPathField = fileSystemPathTextField(
-        this,
-        "Select 'compiler'",
-        FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
-            .withFileFilter { it.name in ElmSuggest.executableNamesFor(selectedCompilerType().toolName) }
-            .also { it.isForcedToUseIdeaFileChooser = true }
-    ) { update(setOf(compilerToolKey)) }
     private val elmFormatPathField = toolPathTextField(elmFormatTool)
     private val elmTestPathField = toolPathTextField(elmTestTool)
     private val elmReviewPathField = toolPathTextField(elmReviewTool)
 
-    private val compilerVersionLabel = JLabel()
     private val elmFormatVersionLabel = JLabel()
     private val elmFormatOnSaveCheckbox = JCheckBox()
-    private val elmBuildOnSaveCheckbox = JCheckBox()
     private val elmFormatShortcutLabel = HyperlinkLabel()
     private val elmTestVersionLabel = JLabel()
     private val elmReviewVersionLabel = JLabel()
     private val elmReviewOnTheFlyCheckbox = JCheckBox()
-    private val compilerTypeWarningLabel = JLabel().apply {
-        foreground = JBColor.RED
-        isVisible = false
-    }
+
     private val versionCache = ConcurrentHashMap<Pair<String, String>, Result<Version>>()
     private val latestResults = ConcurrentHashMap<String, Result<Version>>()
-    private data class ToolQueryInput(
-        val pathText: String,
-        val compilerType: ElmCompilerType? = null
-    )
+
+    private data class ProjectChoice(val label: String, val manifestPath: String) {
+        override fun toString(): String = label
+    }
+
+    private val projectSelector = JComboBox<ProjectChoice>()
+
+    private val targetListModel = DefaultListModel<String>()
+    private val targetList = JList(targetListModel).apply {
+        selectionMode = ListSelectionModel.SINGLE_SELECTION
+    }
+
+    private val targetName = JTextField()
+    private val targetInputPath = TextFieldWithBrowseButton()
+    private val targetOutputPath = TextFieldWithBrowseButton()
+    private val targetMode = JComboBox(ElmBuildMode.entries.toTypedArray())
+    private val targetCompilerKind = JComboBox(ElmCompilerKind.entries.toTypedArray())
+    private val targetCompilerPath = TextFieldWithBrowseButton()
+    private val targetDetailsLayout = CardLayout()
+    private val targetDetailsPanel = JPanel(targetDetailsLayout)
+
+    private val buildTargetsByManifest = mutableMapOf<String, MutableList<ElmBuildTargetConfig>>()
+    private var lastSelectedTargetIndex = -1
+    private var isLoadingTargetDetails = false
 
     override fun createComponent(): JComponent {
         elmFormatOnSaveCheckbox.addChangeListener { update(emptySet()) }
-        elmBuildOnSaveCheckbox.addChangeListener { update(emptySet()) }
-        compilerTypeDropdown.addActionListener {
-            val compilerType = selectedCompilerType()
-            autoDiscoverPathTo(compilerType.toolName)
-                .takeIf { it.isNotBlank() }
-                ?.let { compilerPathField.text = it }
-            update(setOf(compilerToolKey))
-        }
         elmFormatShortcutLabel.addHyperlinkListener {
             showActionShortcut(ElmExternalFormatAction.ID)
         }
 
+        projectSelector.addActionListener {
+            persistCurrentProjectTargets()
+            loadSelectedProjectTargets()
+        }
+
+        targetList.addListSelectionListener {
+            if (it.valueIsAdjusting) return@addListSelectionListener
+            persistTarget(lastSelectedTargetIndex)
+            lastSelectedTargetIndex = targetList.selectedIndex
+            loadTargetDetails(targetList.selectedIndex)
+        }
+
+        targetInputPath.textField.addActionListener {
+            persistTarget(targetList.selectedIndex)
+            refreshTargetListLabels(select = targetList.selectedIndex)
+        }
+        targetName.addActionListener {
+            persistTarget(targetList.selectedIndex)
+            refreshTargetListLabels(select = targetList.selectedIndex)
+        }
+        targetOutputPath.textField.addActionListener { persistTarget(targetList.selectedIndex) }
+        targetMode.addActionListener { persistTarget(targetList.selectedIndex) }
+        targetCompilerKind.addActionListener { persistTarget(targetList.selectedIndex) }
+        targetCompilerPath.textField.addActionListener { persistTarget(targetList.selectedIndex) }
+
+        targetInputPath.addActionListener {
+            val path = selectProjectRelativeFile("Select Elm entry file", elmOnly = true) ?: return@addActionListener
+            targetInputPath.text = path
+            persistTarget(targetList.selectedIndex)
+            refreshTargetListLabels(select = targetList.selectedIndex)
+        }
+        targetOutputPath.addActionListener {
+            val path = selectProjectRelativeFile("Select output file", elmOnly = false) ?: return@addActionListener
+            targetOutputPath.text = path
+            persistTarget(targetList.selectedIndex)
+        }
+        targetCompilerPath.addActionListener {
+            val path = selectCompilerExecutable() ?: return@addActionListener
+            targetCompilerPath.text = path
+            persistTarget(targetList.selectedIndex)
+        }
+
         val panel = layout {
-            block("Elm Compiler") {
-                row("Type:", compilerTypeDropdown)
-                row("", compilerTypeWarningLabel)
-                row("Location:", pathFieldPlusAutoDiscoverButton(compilerPathField) { selectedCompilerType().toolName })
-                row("Version:", compilerVersionLabel)
-                row("Run when file saved?", elmBuildOnSaveCheckbox)
+            block("Build") {
+                row("Project:", projectSelector)
+                row("Targets:", buildTargetsPanel())
             }
             block(elmFormatTool) {
                 row("Location:", pathFieldPlusAutoDiscoverButton(elmFormatPathField, elmFormatTool))
@@ -124,30 +186,205 @@ class ElmWorkspaceConfigurable(
             }
         }
 
-        // Whenever this panel appears, refresh just in case the user made changes on the Keymap settings screen.
-        // For IntelliJ Platform >2022.2.4:
-        //    UiNotifyConnector.installOn(panel, object : Activatable {
         UiNotifyConnector.installOn(panel, object : Activatable {
             override fun showNotify() = update(null)
-        }, true)  // `true` for parentDisposable auto-registration
+        }, true)
 
         return panel
     }
 
-    private fun pathFieldPlusAutoDiscoverButton(field: TextFieldWithBrowseButton, executableName: String): JPanel =
-        pathFieldPlusAutoDiscoverButton(field) { executableName }
+    private fun buildTargetsPanel(): JComponent {
+        val leftPanel = ToolbarDecorator.createDecorator(targetList)
+            .disableUpDownActions()
+            .setToolbarPosition(ActionToolbarPosition.TOP)
+            .setAddAction {
+                val manifestPath = selectedManifestPath() ?: return@setAddAction
+                val targets = buildTargetsByManifest.getOrPut(manifestPath) { mutableListOf() }
+                val defaultCompilerPath = ElmSuggest.suggestTools(project)[elmCompilerTool]?.toString().orEmpty()
+                targets += ElmBuildTargetConfig(
+                    name = "Target ${targets.size + 1}",
+                    compileOnSave = true,
+                    compilerPath = defaultCompilerPath
+                )
+                refreshTargetListLabels(select = targets.lastIndex)
+            }
+            .setRemoveAction {
+                val manifestPath = selectedManifestPath() ?: return@setRemoveAction
+                val idx = targetList.selectedIndex
+                if (idx < 0) return@setRemoveAction
+                val targets = buildTargetsByManifest.getOrPut(manifestPath) { mutableListOf() }
+                if (idx in targets.indices) {
+                    targets.removeAt(idx)
+                }
+                refreshTargetListLabels(select = (idx - 1).coerceAtLeast(0))
+            }
+            .createPanel()
 
-    private fun pathFieldPlusAutoDiscoverButton(field: TextFieldWithBrowseButton, executableNameSupplier: () -> String): JPanel {
-        val panel = JPanel().apply { layout = BoxLayout(this, BoxLayout.X_AXIS) }
-        with(panel) {
-            add(field)
-            add(JButton("Auto Discover").apply { addActionListener { field.text = autoDiscoverPathTo(executableNameSupplier()) } })
+        val formPanel = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            add(labeledField("Name", targetName))
+            add(labeledField("Input Elm File", targetInputPath))
+            add(labeledField("Output", targetOutputPath))
+            add(labeledField("Mode", targetMode))
+            add(labeledField("Compiler", targetCompilerKind))
+            add(labeledField("Compiler Path", targetCompilerPathWithAutoDiscoverButton()))
+            add(JButton("Clear Output").apply {
+                addActionListener {
+                    targetOutputPath.text = ""
+                    persistTarget(targetList.selectedIndex)
+                }
+            })
         }
+
+        val emptyPanel = JPanel(BorderLayout()).apply {
+            add(JLabel("No build target selected"), BorderLayout.NORTH)
+        }
+
+        targetDetailsPanel.add(emptyPanel, "empty")
+        targetDetailsPanel.add(formPanel, "form")
+        targetDetailsLayout.show(targetDetailsPanel, "empty")
+
+        return JBSplitter(false, 0.35f).apply {
+            firstComponent = leftPanel
+            secondComponent = targetDetailsPanel
+        }
+    }
+
+    private fun labeledField(label: String, component: JComponent): JComponent =
+        JPanel(BorderLayout(10, 0)).apply {
+            add(JLabel(label), BorderLayout.WEST)
+            add(component, BorderLayout.CENTER)
+        }
+
+    private fun selectedManifestPath(): String? =
+        (projectSelector.selectedItem as? ProjectChoice)?.manifestPath
+
+    private fun currentTargets(): MutableList<ElmBuildTargetConfig> {
+        val manifestPath = selectedManifestPath() ?: return mutableListOf()
+        return buildTargetsByManifest.getOrPut(manifestPath) { mutableListOf() }
+    }
+
+    private fun refreshTargetListLabels(select: Int = -1) {
+        targetListModel.clear()
+        val targets = currentTargets()
+        for ((index, target) in targets.withIndex()) {
+            val name = target.name.ifBlank { target.inputPath.ifBlank { "Target ${index + 1}" } }
+            targetListModel.addElement(name)
+        }
+        if (targets.isEmpty()) {
+            lastSelectedTargetIndex = -1
+            clearTargetEditor()
+            targetDetailsLayout.show(targetDetailsPanel, "empty")
+            return
+        }
+        val nextSelection = if (select in targets.indices) select else 0
+        targetList.selectedIndex = nextSelection
+    }
+
+    private fun persistTarget(index: Int) {
+        if (isLoadingTargetDetails) return
+        val targets = currentTargets()
+        if (index !in targets.indices) return
+        targets[index] = ElmBuildTargetConfig(
+            name = targetName.text.trim(),
+            inputPath = targetInputPath.text.trim(),
+            outputPath = targetOutputPath.text.trim(),
+            mode = targetMode.selectedItem as? ElmBuildMode ?: ElmBuildMode.NONE,
+            compilerKind = targetCompilerKind.selectedItem as? ElmCompilerKind ?: ElmCompilerKind.ELM,
+            compilerPath = targetCompilerPath.text.trim(),
+            compileOnSave = true
+        )
+    }
+
+    private fun persistCurrentProjectTargets() {
+        persistTarget(lastSelectedTargetIndex)
+    }
+
+    private fun loadSelectedProjectTargets() {
+        lastSelectedTargetIndex = -1
+        refreshTargetListLabels(select = 0)
+    }
+
+    private fun loadTargetDetails(index: Int) {
+        val targets = currentTargets()
+        if (index !in targets.indices) {
+            clearTargetEditor()
+            targetDetailsLayout.show(targetDetailsPanel, "empty")
+            return
+        }
+        val target = targets[index]
+        isLoadingTargetDetails = true
+        try {
+            targetName.text = target.name
+            targetInputPath.text = target.inputPath
+            targetOutputPath.text = target.outputPath
+            targetMode.selectedItem = target.mode
+            targetCompilerKind.selectedItem = target.compilerKind
+            targetCompilerPath.text = target.compilerPath
+        } finally {
+            isLoadingTargetDetails = false
+        }
+        targetDetailsLayout.show(targetDetailsPanel, "form")
+    }
+
+    private fun clearTargetEditor() {
+        targetName.text = ""
+        targetInputPath.text = ""
+        targetOutputPath.text = ""
+        targetMode.selectedItem = ElmBuildMode.NONE
+        targetCompilerKind.selectedItem = ElmCompilerKind.ELM
+        targetCompilerPath.text = ""
+    }
+
+    private fun selectProjectRelativeFile(title: String, elmOnly: Boolean): String? {
+        val manifestPath = selectedManifestPath() ?: return null
+        val root = findFileByPathTestAware(Paths.get(manifestPath).parent) ?: return null
+        val descriptor = FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
+            .withTitle(title)
+            .also { it.isForcedToUseIdeaFileChooser = true }
+        if (elmOnly) descriptor.withFileFilter { it.extension == "elm" }
+        val file = FileChooser.chooseFile(descriptor, project, root) ?: return null
+        return VfsUtilCore.getRelativePath(file, root) ?: file.path
+    }
+
+    private fun selectCompilerExecutable(): String? {
+        val descriptor = FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
+            .also { it.isForcedToUseIdeaFileChooser = true }
+            .withTitle("Select compiler executable")
+        return FileChooser.chooseFile(descriptor, project, null)?.path
+    }
+
+    private fun pathFieldPlusAutoDiscoverButton(field: TextFieldWithBrowseButton, executableName: String): JPanel {
+        val panel = JPanel().apply { layout = BoxLayout(this, BoxLayout.X_AXIS) }
+        panel.add(field)
+        panel.add(
+            JButton("Auto Discover").apply {
+                addActionListener {
+                    field.text = ElmSuggest.suggestTools(project)[executableName]?.toString() ?: ""
+                }
+            }
+        )
         return panel
     }
 
-    private fun autoDiscoverPathTo(programName: String) =
-            ElmSuggest.suggestTools(project)[programName]?.toString() ?: ""
+    private fun targetCompilerPathWithAutoDiscoverButton(): JPanel {
+        val panel = JPanel().apply { layout = BoxLayout(this, BoxLayout.X_AXIS) }
+        panel.add(targetCompilerPath)
+        panel.add(
+            JButton("Auto Discover").apply {
+                addActionListener {
+                    val executableName = when (targetCompilerKind.selectedItem as? ElmCompilerKind ?: ElmCompilerKind.ELM) {
+                        ElmCompilerKind.ELM -> elmCompilerTool
+                        ElmCompilerKind.LAMDERA -> lamderaCompilerTool
+                        ElmCompilerKind.WRAP -> elmWrapCompilerTool
+                    }
+                    targetCompilerPath.text = ElmSuggest.suggestTools(project)[executableName]?.toString().orEmpty()
+                    persistTarget(targetList.selectedIndex)
+                }
+            }
+        )
+        return panel
+    }
 
     private fun showActionShortcut(actionId: String) {
         val dataContext = DataManager.getInstance().getDataContext(elmFormatShortcutLabel)
@@ -157,21 +394,15 @@ class ElmWorkspaceConfigurable(
             keymapPanel.selectAction(actionId)
         }
     }
+
     private fun update(changedTools: Set<String>? = null) {
-        updateCompilerTypeWarning()
-        val toolsToUpdate = changedTools ?: setOf(compilerToolKey, elmFormatTool, elmTestTool, elmReviewTool)
+        val toolsToUpdate = changedTools ?: setOf(elmFormatTool, elmTestTool, elmReviewTool)
         if (toolsToUpdate.isNotEmpty()) {
-            // Snapshot UI state on EDT; Swing components are not thread-safe.
-            val queryInputs = toolsToUpdate.associateWith { tool ->
-                ToolQueryInput(
-                    pathText = getToolPathText(tool),
-                    compilerType = if (tool == compilerToolKey) selectedCompilerType() else null
-                )
-            }
+            val queryInputs = toolsToUpdate.associateWith { getToolPathText(it) }
             uiDebouncer.run(
                 onPooledThread = {
-                    queryInputs.mapValues { (tool, input) ->
-                        runCatching { queryVersion(tool, input.pathText, input.compilerType) }
+                    queryInputs.mapValues { (tool, inputPath) ->
+                        runCatching { queryVersion(tool, inputPath) }
                             .getOrElse { Result.Err("Failed to query version: ${it.message}") }
                     }
                 },
@@ -181,6 +412,7 @@ class ElmWorkspaceConfigurable(
                 }
             )
         }
+
         val shortcuts = KeymapUtil.getActiveKeymapShortcuts(ElmExternalFormatAction.ID).shortcuts
         val shortcutStatus = when {
             shortcuts.isEmpty() -> "No Shortcut"
@@ -191,55 +423,18 @@ class ElmWorkspaceConfigurable(
 
     private fun renderToolVersion(toolName: String) {
         when (toolName) {
-            compilerToolKey -> {
-                val result = latestResults[compilerToolKey]
-                val path = parsePath(compilerPathField.text)
-                val compilerType = selectedCompilerType()
-                val minVersion = when (compilerType) {
-                    ElmCompilerType.ELM -> ElmToolchain.MIN_SUPPORTED_COMPILER_VERSION
-                    ElmCompilerType.LAMDERA -> ElmToolchain.MIN_SUPPORTED_LAMDERA_COMPILER_VERSION
-                    ElmCompilerType.ELM_WRAP -> null
-                }
-                renderVersionLabel(
-                    compilerVersionLabel,
-                    result,
-                    minVersion
-                )
-            }
-
-            elmFormatTool -> {
-                val result = latestResults[elmFormatTool]
-                renderVersionLabel(elmFormatVersionLabel, result)
-            }
-
-            elmTestTool -> {
-                val result = latestResults[elmTestTool]
-                renderVersionLabel(elmTestVersionLabel, result)
-            }
-
-            elmReviewTool -> {
-                val result = latestResults[elmReviewTool]
-                renderVersionLabel(elmReviewVersionLabel, result)
-            }
+            elmFormatTool -> renderVersionLabel(elmFormatVersionLabel, latestResults[elmFormatTool])
+            elmTestTool -> renderVersionLabel(elmTestVersionLabel, latestResults[elmTestTool])
+            elmReviewTool -> renderVersionLabel(elmReviewVersionLabel, latestResults[elmReviewTool])
         }
     }
 
-    private fun renderVersionLabel(
-        label: JLabel,
-        result: Result<Version>?,
-        minSupportedVersion: Version? = null
-    ) {
+    private fun renderVersionLabel(label: JLabel, result: Result<Version>?) {
         when (result) {
             is Result.Ok -> {
-                if (minSupportedVersion != null && result.value < minSupportedVersion) {
-                    label.text = "${result.value} (not supported)"
-                    label.foreground = JBColor.RED
-                } else {
-                    label.text = result.value.toString()
-                    label.foreground = JBColor.foreground()
-                }
+                label.text = result.value.toString()
+                label.foreground = JBColor.foreground()
             }
-
             is Result.Err -> {
                 if (result.reason == "Not configured") {
                     label.text = ""
@@ -249,7 +444,6 @@ class ElmWorkspaceConfigurable(
                     label.foreground = JBColor.RED
                 }
             }
-
             null -> {
                 label.text = ""
                 label.foreground = JBColor.foreground()
@@ -257,23 +451,11 @@ class ElmWorkspaceConfigurable(
         }
     }
 
-    private fun queryVersion(programName: String, pathText: String, compilerTypeOverride: ElmCompilerType? = null): Result<Version> {
+    private fun queryVersion(programName: String, pathText: String): Result<Version> {
         if (pathText.isBlank()) return Result.Err("Not configured")
-        if (programName == compilerToolKey) {
-            val compilerType = compilerTypeOverride ?: selectedCompilerType()
-            val key = "${compilerToolKey}:${compilerType.name}" to pathText
-            return versionCache.computeIfAbsent(key) {
-                val path = parsePath(pathText) ?: return@computeIfAbsent Result.Err("Invalid path")
-                when (compilerType) {
-                    ElmCompilerType.ELM -> ElmCLI(path).queryVersion(project)
-                    ElmCompilerType.LAMDERA -> org.elm.workspace.commandLineTools.LamderaCLI(path).queryVersion(project)
-                    ElmCompilerType.ELM_WRAP -> WrapCLI(path).queryVersion(project)
-                }
-            }
-        }
         val key = programName to pathText
         return versionCache.computeIfAbsent(key) {
-            val path = parsePath(pathText) ?: return@computeIfAbsent Result.Err("Invalid path")
+            val path = runCatching { Paths.get(pathText) }.getOrNull() ?: return@computeIfAbsent Result.Err("Invalid path")
             when (programName) {
                 elmFormatTool -> ElmFormatCLI(path).queryVersion(project)
                 elmTestTool -> ElmTestCLI(path).queryVersion(project)
@@ -285,97 +467,90 @@ class ElmWorkspaceConfigurable(
 
     private fun getToolPathText(programName: String): String =
         when (programName) {
-            compilerToolKey -> compilerPathField.text
             elmFormatTool -> elmFormatPathField.text
             elmTestTool -> elmTestPathField.text
             elmReviewTool -> elmReviewPathField.text
             else -> ""
         }
 
-    private fun parsePath(pathText: String): Path? = runCatching { Paths.get(pathText) }.getOrNull()
+    override fun dispose() {}
 
-    private fun updateCompilerTypeWarning() {
-        val hasLamderaProject = project.elmWorkspace.allProjects.any { it is LamderaApplicationProject }
-        val wrongCompilerSelected = selectedCompilerType() != ElmCompilerType.LAMDERA
-        val shouldWarn = hasLamderaProject && wrongCompilerSelected
-        compilerTypeWarningLabel.text = if (shouldWarn) {
-            "Lamdera project detected. Select compiler type 'Lamdera'."
-        } else {
-            ""
-        }
-        compilerTypeWarningLabel.isVisible = shouldWarn
-    }
-
-    override fun dispose() {
-        // needed for the UIDebouncer, but nothing needs to be done here
-    }
-
-    override fun disposeUIResources() {
-        // needed for Configurable, but nothing needs to be done here
-    }
+    override fun disposeUIResources() {}
 
     override fun reset() {
         val settings = project.elmWorkspace.rawSettings
-        val elmCompilerPath = settings?.elmCompilerPath
-        val compilerType = settings?.compilerType ?: ElmCompilerType.ELM
         val elmFormatPath = settings?.elmFormatPath
         val isElmFormatOnSaveEnabled = settings?.isElmFormatOnSaveEnabled
         val isElmReviewOnTheFlyEnabled = settings?.isElmReviewOnTheFlyEnabled
-        val isElmBuildOnSaveEnabled = settings?.isElmBuildOnSaveEnabled
         val elmTestPath = settings?.elmTestPath
         val elmReviewPath = settings?.elmReviewPath
 
-        compilerTypeDropdown.selectedItem = compilerType
-        if (elmCompilerPath != null) {
-            compilerPathField.text = elmCompilerPath
-        }
-        if (elmFormatPath != null) {
-            elmFormatPathField.text = elmFormatPath
-        }
+        if (elmFormatPath != null) elmFormatPathField.text = elmFormatPath
         elmFormatOnSaveCheckbox.isSelected = isElmFormatOnSaveEnabled == true
-        elmBuildOnSaveCheckbox.isSelected = isElmBuildOnSaveEnabled == true
-        if (elmTestPath != null) {
-            elmTestPathField.text = elmTestPath
-        }
-        if (elmReviewPath != null) {
-            elmReviewPathField.text = elmReviewPath
-        }
+        if (elmTestPath != null) elmTestPathField.text = elmTestPath
+        if (elmReviewPath != null) elmReviewPathField.text = elmReviewPath
         elmReviewOnTheFlyCheckbox.isSelected = isElmReviewOnTheFlyEnabled != false
 
-        updateCompilerTypeWarning()
+        buildTargetsByManifest.clear()
+        settings?.buildTargetsByManifest?.forEach { cfg ->
+            buildTargetsByManifest[cfg.manifestPath] = cfg.targets.toMutableList()
+        }
+
+        projectSelector.removeAllItems()
+        project.elmWorkspace.allProjects
+            .sortedBy { it.presentableName }
+            .forEach { elmProject ->
+                val manifestPath = elmProject.manifestPath.toString()
+                projectSelector.addItem(ProjectChoice("${elmProject.presentableName} ($manifestPath)", manifestPath))
+            }
+        if (projectSelector.itemCount > 0) {
+            projectSelector.selectedIndex = 0
+            loadSelectedProjectTargets()
+        } else {
+            targetListModel.clear()
+            clearTargetEditor()
+            targetDetailsLayout.show(targetDetailsPanel, "empty")
+        }
+
         update(null)
     }
 
     override fun apply() {
+        persistCurrentProjectTargets()
+        val buildTargets = buildTargetsByManifest.entries
+            .sortedBy { it.key }
+            .map { (manifestPath, targets) ->
+                ElmProjectBuildTargetConfig(manifestPath = manifestPath, targets = targets.toList())
+            }
         project.elmWorkspace.modifySettings {
-            it.copy(elmCompilerPath = compilerPathField.text,
-                    compilerType = selectedCompilerType(),
-                    elmFormatPath = elmFormatPathField.text,
-                    elmTestPath = elmTestPathField.text,
-                    elmReviewPath = elmReviewPathField.text,
-                    isElmFormatOnSaveEnabled = isOnSaveHookEnabledAndSelected(),
-                    isElmReviewOnTheFlyEnabled = elmReviewOnTheFlyCheckbox.isSelected,
-                    isElmBuildOnSaveEnabled = elmBuildOnSaveCheckbox.isSelected
+            it.copy(
+                elmFormatPath = elmFormatPathField.text,
+                elmTestPath = elmTestPathField.text,
+                elmReviewPath = elmReviewPathField.text,
+                isElmFormatOnSaveEnabled = isOnSaveHookEnabledAndSelected(),
+                isElmReviewOnTheFlyEnabled = elmReviewOnTheFlyCheckbox.isSelected,
+                buildTargetsByManifest = buildTargets
             )
         }
     }
 
     private fun isOnSaveHookEnabledAndSelected() =
-            elmFormatOnSaveCheckbox.isEnabled && elmFormatOnSaveCheckbox.isSelected
-
-    private fun selectedCompilerType(): ElmCompilerType =
-        compilerTypeDropdown.selectedItem as? ElmCompilerType ?: ElmCompilerType.ELM
+        elmFormatOnSaveCheckbox.isEnabled && elmFormatOnSaveCheckbox.isSelected
 
     override fun isModified(): Boolean {
+        persistCurrentProjectTargets()
         val settings = project.elmWorkspace.rawSettings ?: ElmWorkspaceService.RawSettings()
-        return compilerPathField.text != settings.elmCompilerPath
-                || selectedCompilerType() != settings.compilerType
-                || elmFormatPathField.text != settings.elmFormatPath
-                || elmTestPathField.text != settings.elmTestPath
-                || elmReviewPathField.text != settings.elmReviewPath
-                || elmReviewOnTheFlyCheckbox.isSelected != settings.isElmReviewOnTheFlyEnabled
-                || elmBuildOnSaveCheckbox.isSelected != settings.isElmBuildOnSaveEnabled
-                || isOnSaveHookEnabledAndSelected() != settings.isElmFormatOnSaveEnabled
+        val currentTargets = buildTargetsByManifest.entries
+            .sortedBy { it.key }
+            .map { (manifestPath, targets) ->
+                ElmProjectBuildTargetConfig(manifestPath = manifestPath, targets = targets.toList())
+            }
+        return elmFormatPathField.text != settings.elmFormatPath
+            || elmTestPathField.text != settings.elmTestPath
+            || elmReviewPathField.text != settings.elmReviewPath
+            || elmReviewOnTheFlyCheckbox.isSelected != settings.isElmReviewOnTheFlyEnabled
+            || isOnSaveHookEnabledAndSelected() != settings.isElmFormatOnSaveEnabled
+            || currentTargets != settings.buildTargetsByManifest
     }
 
     override fun getDisplayName() = "Elm"
