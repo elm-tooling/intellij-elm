@@ -300,6 +300,7 @@ private Atom ::=
     | OperatorAsFunctionExpr
     | UnitExpr
     | FieldAccessExpr
+    | TupleExpr
     | TupleOrParenExpr
     | ValueExpr
     | FieldAccessorFunctionExpr
