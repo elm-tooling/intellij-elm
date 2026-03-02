@@ -29,14 +29,14 @@ private val log = logger<ElmReviewCLI>()
  */
 class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
 
-    fun runReview(project: Project, elmProject: ElmProject, elmCompiler: ElmCLI?, currentFile: VirtualFile? = null) {
+    fun runReview(project: Project, elmProject: ElmProject, compilerPath: Path?, currentFile: VirtualFile? = null) {
 
         // This option makes the CLI output non-JSON output, but can be useful to debug what is happening
         // "--debug",
 
         val arguments = listOf("--report=json", "--namespace=intellij-elm") +
                 if (elmProject is ElmApplicationProject) "--config=." else "" +
-                        if (elmCompiler == null) "" else "--compiler=${elmCompiler.elmExecutablePath}"
+                        if (compilerPath == null) "" else "--compiler=$compilerPath"
 
         val generalCommandLine = GeneralCommandLine(elmReviewExecutablePath).withWorkDirectory(elmProject.projectDirPath.toString()).withParameters(arguments)
 

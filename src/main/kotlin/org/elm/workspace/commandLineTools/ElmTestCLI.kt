@@ -53,8 +53,8 @@ class ElmTestCLI(private val executablePath: Path) {
 
 
     fun queryVersion(project: Project): Result<Version> {
-        // Output of `elm-test --version` is a single line containing the version number,
-        // e.g. `0.19.0-beta9\n`, trimming off the "-betaN" suffix, if present.
+        // Output of `elm-test --version` can be a plain version or include a binary prefix
+        // (for example: `elm-test-rs 3.0.1`).
         val firstLine = try {
             GeneralCommandLine(executablePath).withParameters("--version")
                     .execute(elmTestTool, project)
@@ -68,12 +68,19 @@ class ElmTestCLI(private val executablePath: Path) {
             return Result.Err("no output from elm-test")
         }
 
-        val trimmedFirstLine = firstLine.takeWhile { it != '-' }
+        return parseVersionLine(firstLine)
+    }
 
-        return try {
-            Result.Ok(Version.parse(trimmedFirstLine))
-        } catch (e: ParseException) {
-            Result.Err("could not parse elm-test version: ${e.message}")
+    companion object {
+        private val VERSION_TOKEN_REGEX = Regex("""\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?""")
+
+        internal fun parseVersionLine(line: String): Result<Version> {
+            val versionText = VERSION_TOKEN_REGEX.find(line)?.value ?: line.trim()
+            return try {
+                Result.Ok(Version.parse(versionText))
+            } catch (e: ParseException) {
+                Result.Err("could not parse elm-test version: ${e.message}")
+            }
         }
     }
 }

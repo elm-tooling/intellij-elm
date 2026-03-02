@@ -1,53 +1,75 @@
 package org.elm.workspace
 
 import com.intellij.openapi.project.Project
+import org.elm.openapiext.Result
 import org.elm.workspace.commandLineTools.ElmCLI
 import org.elm.workspace.commandLineTools.ElmFormatCLI
 import org.elm.workspace.commandLineTools.ElmReviewCLI
 import org.elm.workspace.commandLineTools.ElmTestCLI
 import org.elm.workspace.commandLineTools.LamderaCLI
+import org.elm.workspace.commandLineTools.WrapCLI
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
 const val elmCompilerTool = "elm"
 const val lamderaCompilerTool = "lamdera"
+const val elmWrapCompilerTool = "wrap"
 const val elmFormatTool = "elm-format"
 const val elmTestTool = "elm-test"
 const val elmReviewTool = "elm-review"
-val elmTools = listOf(elmCompilerTool, lamderaCompilerTool, elmFormatTool, elmTestTool, elmReviewTool)
+val elmTools = listOf(elmCompilerTool, lamderaCompilerTool, elmWrapCompilerTool, elmFormatTool, elmTestTool, elmReviewTool)
+
+enum class ElmCompilerType(val displayName: String, val toolName: String) {
+    ELM("Elm", elmCompilerTool),
+    LAMDERA("Lamdera", lamderaCompilerTool),
+    ELM_WRAP("Elm Wrap", elmWrapCompilerTool);
+
+    override fun toString(): String = displayName
+
+    companion object {
+        fun fromRaw(value: String?): ElmCompilerType =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: ELM
+    }
+}
 
 data class ElmToolchain(
-        val elmCompilerPath: Path?,
-        val lamderaCompilerPath: Path?,
+        val compilerPath: Path?,
+        val compilerType: ElmCompilerType = DEFAULT_COMPILER_TYPE,
         val elmFormatPath: Path?,
         val elmTestPath: Path?,
         val elmReviewPath: Path?,
         val isElmFormatOnSaveEnabled: Boolean,
-        val isElmReviewOnTheFlyEnabled: Boolean = DEFAULT_REVIEW_ON_THE_FLY
+        val isElmReviewOnTheFlyEnabled: Boolean = DEFAULT_REVIEW_ON_THE_FLY,
+        val isElmBuildOnSaveEnabled: Boolean = DEFAULT_BUILD_ON_SAVE
 ) {
     constructor(
-        elmCompilerPath: String,
-        lamderaCompilerPath: String,
+        compilerPath: String,
+        compilerType: ElmCompilerType = DEFAULT_COMPILER_TYPE,
         elmFormatPath: String,
         elmTestPath: String,
         elmReviewPath: String,
         isElmFormatOnSaveEnabled: Boolean,
-        isElmReviewOnTheFlyEnabled: Boolean = DEFAULT_REVIEW_ON_THE_FLY
+        isElmReviewOnTheFlyEnabled: Boolean = DEFAULT_REVIEW_ON_THE_FLY,
+        isElmBuildOnSaveEnabled: Boolean = DEFAULT_BUILD_ON_SAVE
     ) :
             this(
-                    if (elmCompilerPath.isNotBlank() && Files.exists(Paths.get(elmCompilerPath))) Paths.get(elmCompilerPath) else null,
-                    if (lamderaCompilerPath.isNotBlank() && Files.exists(Paths.get(lamderaCompilerPath))) Paths.get(lamderaCompilerPath) else null,
+                    if (compilerPath.isNotBlank() && Files.exists(Paths.get(compilerPath))) Paths.get(compilerPath) else null,
+                    compilerType,
                     if (elmFormatPath.isNotBlank() && Files.exists(Paths.get(elmFormatPath))) Paths.get(elmFormatPath) else null,
                     if (elmTestPath.isNotBlank() && Files.exists(Paths.get(elmTestPath))) Paths.get(elmTestPath) else null,
                     if (elmReviewPath.isNotBlank() && Files.exists(Paths.get(elmReviewPath))) Paths.get(elmReviewPath) else null,
                     isElmFormatOnSaveEnabled,
-                    isElmReviewOnTheFlyEnabled
+                    isElmReviewOnTheFlyEnabled,
+                    isElmBuildOnSaveEnabled
             )
 
-    val elmCLI: ElmCLI? = elmCompilerPath?.let { ElmCLI(it) }
+    val elmCompilerPath: Path? get() = compilerPath
 
-    val lamderaCLI: LamderaCLI? = lamderaCompilerPath?.let { LamderaCLI(it) }
+    val elmCLI: ElmCLI? = if (compilerType == ElmCompilerType.ELM) compilerPath?.let { ElmCLI(it) } else null
+
+    val lamderaCLI: LamderaCLI? = if (compilerType == ElmCompilerType.LAMDERA) compilerPath?.let { LamderaCLI(it) } else null
+    val wrapCLI: WrapCLI? = if (compilerType == ElmCompilerType.ELM_WRAP) compilerPath?.let { WrapCLI(it) } else null
 
     val elmFormatCLI: ElmFormatCLI? = elmFormatPath?.let { ElmFormatCLI(it) }
 
@@ -55,16 +77,29 @@ data class ElmToolchain(
 
     val elmReviewCLI: ElmReviewCLI? = elmReviewPath?.let { ElmReviewCLI(it) }
 
+    fun queryCompilerVersion(project: Project): Result<Version> =
+        when (compilerType) {
+            ElmCompilerType.ELM -> elmCLI?.queryVersion(project) ?: Result.Err("Elm compiler is not configured")
+            ElmCompilerType.LAMDERA -> lamderaCLI?.queryVersion(project) ?: Result.Err("Lamdera compiler is not configured")
+            ElmCompilerType.ELM_WRAP -> wrapCLI?.queryVersion(project) ?: Result.Err("Elm Wrap compiler is not configured")
+        }
+
     /**
      * Checks the currently configured elm compiler path. If a bare `elm` command is provided we check that it is on the
      * path.
      * This performs file I/O.
      */
     fun looksLikeValidToolchain(overridePathSearch: Sequence<Path> = emptySequence()): Boolean {
-        return if (elmCompilerPath.toString() == "elm") {
-            ElmSuggest.compilerIsOnPath(overridePathSearch)
+        val configuredPath = compilerPath
+        val bareCommand = when (compilerType) {
+            ElmCompilerType.ELM -> elmCompilerTool
+            ElmCompilerType.LAMDERA -> lamderaCompilerTool
+            ElmCompilerType.ELM_WRAP -> elmWrapCompilerTool
+        }
+        return if (configuredPath.toString() == bareCommand) {
+            ElmSuggest.compilerIsOnPath(bareCommand, overridePathSearch)
         } else {
-            elmCompilerPath != null && Files.isExecutable(elmCompilerPath)
+            configuredPath != null && Files.isExecutable(configuredPath)
         }
     }
 
@@ -75,8 +110,7 @@ data class ElmToolchain(
     fun autoDiscoverAll(project: Project): ElmToolchain {
         val suggestions = ElmSuggest.suggestTools(project)
         return copy(
-                elmCompilerPath = elmCompilerPath ?: suggestions[elmCompilerTool],
-                lamderaCompilerPath = lamderaCompilerPath ?: suggestions[lamderaCompilerTool],
+                compilerPath = compilerPath ?: suggestions[compilerType.toolName],
                 elmFormatPath = elmFormatPath ?: suggestions[elmFormatTool],
                 elmTestPath = elmTestPath ?: suggestions[elmTestTool],
                 elmReviewPath = elmReviewPath ?: suggestions[elmReviewTool]
@@ -96,20 +130,23 @@ data class ElmToolchain(
          */
         const val SIDECAR_FILENAME = "elm.intellij.json"
 
+        val DEFAULT_COMPILER_TYPE: ElmCompilerType = ElmCompilerType.ELM
         const val DEFAULT_FORMAT_ON_SAVE = true
         const val DEFAULT_REVIEW_ON_THE_FLY = true
+        const val DEFAULT_BUILD_ON_SAVE = false
 
         /**
          * A blank, default [ElmToolchain].
          */
         val BLANK = ElmToolchain(
-                elmCompilerPath = null,
-                lamderaCompilerPath = null,
+                compilerPath = null,
+                compilerType = DEFAULT_COMPILER_TYPE,
                 elmFormatPath = null,
                 elmTestPath = null,
                 elmReviewPath = null,
                 isElmFormatOnSaveEnabled = DEFAULT_FORMAT_ON_SAVE,
-                isElmReviewOnTheFlyEnabled = DEFAULT_REVIEW_ON_THE_FLY
+                isElmReviewOnTheFlyEnabled = DEFAULT_REVIEW_ON_THE_FLY,
+                isElmBuildOnSaveEnabled = DEFAULT_BUILD_ON_SAVE
         )
 
         val MIN_SUPPORTED_COMPILER_VERSION = Version(0, 19, 0)

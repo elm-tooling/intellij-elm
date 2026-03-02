@@ -48,10 +48,9 @@ class ElmReviewService(private val project: Project) {
             showError("Could not find elm-review executable", includeFixAction = true)
             return
         }
-        val elmCompiler = project.elmToolchain.elmCLI
         val arguments = listOf("--report=json", "--namespace=intellij-elm") +
             "--config=./review" +
-            if (elmCompiler == null) "" else "--compiler=${elmCompiler.elmExecutablePath}"
+            if (project.elmToolchain.compilerPath == null) "" else "--compiler=${project.elmToolchain.compilerPath}"
 
         ApplicationManager.getApplication().executeOnPooledThread {
             try {
@@ -111,7 +110,7 @@ class ElmReviewService(private val project: Project) {
         val extraDirs = linkedSetOf<String>()
         extraDirs += "/opt/homebrew/bin"
         project.elmToolchain.elmReviewPath?.parent?.toString()?.let(extraDirs::add)
-        project.elmToolchain.elmCompilerPath?.parent?.toString()?.let(extraDirs::add)
+        project.elmToolchain.compilerPath?.parent?.toString()?.let(extraDirs::add)
 
         val prefix = extraDirs.filter { it.isNotBlank() }.joinToString(separator)
         env["PATH"] = if (existing.isBlank()) prefix else "$prefix$separator$existing"

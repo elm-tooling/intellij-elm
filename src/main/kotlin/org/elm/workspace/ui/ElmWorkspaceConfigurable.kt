@@ -24,7 +24,7 @@ import org.elm.workspace.commandLineTools.ElmCLI
 import org.elm.workspace.commandLineTools.ElmFormatCLI
 import org.elm.workspace.commandLineTools.ElmReviewCLI
 import org.elm.workspace.commandLineTools.ElmTestCLI
-import org.elm.workspace.commandLineTools.LamderaCLI
+import org.elm.workspace.commandLineTools.WrapCLI
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
@@ -39,42 +39,63 @@ class ElmWorkspaceConfigurable(
     }
 
     private val uiDebouncer = UiDebouncer(this)
+    private val compilerToolKey = "compiler"
 
-    private fun toolPathTextField(programName: String): TextFieldWithBrowseButton {
+    private fun toolPathTextField(programName: String, updateKey: String = programName): TextFieldWithBrowseButton {
         return fileSystemPathTextField(this, "Select '$programName'",
                 FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
                         .withFileFilter { it.name in ElmSuggest.executableNamesFor(programName) }
                         .also { it.isForcedToUseIdeaFileChooser = true })
-        { update(setOf(programName)) }
+        { update(setOf(updateKey)) }
     }
 
-    private val elmPathField = toolPathTextField(elmCompilerTool)
-    private val lamderaPathField = toolPathTextField(lamderaCompilerTool)
+    private val compilerTypeDropdown = JComboBox(ElmCompilerType.entries.toTypedArray())
+    private val compilerPathField = fileSystemPathTextField(
+        this,
+        "Select 'compiler'",
+        FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
+            .withFileFilter { it.name in ElmSuggest.executableNamesFor(selectedCompilerType().toolName) }
+            .also { it.isForcedToUseIdeaFileChooser = true }
+    ) { update(setOf(compilerToolKey)) }
     private val elmFormatPathField = toolPathTextField(elmFormatTool)
     private val elmTestPathField = toolPathTextField(elmTestTool)
     private val elmReviewPathField = toolPathTextField(elmReviewTool)
 
-    private val elmVersionLabel = JLabel()
-    private val lamderaVersionLabel = JLabel()
+    private val compilerVersionLabel = JLabel()
     private val elmFormatVersionLabel = JLabel()
     private val elmFormatOnSaveCheckbox = JCheckBox()
+    private val elmBuildOnSaveCheckbox = JCheckBox()
     private val elmFormatShortcutLabel = HyperlinkLabel()
     private val elmTestVersionLabel = JLabel()
     private val elmReviewVersionLabel = JLabel()
     private val elmReviewOnTheFlyCheckbox = JCheckBox()
     private val versionCache = ConcurrentHashMap<Pair<String, String>, Result<Version>>()
     private val latestResults = ConcurrentHashMap<String, Result<Version>>()
+    private data class ToolQueryInput(
+        val pathText: String,
+        val compilerType: ElmCompilerType? = null
+    )
 
     override fun createComponent(): JComponent {
         elmFormatOnSaveCheckbox.addChangeListener { update(emptySet()) }
+        elmBuildOnSaveCheckbox.addChangeListener { update(emptySet()) }
+        compilerTypeDropdown.addActionListener {
+            val compilerType = selectedCompilerType()
+            autoDiscoverPathTo(compilerType.toolName)
+                .takeIf { it.isNotBlank() }
+                ?.let { compilerPathField.text = it }
+            update(setOf(compilerToolKey))
+        }
         elmFormatShortcutLabel.addHyperlinkListener {
             showActionShortcut(ElmExternalFormatAction.ID)
         }
 
         val panel = layout {
             block("Elm Compiler") {
-                row("Location:", pathFieldPlusAutoDiscoverButton(elmPathField, elmCompilerTool))
-                row("Version:", elmVersionLabel)
+                row("Type:", compilerTypeDropdown)
+                row("Location:", pathFieldPlusAutoDiscoverButton(compilerPathField) { selectedCompilerType().toolName })
+                row("Version:", compilerVersionLabel)
+                row("Run when file saved?", elmBuildOnSaveCheckbox)
             }
             block(elmFormatTool) {
                 row("Location:", pathFieldPlusAutoDiscoverButton(elmFormatPathField, elmFormatTool))
@@ -90,10 +111,6 @@ class ElmWorkspaceConfigurable(
                 row("Location:", pathFieldPlusAutoDiscoverButton(elmReviewPathField, elmReviewTool))
                 row("Version:", elmReviewVersionLabel)
                 row("Run when file saved?", elmReviewOnTheFlyCheckbox)
-            }
-            block("Lamdera Compiler") {
-                row("Location:", pathFieldPlusAutoDiscoverButton(lamderaPathField, lamderaCompilerTool))
-                row("Version:", lamderaVersionLabel)
             }
             block("") {
                 val nvmUrl = "https://github.com/nvm-sh/nvm"
@@ -112,11 +129,14 @@ class ElmWorkspaceConfigurable(
         return panel
     }
 
-    private fun pathFieldPlusAutoDiscoverButton(field: TextFieldWithBrowseButton, executableName: String): JPanel {
+    private fun pathFieldPlusAutoDiscoverButton(field: TextFieldWithBrowseButton, executableName: String): JPanel =
+        pathFieldPlusAutoDiscoverButton(field) { executableName }
+
+    private fun pathFieldPlusAutoDiscoverButton(field: TextFieldWithBrowseButton, executableNameSupplier: () -> String): JPanel {
         val panel = JPanel().apply { layout = BoxLayout(this, BoxLayout.X_AXIS) }
         with(panel) {
             add(field)
-            add(JButton("Auto Discover").apply { addActionListener { field.text = autoDiscoverPathTo(executableName) } })
+            add(JButton("Auto Discover").apply { addActionListener { field.text = autoDiscoverPathTo(executableNameSupplier()) } })
         }
         return panel
     }
@@ -133,12 +153,20 @@ class ElmWorkspaceConfigurable(
         }
     }
     private fun update(changedTools: Set<String>? = null) {
-        val toolsToUpdate = changedTools ?: elmTools.toSet()
+        val toolsToUpdate = changedTools ?: setOf(compilerToolKey, elmFormatTool, elmTestTool, elmReviewTool)
         if (toolsToUpdate.isNotEmpty()) {
+            // Snapshot UI state on EDT; Swing components are not thread-safe.
+            val queryInputs = toolsToUpdate.associateWith { tool ->
+                ToolQueryInput(
+                    pathText = getToolPathText(tool),
+                    compilerType = if (tool == compilerToolKey) selectedCompilerType() else null
+                )
+            }
             uiDebouncer.run(
                 onPooledThread = {
-                    toolsToUpdate.associateWith { tool ->
-                        queryVersion(tool, getToolPathText(tool))
+                    queryInputs.mapValues { (tool, input) ->
+                        runCatching { queryVersion(tool, input.pathText, input.compilerType) }
+                            .getOrElse { Result.Err("Failed to query version: ${it.message}") }
                     }
                 },
                 onUiThread = { queried ->
@@ -157,46 +185,35 @@ class ElmWorkspaceConfigurable(
 
     private fun renderToolVersion(toolName: String) {
         when (toolName) {
-            elmCompilerTool -> {
-                val result = latestResults[elmCompilerTool]
-                val path = parsePath(elmPathField.text)
+            compilerToolKey -> {
+                val result = latestResults[compilerToolKey]
+                val path = parsePath(compilerPathField.text)
+                val compilerType = selectedCompilerType()
+                val minVersion = when (compilerType) {
+                    ElmCompilerType.ELM -> ElmToolchain.MIN_SUPPORTED_COMPILER_VERSION
+                    ElmCompilerType.LAMDERA -> ElmToolchain.MIN_SUPPORTED_LAMDERA_COMPILER_VERSION
+                    ElmCompilerType.ELM_WRAP -> null
+                }
                 renderVersionLabel(
-                    elmVersionLabel,
+                    compilerVersionLabel,
                     result,
-                    path,
-                    elmCompilerTool,
-                    ElmToolchain.MIN_SUPPORTED_COMPILER_VERSION
-                )
-            }
-
-            lamderaCompilerTool -> {
-                val result = latestResults[lamderaCompilerTool]
-                val path = parsePath(lamderaPathField.text)
-                renderVersionLabel(
-                    lamderaVersionLabel,
-                    result,
-                    path,
-                    lamderaCompilerTool,
-                    ElmToolchain.MIN_SUPPORTED_LAMDERA_COMPILER_VERSION
+                    minVersion
                 )
             }
 
             elmFormatTool -> {
                 val result = latestResults[elmFormatTool]
-                val path = parsePath(elmFormatPathField.text)
-                renderVersionLabel(elmFormatVersionLabel, result, path, elmFormatTool)
+                renderVersionLabel(elmFormatVersionLabel, result)
             }
 
             elmTestTool -> {
                 val result = latestResults[elmTestTool]
-                val path = parsePath(elmTestPathField.text)
-                renderVersionLabel(elmTestVersionLabel, result, path, elmTestTool)
+                renderVersionLabel(elmTestVersionLabel, result)
             }
 
             elmReviewTool -> {
                 val result = latestResults[elmReviewTool]
-                val path = parsePath(elmReviewPathField.text)
-                renderVersionLabel(elmReviewVersionLabel, result, path, elmReviewTool)
+                renderVersionLabel(elmReviewVersionLabel, result)
             }
         }
     }
@@ -204,8 +221,6 @@ class ElmWorkspaceConfigurable(
     private fun renderVersionLabel(
         label: JLabel,
         result: Result<Version>?,
-        configuredPath: Path?,
-        programName: String,
         minSupportedVersion: Version? = null
     ) {
         when (result) {
@@ -220,7 +235,7 @@ class ElmWorkspaceConfigurable(
             }
 
             is Result.Err -> {
-                if (configuredPath == null || !configuredPath.isValidFor(programName)) {
+                if (result.reason == "Not configured") {
                     label.text = ""
                     label.foreground = JBColor.foreground()
                 } else {
@@ -236,14 +251,24 @@ class ElmWorkspaceConfigurable(
         }
     }
 
-    private fun queryVersion(programName: String, pathText: String): Result<Version> {
+    private fun queryVersion(programName: String, pathText: String, compilerTypeOverride: ElmCompilerType? = null): Result<Version> {
         if (pathText.isBlank()) return Result.Err("Not configured")
+        if (programName == compilerToolKey) {
+            val compilerType = compilerTypeOverride ?: selectedCompilerType()
+            val key = "${compilerToolKey}:${compilerType.name}" to pathText
+            return versionCache.computeIfAbsent(key) {
+                val path = parsePath(pathText) ?: return@computeIfAbsent Result.Err("Invalid path")
+                when (compilerType) {
+                    ElmCompilerType.ELM -> ElmCLI(path).queryVersion(project)
+                    ElmCompilerType.LAMDERA -> org.elm.workspace.commandLineTools.LamderaCLI(path).queryVersion(project)
+                    ElmCompilerType.ELM_WRAP -> WrapCLI(path).queryVersion(project)
+                }
+            }
+        }
         val key = programName to pathText
         return versionCache.computeIfAbsent(key) {
             val path = parsePath(pathText) ?: return@computeIfAbsent Result.Err("Invalid path")
             when (programName) {
-                elmCompilerTool -> ElmCLI(path).queryVersion(project)
-                lamderaCompilerTool -> LamderaCLI(path).queryVersion(project)
                 elmFormatTool -> ElmFormatCLI(path).queryVersion(project)
                 elmTestTool -> ElmTestCLI(path).queryVersion(project)
                 elmReviewTool -> ElmReviewCLI(path).queryVersion(project)
@@ -254,8 +279,7 @@ class ElmWorkspaceConfigurable(
 
     private fun getToolPathText(programName: String): String =
         when (programName) {
-            elmCompilerTool -> elmPathField.text
-            lamderaCompilerTool -> lamderaPathField.text
+            compilerToolKey -> compilerPathField.text
             elmFormatTool -> elmFormatPathField.text
             elmTestTool -> elmTestPathField.text
             elmReviewTool -> elmReviewPathField.text
@@ -275,23 +299,23 @@ class ElmWorkspaceConfigurable(
     override fun reset() {
         val settings = project.elmWorkspace.rawSettings
         val elmCompilerPath = settings?.elmCompilerPath
-        val lamderaCompilerPath = settings?.lamderaCompilerPath
+        val compilerType = settings?.compilerType ?: ElmCompilerType.ELM
         val elmFormatPath = settings?.elmFormatPath
         val isElmFormatOnSaveEnabled = settings?.isElmFormatOnSaveEnabled
         val isElmReviewOnTheFlyEnabled = settings?.isElmReviewOnTheFlyEnabled
+        val isElmBuildOnSaveEnabled = settings?.isElmBuildOnSaveEnabled
         val elmTestPath = settings?.elmTestPath
         val elmReviewPath = settings?.elmReviewPath
 
+        compilerTypeDropdown.selectedItem = compilerType
         if (elmCompilerPath != null) {
-            elmPathField.text = elmCompilerPath
-        }
-        if (lamderaCompilerPath != null) {
-            lamderaPathField.text = lamderaCompilerPath
+            compilerPathField.text = elmCompilerPath
         }
         if (elmFormatPath != null) {
             elmFormatPathField.text = elmFormatPath
         }
         elmFormatOnSaveCheckbox.isSelected = isElmFormatOnSaveEnabled == true
+        elmBuildOnSaveCheckbox.isSelected = isElmBuildOnSaveEnabled == true
         if (elmTestPath != null) {
             elmTestPathField.text = elmTestPath
         }
@@ -305,13 +329,14 @@ class ElmWorkspaceConfigurable(
 
     override fun apply() {
         project.elmWorkspace.modifySettings {
-            it.copy(elmCompilerPath = elmPathField.text,
-                    lamderaCompilerPath = lamderaPathField.text,
+            it.copy(elmCompilerPath = compilerPathField.text,
+                    compilerType = selectedCompilerType(),
                     elmFormatPath = elmFormatPathField.text,
                     elmTestPath = elmTestPathField.text,
                     elmReviewPath = elmReviewPathField.text,
                     isElmFormatOnSaveEnabled = isOnSaveHookEnabledAndSelected(),
-                    isElmReviewOnTheFlyEnabled = elmReviewOnTheFlyCheckbox.isSelected
+                    isElmReviewOnTheFlyEnabled = elmReviewOnTheFlyCheckbox.isSelected,
+                    isElmBuildOnSaveEnabled = elmBuildOnSaveCheckbox.isSelected
             )
         }
     }
@@ -319,14 +344,18 @@ class ElmWorkspaceConfigurable(
     private fun isOnSaveHookEnabledAndSelected() =
             elmFormatOnSaveCheckbox.isEnabled && elmFormatOnSaveCheckbox.isSelected
 
+    private fun selectedCompilerType(): ElmCompilerType =
+        compilerTypeDropdown.selectedItem as? ElmCompilerType ?: ElmCompilerType.ELM
+
     override fun isModified(): Boolean {
-        val settings = project.elmWorkspace.rawSettings
-        return elmPathField.text != settings?.elmCompilerPath
-                || lamderaPathField.text != settings.lamderaCompilerPath
+        val settings = project.elmWorkspace.rawSettings ?: ElmWorkspaceService.RawSettings()
+        return compilerPathField.text != settings.elmCompilerPath
+                || selectedCompilerType() != settings.compilerType
                 || elmFormatPathField.text != settings.elmFormatPath
                 || elmTestPathField.text != settings.elmTestPath
                 || elmReviewPathField.text != settings.elmReviewPath
                 || elmReviewOnTheFlyCheckbox.isSelected != settings.isElmReviewOnTheFlyEnabled
+                || elmBuildOnSaveCheckbox.isSelected != settings.isElmBuildOnSaveEnabled
                 || isOnSaveHookEnabledAndSelected() != settings.isElmFormatOnSaveEnabled
     }
 
@@ -334,6 +363,3 @@ class ElmWorkspaceConfigurable(
 
     override fun getHelpTopic() = null
 }
-
-private fun Path.isValidFor(programName: String) =
-        fileName != null && fileName.toString() in ElmSuggest.executableNamesFor(programName)

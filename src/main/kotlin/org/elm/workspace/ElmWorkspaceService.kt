@@ -36,6 +36,8 @@ import org.elm.utils.joinAll
 import org.elm.utils.runAsyncTask
 import org.elm.workspace.ElmToolchain.Companion.DEFAULT_FORMAT_ON_SAVE
 import org.elm.workspace.ElmToolchain.Companion.DEFAULT_REVIEW_ON_THE_FLY
+import org.elm.workspace.ElmToolchain.Companion.DEFAULT_BUILD_ON_SAVE
+import org.elm.workspace.ElmToolchain.Companion.DEFAULT_COMPILER_TYPE
 import org.elm.workspace.ElmToolchain.Companion.ELM_JSON
 import org.elm.workspace.commandLineTools.ElmCLI
 import org.elm.workspace.ui.ElmWorkspaceConfigurable
@@ -93,12 +95,13 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     /** Representation of settings suitable for editor UI and serialization */
     data class RawSettings(
         val elmCompilerPath: String = "",
-        val lamderaCompilerPath: String = "",
+        val compilerType: ElmCompilerType = DEFAULT_COMPILER_TYPE,
         val elmFormatPath: String = "",
         val elmTestPath: String = "",
         val elmReviewPath: String = "",
         val isElmFormatOnSaveEnabled: Boolean = DEFAULT_FORMAT_ON_SAVE,
-        val isElmReviewOnTheFlyEnabled: Boolean = DEFAULT_REVIEW_ON_THE_FLY
+        val isElmReviewOnTheFlyEnabled: Boolean = DEFAULT_REVIEW_ON_THE_FLY,
+        val isElmBuildOnSaveEnabled: Boolean = DEFAULT_BUILD_ON_SAVE
     )
 
 
@@ -106,13 +109,14 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         get() {
             val raw = rawSettingsRef.get()
             val toolchain = ElmToolchain(
-                elmCompilerPath = raw.elmCompilerPath,
-                lamderaCompilerPath = raw.lamderaCompilerPath,
+                compilerPath = raw.elmCompilerPath,
+                compilerType = raw.compilerType,
                 elmFormatPath = raw.elmFormatPath,
                 elmTestPath = raw.elmTestPath,
                 elmReviewPath = raw.elmReviewPath,
                 isElmFormatOnSaveEnabled = raw.isElmFormatOnSaveEnabled,
-                isElmReviewOnTheFlyEnabled = raw.isElmReviewOnTheFlyEnabled
+                isElmReviewOnTheFlyEnabled = raw.isElmReviewOnTheFlyEnabled,
+                isElmBuildOnSaveEnabled = raw.isElmBuildOnSaveEnabled
             )
             return Settings(toolchain = toolchain)
         }
@@ -137,13 +141,14 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     fun useToolchain(toolchain: ElmToolchain) {
         modifySettings {
             it.copy(
-                elmCompilerPath = toolchain.elmCompilerPath.toString(),
-                lamderaCompilerPath = toolchain.lamderaCompilerPath.toString(),
+                elmCompilerPath = toolchain.compilerPath.toString(),
+                compilerType = toolchain.compilerType,
                 elmFormatPath = toolchain.elmFormatPath.toString(),
                 elmTestPath = toolchain.elmTestPath.toString(),
                 elmReviewPath = toolchain.elmReviewPath.toString(),
                 isElmFormatOnSaveEnabled = toolchain.isElmFormatOnSaveEnabled,
-                isElmReviewOnTheFlyEnabled = toolchain.isElmReviewOnTheFlyEnabled
+                isElmReviewOnTheFlyEnabled = toolchain.isElmReviewOnTheFlyEnabled,
+                isElmBuildOnSaveEnabled = toolchain.isElmBuildOnSaveEnabled
             )
         }
     }
@@ -204,13 +209,11 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     private fun asyncLoadProject(manifestPath: Path, installDeps: Boolean = false): CompletableFuture<ElmProject> =
         runAsyncTask(intellijProject, "Loading Elm project '$manifestPath'") {
 
-            val elmCLI = settings.toolchain.elmCLI
-                ?: throw ProjectLoadException("Must specify a valid path to Elm binary in Settings")
-            val elmCompilerVersion = elmCLI.queryVersion(intellijProject).orNull()
-                ?: throw ProjectLoadException("Could not determine version of the Elm compiler")
+            val elmCompilerVersion = settings.toolchain.queryCompilerVersion(intellijProject).orNull()
+                ?: throw ProjectLoadException("Could not determine version of the selected compiler")
 
             if (installDeps) {
-                installProjectDeps(manifestPath, elmCLI)
+                installProjectDeps(manifestPath)
             }
 
             // not thread-safe; do not reuse across threads!
@@ -236,7 +239,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             }
         }
 
-    private fun installProjectDeps(manifestPath: Path, elmCLI: ElmCLI): Boolean {
+    private fun installProjectDeps(manifestPath: Path): Boolean {
         // The only way to install an Elm project's dependencies is to compile
         // the project. But the project may not be in a compilable state when
         // we try to load it. So we will copy the `elm.json` into a temp dir
@@ -278,16 +281,22 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             0 // mainEntryPoint.textOffset
         )
 
-        val lamderaEnabled = settings.toolchain.lamderaCompilerPath != null
-        val success = if (lamderaEnabled) {
-            val lamderaCLI = settings.toolchain.lamderaCLI
-                ?: throw ProjectLoadException("Must specify a valid path to Lamdera binary in Settings")
-                // TODO check version for something important
-                //  val lamderaCompilerVersion = lamderaCLI.queryVersion(intellijProject).orNull()
-                //      ?: throw ProjectLoadException("Could not determine version of the Lamdera compiler")
-            lamderaCLI.make(intellijProject, workDir = dir.toPath(), null, listOf(tmpEntryPoint))
-        } else {
-            elmCLI.make(intellijProject, workDir = dir.toPath(), null, listOf(tmpEntryPoint))
+        val success = when (settings.toolchain.compilerType) {
+            ElmCompilerType.LAMDERA -> {
+                val lamderaCLI = settings.toolchain.lamderaCLI
+                    ?: throw ProjectLoadException("Must specify a valid path to Lamdera binary in Settings")
+                lamderaCLI.make(intellijProject, workDir = dir.toPath(), null, listOf(tmpEntryPoint))
+            }
+            ElmCompilerType.ELM -> {
+                val elmCLI = settings.toolchain.elmCLI
+                    ?: throw ProjectLoadException("Must specify a valid path to Elm binary in Settings")
+                elmCLI.make(intellijProject, workDir = dir.toPath(), null, listOf(tmpEntryPoint))
+            }
+            ElmCompilerType.ELM_WRAP -> {
+                val wrapCLI = settings.toolchain.wrapCLI
+                    ?: throw ProjectLoadException("Must specify a valid path to Elm Wrap binary in Settings")
+                wrapCLI.make(intellijProject, workDir = dir.toPath(), null, listOf(tmpEntryPoint))
+            }
         }
 
         // Cleanup
@@ -443,12 +452,13 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         state.addContent(settingsElement)
         val raw = rawSettingsRef.get()
         settingsElement.setAttribute("elmCompilerPath", raw.elmCompilerPath)
-        settingsElement.setAttribute("lamderaCompilerPath", raw.lamderaCompilerPath)
+        settingsElement.setAttribute("compilerType", raw.compilerType.name)
         settingsElement.setAttribute("elmFormatPath", raw.elmFormatPath)
         settingsElement.setAttribute("elmTestPath", raw.elmTestPath)
         settingsElement.setAttribute("elmReviewPath", raw.elmReviewPath)
         settingsElement.setAttribute("isElmFormatOnSaveEnabled", raw.isElmFormatOnSaveEnabled.toString())
         settingsElement.setAttribute("isElmReviewOnTheFlyEnabled", raw.isElmReviewOnTheFlyEnabled.toString())
+        settingsElement.setAttribute("isElmBuildOnSaveEnabled", raw.isElmBuildOnSaveEnabled.toString())
 
         return state
     }
@@ -463,6 +473,17 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         val settingsElement = state.getChild("settings")
         val elmCompilerPath = settingsElement.getAttributeValue("elmCompilerPath") ?: ""
         val lamderaCompilerPath = settingsElement.getAttributeValue("lamderaCompilerPath") ?: ""
+        val compilerTypeFromState = ElmCompilerType.fromRaw(settingsElement.getAttributeValue("compilerType"))
+        val compilerType = when {
+            settingsElement.getAttributeValue("compilerType") != null -> compilerTypeFromState
+            lamderaCompilerPath.isNotBlank() -> ElmCompilerType.LAMDERA
+            else -> DEFAULT_COMPILER_TYPE
+        }
+        val compilerPath = when (compilerType) {
+            ElmCompilerType.ELM -> elmCompilerPath
+            ElmCompilerType.LAMDERA -> if (lamderaCompilerPath.isNotBlank()) lamderaCompilerPath else elmCompilerPath
+            ElmCompilerType.ELM_WRAP -> elmCompilerPath
+        }
         val elmFormatPath = settingsElement.getAttributeValue("elmFormatPath") ?: ""
         val elmTestPath = settingsElement.getAttributeValue("elmTestPath") ?: ""
         val elmReviewPath = settingsElement.getAttributeValue("elmReviewPath") ?: ""
@@ -474,16 +495,21 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             .getAttributeValue("isElmReviewOnTheFlyEnabled")
             .takeIf { it != null && it.isNotBlank() }?.toBoolean()
             ?: DEFAULT_REVIEW_ON_THE_FLY
+        val isElmBuildOnSaveEnabled = settingsElement
+            .getAttributeValue("isElmBuildOnSaveEnabled")
+            .takeIf { it != null && it.isNotBlank() }?.toBoolean()
+            ?: DEFAULT_BUILD_ON_SAVE
 
         modifySettings(notify = false) {
             RawSettings(
-                elmCompilerPath = elmCompilerPath,
-                lamderaCompilerPath = lamderaCompilerPath,
+                elmCompilerPath = compilerPath,
+                compilerType = compilerType,
                 elmFormatPath = elmFormatPath,
                 elmTestPath = elmTestPath,
                 elmReviewPath = elmReviewPath,
                 isElmFormatOnSaveEnabled = isElmFormatOnSaveEnabled,
-                isElmReviewOnTheFlyEnabled = isElmReviewOnTheFlyEnabled
+                isElmReviewOnTheFlyEnabled = isElmReviewOnTheFlyEnabled,
+                isElmBuildOnSaveEnabled = isElmBuildOnSaveEnabled
             )
         }
 

@@ -49,8 +49,8 @@ object ElmSuggest {
      *
      * This performs file I/O in order to determine that the file exists and that it is executable.
      */
-    fun compilerIsOnPath(searchLocations: Sequence<Path> = emptySequence()): Boolean {
-        val elmNameVariants = executableNamesFor("elm")
+    fun compilerIsOnPath(programName: String = elmCompilerTool, searchLocations: Sequence<Path> = emptySequence()): Boolean {
+        val nameVariants = executableNamesFor(programName)
         return searchLocations.ifEmpty {
             sequenceOf(
                     suggestionsFromPath(),
@@ -60,7 +60,7 @@ object ElmSuggest {
             ).flatten()
         }
                 .flatMap { binDir ->
-                    elmNameVariants.map { filename ->
+                    nameVariants.map { filename ->
                         binDir.resolve(filename)
                     }
                 }
@@ -103,30 +103,32 @@ object ElmSuggest {
 
 
     private fun suggestionsFromNPM(project: Project): Sequence<Path> {
-        return project.modules
-                .asSequence()
-                .flatMap { ModuleRootManager.getInstance(it).contentRoots.asSequence() }
-                .flatMap { contentRoot ->
-                    val rootPath = Paths.get(contentRoot.path)
-                    val bins = linkedSetOf<Path>()
+        val roots = linkedSetOf<Path>()
+        project.basePath?.let { roots.add(Paths.get(it)) }
+        project.modules
+            .asSequence()
+            .flatMap { ModuleRootManager.getInstance(it).contentRoots.asSequence() }
+            .mapTo(roots) { contentRoot -> Paths.get(contentRoot.path) }
 
-                    val directBin = rootPath.resolve("node_modules").resolve(".bin")
-                    if (directBin.isDirectory()) {
-                        bins.add(directBin)
-                    }
+        val bins = linkedSetOf<Path>()
+        roots.forEach { rootPath ->
+            val directBin = rootPath.resolve("node_modules").resolve(".bin")
+            if (directBin.isDirectory()) {
+                bins.add(directBin)
+            }
 
-                    runCatching {
-                        Files.walk(rootPath, NPM_SEARCH_MAX_DEPTH).use { walk ->
-                            walk
-                                .filter { Files.isDirectory(it) && it.fileName?.toString() == "node_modules" }
-                                .forEach { nodeModulesDir ->
-                                    val bin = nodeModulesDir.resolve(".bin")
-                                    if (bin.isDirectory()) bins.add(bin)
-                                }
+            runCatching {
+                Files.walk(rootPath, NPM_SEARCH_MAX_DEPTH).use { walk ->
+                    walk
+                        .filter { Files.isDirectory(it) && it.fileName?.toString() == "node_modules" }
+                        .forEach { nodeModulesDir ->
+                            val bin = nodeModulesDir.resolve(".bin")
+                            if (bin.isDirectory()) bins.add(bin)
                         }
-                    }
-                    bins.asSequence()
                 }
+            }
+        }
+        return bins.asSequence()
     }
 
     private fun suggestionsFromNVM(): Sequence<Path> {

@@ -77,7 +77,7 @@ class ElmExternalReviewAction : AnAction() {
             val currentFileInEditor: VirtualFile? = e.getData(PlatformDataKeys.VIRTUAL_FILE)
             val compiledSuccessfully = makeProject(elmProject, project, entryPoints, currentFileInEditor)
             if (compiledSuccessfully) {
-                elmReviewCLI.runReview(project, elmProject, project.elmToolchain.elmCLI, currentFileInEditor)
+                elmReviewCLI.runReview(project, elmProject, project.elmToolchain.compilerPath, currentFileInEditor)
             }
         } catch (_: ExecutionException) {
             return showError(
