@@ -88,10 +88,7 @@ class ElmReviewToolWindowFactory : ToolWindowFactory {
                         errorTreeViewPanel.setIssues(issues)
                         errorTreeViewPanel.reload()
                         if (toolWindow.isVisible) {
-                            toolWindow.show(null)
                             errorTreeViewPanel.expandAll()
-                            errorTreeViewPanel.requestFocus()
-                            focusEditor(project)
                         }
                     }
                 }

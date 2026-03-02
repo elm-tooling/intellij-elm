@@ -69,6 +69,10 @@ class ElmWorkspaceConfigurable(
     private val elmTestVersionLabel = JLabel()
     private val elmReviewVersionLabel = JLabel()
     private val elmReviewOnTheFlyCheckbox = JCheckBox()
+    private val compilerTypeWarningLabel = JLabel().apply {
+        foreground = JBColor.RED
+        isVisible = false
+    }
     private val versionCache = ConcurrentHashMap<Pair<String, String>, Result<Version>>()
     private val latestResults = ConcurrentHashMap<String, Result<Version>>()
     private data class ToolQueryInput(
@@ -93,6 +97,7 @@ class ElmWorkspaceConfigurable(
         val panel = layout {
             block("Elm Compiler") {
                 row("Type:", compilerTypeDropdown)
+                row("", compilerTypeWarningLabel)
                 row("Location:", pathFieldPlusAutoDiscoverButton(compilerPathField) { selectedCompilerType().toolName })
                 row("Version:", compilerVersionLabel)
                 row("Run when file saved?", elmBuildOnSaveCheckbox)
@@ -153,6 +158,7 @@ class ElmWorkspaceConfigurable(
         }
     }
     private fun update(changedTools: Set<String>? = null) {
+        updateCompilerTypeWarning()
         val toolsToUpdate = changedTools ?: setOf(compilerToolKey, elmFormatTool, elmTestTool, elmReviewTool)
         if (toolsToUpdate.isNotEmpty()) {
             // Snapshot UI state on EDT; Swing components are not thread-safe.
@@ -288,6 +294,18 @@ class ElmWorkspaceConfigurable(
 
     private fun parsePath(pathText: String): Path? = runCatching { Paths.get(pathText) }.getOrNull()
 
+    private fun updateCompilerTypeWarning() {
+        val hasLamderaProject = project.elmWorkspace.allProjects.any { it is LamderaApplicationProject }
+        val wrongCompilerSelected = selectedCompilerType() != ElmCompilerType.LAMDERA
+        val shouldWarn = hasLamderaProject && wrongCompilerSelected
+        compilerTypeWarningLabel.text = if (shouldWarn) {
+            "Lamdera project detected. Select compiler type 'Lamdera'."
+        } else {
+            ""
+        }
+        compilerTypeWarningLabel.isVisible = shouldWarn
+    }
+
     override fun dispose() {
         // needed for the UIDebouncer, but nothing needs to be done here
     }
@@ -324,6 +342,7 @@ class ElmWorkspaceConfigurable(
         }
         elmReviewOnTheFlyCheckbox.isSelected = isElmReviewOnTheFlyEnabled != false
 
+        updateCompilerTypeWarning()
         update(null)
     }
 

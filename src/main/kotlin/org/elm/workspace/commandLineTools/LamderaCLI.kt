@@ -4,11 +4,11 @@ import com.intellij.execution.ExecutionException
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.wm.ToolWindowManager
 import org.elm.openapiext.*
 import org.elm.workspace.*
 import org.elm.workspace.compiler.ERRORS_TOPIC
 import org.elm.workspace.compiler.ElmError
+import org.elm.workspace.compiler.COMPILER_OUTPUT_TOPIC
 import org.elm.workspace.compiler.elmJsonToCompilerMessages
 import java.nio.file.Path
 
@@ -28,11 +28,18 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
         val targetPath = entries.first().second
         val offset = entries.first().third
         val params = (listOf("make") + filePathsToCompile + listOf("--output=/dev/null")).toTypedArray()
-        val output = GeneralCommandLine(lamderaExecutablePath)
+        val commandLine = GeneralCommandLine(lamderaExecutablePath)
             .withWorkDirectory(workDir)
             .withParameters(*params)
             .apply { if (jsonReport) addParameter("--report=json") }
-            .execute(elmCompilerTool, project)
+        val output = commandLine.execute(elmCompilerTool, project)
+        project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(
+            lamderaCompilerTool,
+            commandLine.commandLineString,
+            output.stdout,
+            output.stderr,
+            output.exitCode
+        )
         val json = output.stderr
         val regex = "\\{.*}".toRegex()
         val cleansedJson = regex.find(json)?.value
@@ -60,10 +67,7 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
             fun postErrors() = project.messageBus.syncPublisher(ERRORS_TOPIC).update(elmProject.projectDirPath, messages, targetPath!!, offset)
             when {
                 isUnitTestMode -> postErrors()
-                else -> {
-                    val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Elm Compiler")!!
-                    toolWindow.show { postErrors() }
-                }
+                else -> postErrors()
             }
         }
         return messages.isEmpty()

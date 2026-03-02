@@ -3,13 +3,13 @@ package org.elm.workspace.commandLineTools
 import com.intellij.execution.ExecutionException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.wm.ToolWindowManager
 import org.elm.openapiext.*
 import org.elm.workspace.ElmProject
 import org.elm.workspace.ParseException
 import org.elm.workspace.Version
 import org.elm.workspace.compiler.ERRORS_TOPIC
 import org.elm.workspace.compiler.ElmError
+import org.elm.workspace.compiler.COMPILER_OUTPUT_TOPIC
 import org.elm.workspace.compiler.elmJsonToCompilerMessages
 import org.elm.workspace.elmCompilerTool
 import java.nio.file.Path
@@ -28,11 +28,18 @@ class ElmCLI(val elmExecutablePath: Path) {
         val targetPath = entries.first().second
         val offset = entries.first().third
         val params = (listOf("make") + filePathsToCompile + listOf("--output=/dev/null")).toTypedArray()
-        val output = GeneralCommandLine(elmExecutablePath)
+        val commandLine = GeneralCommandLine(elmExecutablePath)
             .withWorkDirectory(workDir)
             .withParameters(*params)
             .apply { if (jsonReport) addParameter("--report=json") }
-            .execute(elmCompilerTool, project)
+        val output = commandLine.execute(elmCompilerTool, project)
+        project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(
+            elmCompilerTool,
+            commandLine.commandLineString,
+            output.stdout,
+            output.stderr,
+            output.exitCode
+        )
         val json = output.stderr
         val regex = "\\{.*}".toRegex()
         val cleansedJson = regex.find(json)?.value
@@ -58,10 +65,7 @@ class ElmCLI(val elmExecutablePath: Path) {
             fun postErrors() = project.messageBus.syncPublisher(ERRORS_TOPIC).update(elmProject.projectDirPath, messages, targetPath!!, offset)
             when {
                 isUnitTestMode -> postErrors()
-                else -> {
-                    val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Elm Compiler")!!
-                    toolWindow.show { postErrors() }
-                }
+                else -> postErrors()
             }
         }
         return messages.isEmpty()

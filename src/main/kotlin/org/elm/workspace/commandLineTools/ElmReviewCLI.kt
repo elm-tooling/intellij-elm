@@ -13,7 +13,6 @@ import com.intellij.openapi.progress.runBackgroundableTask
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.util.messages.Topic
 import org.elm.openapiext.*
 import org.elm.workspace.*
@@ -113,10 +112,6 @@ fun executeReviewAsync(
     project: Project,
     task: (indicator: ProgressIndicator) -> Unit
 ) {
-    if (!isUnitTestMode) {
-        val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Elm Review")!!
-        toolWindow.show()
-    }
     runBackgroundableTask(elmReviewTool, project, true, task)
 }
 

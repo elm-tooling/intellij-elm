@@ -69,10 +69,15 @@ class ElmBuildAction : AnAction() {
         e.getData(CommonDataKeys.VIRTUAL_FILE)
             ?: FileEditorManager.getInstance(project).selectedFiles.firstOrNull { it.fileType == ElmFileType }
 
-    interface ElmErrorsListener {
-        @Suppress("unused")
-        fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int)
-    }
+interface ElmErrorsListener {
+    @Suppress("unused")
+    fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int)
+}
+
+interface ElmCompilerOutputListener {
+    @Suppress("unused")
+    fun update(toolName: String, commandLine: String, stdout: String, stderr: String, exitCode: Int)
+}
 
     data class LookupClientLocation(
         override val intellijProject: Project,
@@ -212,6 +217,7 @@ private fun showError(project: Project, message: String, includeFixAction: Boole
 }
 
 val ERRORS_TOPIC = Topic("Elm compiler-messages", ElmBuildAction.ElmErrorsListener::class.java)
+val COMPILER_OUTPUT_TOPIC = Topic("Elm compiler output", ElmBuildAction.ElmCompilerOutputListener::class.java)
 val elmMainTypes = setOf(
     "Platform" to "Program",
     "Html" to "Html",
