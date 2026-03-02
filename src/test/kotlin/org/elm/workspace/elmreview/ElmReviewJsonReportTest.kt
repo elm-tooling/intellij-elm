@@ -11,6 +11,12 @@ import org.junit.Test
 
 class ElmReviewJsonReportTest : ElmTestBase() {
 
+    companion object {
+        private const val NO_DEBUG_LOG_MESSAGE = "Remove the use of `Debug.log` before shipping to production"
+        private const val NO_DEBUG_LOG_DETAILS = "`Debug.log` is useful when developing, but is not meant to be shipped to production or published in a package. I suggest removing its use before committing and attempting to push to production."
+        private const val NO_DEBUG_LOG_RULE_LINK = "https://package.elm-lang.org/packages/jfmengels/elm-review-debug/1.0.6/NoDebug-Log"
+    }
+
     // $ elm --version
     // 0.19
     // $ elm-review src/Foo.elm --report=json
@@ -143,17 +149,19 @@ class ElmReviewJsonReportTest : ElmTestBase() {
                     suppressed = false,
                     path = "src/Frontend.elm",
                     rule = "NoDebug.Log",
-                    message = "Remove the use of `Debug.log` before shipping to production",
+                    message = NO_DEBUG_LOG_MESSAGE,
                     region = Region(Location(56, 13), Location(56, 22)),
-                    formattedText = """<html><body style="font-family: monospace; font-weight: bold"><span style="color: #33BBC8;">(fix)&nbsp;</span><span style="color: #FF5959;"><a&nbsp;href="https://package.elm-lang.org/packages/jfmengels/elm-review-debug/1.0.6/NoDebug-Log">NoDebug.Log</a></span><span style="color: #4F9DA6">:&nbsp;Remove&nbsp;the&nbsp;use&nbsp;of&nbsp;`Debug.log`&nbsp;before&nbsp;shipping&nbsp;to&nbsp;production<br><br>55|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NoOpFrontendMsg&nbsp;-><br>56|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Debug.log&nbsp;"BBBB"&nbsp;(&nbsp;model,&nbsp;Cmd.none&nbsp;)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span style="color: #FF5959;">^^^^^^^^^</span><span style="color: #4F9DA6"><br><br>`Debug.log`&nbsp;is&nbsp;useful&nbsp;when&nbsp;developing,&nbsp;but&nbsp;is&nbsp;not&nbsp;meant&nbsp;to&nbsp;be&nbsp;shipped&nbsp;to&nbsp;production&nbsp;or&nbsp;published&nbsp;in&nbsp;a&nbsp;package.&nbsp;I&nbsp;suggest&nbsp;removing&nbsp;its&nbsp;use&nbsp;before&nbsp;committing&nbsp;and&nbsp;attempting&nbsp;to&nbsp;push&nbsp;to&nbsp;production.</span></body></html>"""
+                    formattedText = noDebugLogFormattedTextBbbb(),
+                    formattedChunks = noDebugLogFormattedChunksBbbb()
                 ),
                 ElmReviewError(
                     suppressed = false,
                     path = "src/Frontend.elm",
                     rule = "NoDebug.Log",
-                    message = "Remove the use of `Debug.log` before shipping to production",
+                    message = NO_DEBUG_LOG_MESSAGE,
                     region = Region(Location(53, 17), Location(53, 26)),
-                    formattedText = """<html><body style="font-family: monospace; font-weight: bold"><span style="color: #33BBC8;">(fix)&nbsp;</span><span style="color: #FF5959;"><a&nbsp;href="https://package.elm-lang.org/packages/jfmengels/elm-review-debug/1.0.6/NoDebug-Log">NoDebug.Log</a></span><span style="color: #4F9DA6">:&nbsp;Remove&nbsp;the&nbsp;use&nbsp;of&nbsp;`Debug.log`&nbsp;before&nbsp;shipping&nbsp;to&nbsp;production<br><br>52|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UrlChanged&nbsp;url&nbsp;-><br>53|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Debug.log&nbsp;"AAAA"&nbsp;(&nbsp;model,&nbsp;Cmd.none&nbsp;)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span style="color: #FF5959;">^^^^^^^^^</span><span style="color: #4F9DA6"><br><br>`Debug.log`&nbsp;is&nbsp;useful&nbsp;when&nbsp;developing,&nbsp;but&nbsp;is&nbsp;not&nbsp;meant&nbsp;to&nbsp;be&nbsp;shipped&nbsp;to&nbsp;production&nbsp;or&nbsp;published&nbsp;in&nbsp;a&nbsp;package.&nbsp;I&nbsp;suggest&nbsp;removing&nbsp;its&nbsp;use&nbsp;before&nbsp;committing&nbsp;and&nbsp;attempting&nbsp;to&nbsp;push&nbsp;to&nbsp;production.</span></body></html>"""
+                    formattedText = noDebugLogFormattedTextAaaa(),
+                    formattedChunks = noDebugLogFormattedChunksAaaa()
                 )
             ),
             reader.readErrorReport()
@@ -288,17 +296,19 @@ class ElmReviewJsonReportTest : ElmTestBase() {
                     suppressed = true,
                     path = "src/Frontend.elm",
                     rule = "NoDebug.Log",
-                    message = "Remove the use of `Debug.log` before shipping to production",
+                    message = NO_DEBUG_LOG_MESSAGE,
                     region = Region(Location(56, 13), Location(56, 22)),
-                    formattedText = """<html><body style="font-family: monospace; font-weight: bold"><span style="color: #33BBC8;">(fix)&nbsp;</span><span style="color: #FF5959;"><a&nbsp;href="https://package.elm-lang.org/packages/jfmengels/elm-review-debug/1.0.6/NoDebug-Log">NoDebug.Log</a></span><span style="color: #4F9DA6">:&nbsp;Remove&nbsp;the&nbsp;use&nbsp;of&nbsp;`Debug.log`&nbsp;before&nbsp;shipping&nbsp;to&nbsp;production<br><br>55|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NoOpFrontendMsg&nbsp;-><br>56|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Debug.log&nbsp;"BBBB"&nbsp;(&nbsp;model,&nbsp;Cmd.none&nbsp;)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span style="color: #FF5959;">^^^^^^^^^</span><span style="color: #4F9DA6"><br><br>`Debug.log`&nbsp;is&nbsp;useful&nbsp;when&nbsp;developing,&nbsp;but&nbsp;is&nbsp;not&nbsp;meant&nbsp;to&nbsp;be&nbsp;shipped&nbsp;to&nbsp;production&nbsp;or&nbsp;published&nbsp;in&nbsp;a&nbsp;package.&nbsp;I&nbsp;suggest&nbsp;removing&nbsp;its&nbsp;use&nbsp;before&nbsp;committing&nbsp;and&nbsp;attempting&nbsp;to&nbsp;push&nbsp;to&nbsp;production.</span></body></html>"""
+                    formattedText = noDebugLogFormattedTextBbbb(),
+                    formattedChunks = noDebugLogFormattedChunksBbbb()
                 ),
                 ElmReviewError(
                     suppressed = false,
                     path = "src/Frontend.elm",
                     rule = "NoDebug.Log",
-                    message = "Remove the use of `Debug.log` before shipping to production",
+                    message = NO_DEBUG_LOG_MESSAGE,
                     region = Region(Location(53, 17), Location(53, 26)),
-                    formattedText = """<html><body style="font-family: monospace; font-weight: bold"><span style="color: #33BBC8;">(fix)&nbsp;</span><span style="color: #FF5959;"><a&nbsp;href="https://package.elm-lang.org/packages/jfmengels/elm-review-debug/1.0.6/NoDebug-Log">NoDebug.Log</a></span><span style="color: #4F9DA6">:&nbsp;Remove&nbsp;the&nbsp;use&nbsp;of&nbsp;`Debug.log`&nbsp;before&nbsp;shipping&nbsp;to&nbsp;production<br><br>52|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UrlChanged&nbsp;url&nbsp;-><br>53|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Debug.log&nbsp;"AAAA"&nbsp;(&nbsp;model,&nbsp;Cmd.none&nbsp;)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span style="color: #FF5959;">^^^^^^^^^</span><span style="color: #4F9DA6"><br><br>`Debug.log`&nbsp;is&nbsp;useful&nbsp;when&nbsp;developing,&nbsp;but&nbsp;is&nbsp;not&nbsp;meant&nbsp;to&nbsp;be&nbsp;shipped&nbsp;to&nbsp;production&nbsp;or&nbsp;published&nbsp;in&nbsp;a&nbsp;package.&nbsp;I&nbsp;suggest&nbsp;removing&nbsp;its&nbsp;use&nbsp;before&nbsp;committing&nbsp;and&nbsp;attempting&nbsp;to&nbsp;push&nbsp;to&nbsp;production.</span></body></html>"""
+                    formattedText = noDebugLogFormattedTextAaaa(),
+                    formattedChunks = noDebugLogFormattedChunksAaaa()
                 )
             ),
             reader.readErrorReport()
@@ -605,4 +615,48 @@ class ElmReviewJsonReportTest : ElmTestBase() {
             report
         )
     }
+
+    private fun noDebugLogFormattedTextBbbb(): String =
+        """
+        (fix) NoDebug.Log: $NO_DEBUG_LOG_MESSAGE
+
+        55|         NoOpFrontendMsg ->
+        56|             Debug.log "BBBB" ( model, Cmd.none )
+                        ^^^^^^^^^
+
+        $NO_DEBUG_LOG_DETAILS
+        """.trimIndent()
+
+    private fun noDebugLogFormattedTextAaaa(): String =
+        """
+        (fix) NoDebug.Log: $NO_DEBUG_LOG_MESSAGE
+
+        52|         UrlChanged url ->
+        53|                 Debug.log "AAAA" ( model, Cmd.none )
+                            ^^^^^^^^^
+
+        $NO_DEBUG_LOG_DETAILS
+        """.trimIndent()
+
+    private fun noDebugLogFormattedChunksBbbb(): List<Chunk> =
+        listOf(
+            Chunk.Styled(string = "(fix) ", color = "#33BBC8"),
+            Chunk.Styled(string = "NoDebug.Log", color = "#FF0000", href = NO_DEBUG_LOG_RULE_LINK),
+            Chunk.Unstyled(
+                str = ": $NO_DEBUG_LOG_MESSAGE\n\n55|         NoOpFrontendMsg ->\n56|             Debug.log \"BBBB\" ( model, Cmd.none )\n                "
+            ),
+            Chunk.Styled(string = "^^^^^^^^^", color = "#FF0000"),
+            Chunk.Unstyled(str = "\n\n$NO_DEBUG_LOG_DETAILS")
+        )
+
+    private fun noDebugLogFormattedChunksAaaa(): List<Chunk> =
+        listOf(
+            Chunk.Styled(string = "(fix) ", color = "#33BBC8"),
+            Chunk.Styled(string = "NoDebug.Log", color = "#FF0000", href = NO_DEBUG_LOG_RULE_LINK),
+            Chunk.Unstyled(
+                str = ": $NO_DEBUG_LOG_MESSAGE\n\n52|         UrlChanged url ->\n53|                 Debug.log \"AAAA\" ( model, Cmd.none )\n                    "
+            ),
+            Chunk.Styled(string = "^^^^^^^^^", color = "#FF0000"),
+            Chunk.Unstyled(str = "\n\n$NO_DEBUG_LOG_DETAILS")
+        )
 }

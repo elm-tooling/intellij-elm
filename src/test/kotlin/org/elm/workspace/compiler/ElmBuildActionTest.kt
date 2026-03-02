@@ -6,10 +6,13 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.util.Ref
+import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.TestActionEvent
 import junit.framework.TestCase
 import org.elm.workspace.ElmWorkspaceTestBase
+import org.elm.workspace.elmToolchain
+import org.elm.workspace.elmWorkspace
 import org.intellij.lang.annotations.Language
 import org.junit.Test
 import java.nio.file.Path
@@ -32,11 +35,13 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
             }
         }
         val file = myFixture.configureFromTempProjectFile("src/Main.elm").virtualFile
-        doTest(file, expectedNumErrors = 0, expectedOffset = source.indexOf("main"))
+        configureBuildTargets(file, ElmCompilerKind.ELM)
+        doTest(file, expectedNumErrors = 0, expectedOffset = 0)
     }
 
     @Test
     fun `test build Lamdera application project`() {
+        if (project.elmToolchain.lamderaCLI == null) return
         val frontend = """
                     module Frontend exposing (..)
                     app = 42
@@ -55,7 +60,8 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
         }
         val fileFrontend = myFixture.configureFromTempProjectFile("src/Frontend.elm").virtualFile
         val fileBackend = myFixture.configureFromTempProjectFile("src/Backend.elm").virtualFile
-        doTest(listOf(fileFrontend, fileBackend), expectedNumErrors = 0, expectedOffset = listOf(frontend.indexOf("app"), backend.indexOf("app")), listOf("src/Frontend.elm", "src/Backend.elm"))
+        configureBuildTargets(listOf(fileFrontend, fileBackend), ElmCompilerKind.LAMDERA)
+        doTest(listOf(fileFrontend, fileBackend), expectedNumErrors = 0, expectedOffset = listOf(0, 0), listOf("src/Frontend.elm", "src/Backend.elm"))
     }
 
     @Test
@@ -74,7 +80,8 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
             }
         }
         val file = myFixture.configureFromTempProjectFile("src/Main.elm").virtualFile
-        doTest(file, expectedNumErrors = 1, expectedOffset = source.indexOf("main"))
+        configureBuildTargets(file, ElmCompilerKind.ELM)
+        doTest(file, expectedNumErrors = 1, expectedOffset = 0)
     }
 
     @Test
@@ -97,7 +104,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
             }
         }
         val file = myFixture.configureFromTempProjectFile("src/Foo.elm").virtualFile
-        doTestShowsErrorBalloon(file, "Cannot find your Elm app's main entry point")
+        doTestShowsErrorBalloon(file, "No build targets configured")
     }
 
 
@@ -175,6 +182,32 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
                             notificationRef.set(notification)
                 })
         return notificationRef
+    }
+
+    private fun configureBuildTargets(file: VirtualFile, compilerKind: ElmCompilerKind) =
+        configureBuildTargets(listOf(file), compilerKind)
+
+    private fun configureBuildTargets(files: List<VirtualFile>, compilerKind: ElmCompilerKind) {
+        val elmProject = project.elmWorkspace.findProjectForFile(files.first())
+            ?: error("Could not find Elm project for test file")
+        val projectDir = myFixture.findFileInTempDir(".")
+            ?: error("Could not find test project root")
+        val compilerPath = project.elmToolchain.compilerPath?.toString()
+            ?: error("Compiler path is not configured in test toolchain")
+        val targets = files.mapIndexed { index, file ->
+            val relativeInput = VfsUtilCore.getRelativePath(file, projectDir)
+                ?: error("Could not create relative input path for ${file.path}")
+            ElmBuildTargetConfig(
+                name = "Target ${index + 1}",
+                inputPath = relativeInput,
+                outputPath = "",
+                mode = ElmBuildMode.NONE,
+                compilerKind = compilerKind,
+                compilerPath = compilerPath,
+                compileOnSave = true
+            )
+        }
+        project.elmWorkspace.setBuildTargetConfigsFor(elmProject.manifestPath, targets)
     }
 }
 

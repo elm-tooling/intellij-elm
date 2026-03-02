@@ -6,6 +6,10 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import org.elm.fileTree
 import org.elm.openapiext.pathAsPath
 import org.elm.workspace.ElmToolchain.Companion.ELM_JSON
+import org.elm.workspace.compiler.ElmBuildMode
+import org.elm.workspace.compiler.ElmCompilerKind
+import org.elm.workspace.compiler.ResolvedBuildTarget
+import org.elm.workspace.compiler.nullOutputTargetPathString
 import org.intellij.lang.annotations.Language
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -104,10 +108,16 @@ object MinimalElmStdlibVariant : ElmStdlibVariant {
             elm("Main.elm")
         }.create(project, onDiskTmpDir)
 
-        val entryPoint: Triple<Path, String?, Int> = Triple(
-            Paths.get("Main.elm"),
-            null,
-            0 // mainEntryPoint.textOffset
+        val entryPoint = ResolvedBuildTarget(
+            name = "Main",
+            inputPath = Paths.get("Main.elm"),
+            inputPathForCompiler = "Main.elm",
+            outputPathForCompiler = nullOutputTargetPathString(),
+            mode = ElmBuildMode.NONE,
+            compilerKind = ElmCompilerKind.ELM,
+            compilerPath = elmCLI.elmExecutablePath,
+            compileOnSave = false,
+            offset = 0
         )
         elmCLI.make(project, onDiskTmpDir.pathAsPath, null, listOf(entryPoint))
     }
