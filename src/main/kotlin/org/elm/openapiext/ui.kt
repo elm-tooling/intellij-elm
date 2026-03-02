@@ -19,7 +19,6 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.ui.DocumentAdapter
 import com.intellij.util.Alarm
 import java.util.concurrent.atomic.AtomicBoolean
-import javax.swing.JTextField
 import javax.swing.event.DocumentEvent
 
 class UiDebouncer(

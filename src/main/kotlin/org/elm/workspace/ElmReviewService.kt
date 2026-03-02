@@ -133,7 +133,8 @@ private fun ElmReviewError.deepContentEquals(other: ElmReviewError): Boolean =
         rule == other.rule &&
         message == other.message &&
         region == other.region &&
-        html == other.html &&
+        formattedText == other.formattedText &&
+        formattedChunks == other.formattedChunks &&
         ruleLink == other.ruleLink &&
         details == other.details &&
         fix == other.fix

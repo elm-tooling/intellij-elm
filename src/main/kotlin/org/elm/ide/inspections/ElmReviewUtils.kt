@@ -5,6 +5,7 @@ import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.findDocument
@@ -36,7 +37,7 @@ fun highlightsForFile(
             rule == "NoDeprecated" -> HighlightInfoType.DEPRECATED
             else -> HighlightInfoType.WARNING
         }
-        val tooltipHtml = message.html ?: buildString {
+        val tooltipHtml = buildString {
             append("<h2>elm-review ")
             append(rule)
             append("</h2><p>")
@@ -46,6 +47,12 @@ fun highlightsForFile(
                 append("<br /><p>")
                 append(message.details!!.joinToString("\n"))
                 append("</p>")
+            }
+            val formattedText = message.formattedText
+            if (!formattedText.isNullOrEmpty()) {
+                append("<br /><pre>")
+                append(StringUtil.escapeXmlEntities(formattedText))
+                append("</pre>")
             }
         }
 

@@ -245,8 +245,6 @@
                     factoryClass="org.elm.ide.toolwindow.ElmCompilerToolWindowFactory"/>
         <toolWindow id="Elm Review" anchor="bottom" secondary="false" icon="/icons/elm-toolwindow.svg"
                     factoryClass="org.elm.ide.toolwindow.ElmReviewToolWindowFactory"/>
-        <toolWindow id="Friendly Messages" anchor="bottom" secondary="true" icon="/icons/elm-toolwindow.svg"
-                    factoryClass="org.elm.ide.toolwindow.ReportsToolWindowFactory"/>
 
 
         <!-- STUBS -->

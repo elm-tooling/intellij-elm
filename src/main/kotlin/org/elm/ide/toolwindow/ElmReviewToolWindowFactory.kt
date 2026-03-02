@@ -2,6 +2,9 @@ package org.elm.ide.toolwindow
 
 import com.intellij.ide.DataManager
 import com.intellij.ide.errorTreeView.ErrorTreeNodeDescriptor
+import com.intellij.execution.filters.TextConsoleBuilderFactory
+import com.intellij.execution.ui.ConsoleView
+import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -17,25 +20,50 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.IdeFocusManager
+import com.intellij.openapi.editor.markup.EffectType
+import com.intellij.openapi.editor.markup.TextAttributes
+import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
-import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.util.TextRange
+import com.intellij.ui.JBColor
+import com.intellij.ui.components.JBLabel
+import com.intellij.ui.OnePixelSplitter
+import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.content.impl.ContentImpl
 import com.intellij.util.ui.tree.TreeUtil
 import com.intellij.util.ui.MessageCategory
+import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.UIUtil
 import org.elm.workspace.ElmReviewService
 import org.elm.workspace.elmReviewService
+import org.elm.workspace.elmreview.Chunk
 import org.elm.workspace.elmreview.ElmReviewError
 import org.elm.workspace.elmreview.Region
+import java.awt.BorderLayout
+import java.awt.CardLayout
+import java.awt.Color
+import java.awt.Font
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
+import javax.swing.JPanel
+import javax.swing.SwingConstants
 
 class ElmReviewToolWindowFactory : ToolWindowFactory {
     override suspend fun isApplicableAsync(project: Project): Boolean = true
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val errorTreeViewPanel = ElmReviewErrorTreeViewPanel(project)
-        toolWindow.contentManager.addContent(ContentImpl(errorTreeViewPanel, "Elm Review Results", true))
+        val detailsPanel = ElmReviewDetailsPanel(project)
+        errorTreeViewPanel.onIssueSelected = { issue ->
+            detailsPanel.showIssueDetails(issue)
+        }
+
+        val splitPane = OnePixelSplitter(false, 0.58f).apply {
+            firstComponent = errorTreeViewPanel
+            secondComponent = detailsPanel
+        }
+        toolWindow.contentManager.addContent(ContentImpl(splitPane, "Elm Review Results", true))
 
         with(project.messageBus.connect()) {
             subscribe(ElmReviewService.ELM_REVIEW_WATCH_TOPIC, object : ElmReviewService.ElmReviewWatchListener {
@@ -43,15 +71,14 @@ class ElmReviewToolWindowFactory : ToolWindowFactory {
                 override fun update(baseDirPath: Path, messages: List<ElmReviewError>) {
                     invokeLater {
                         errorTreeViewPanel.clearMessages()
+                        detailsPanel.clear()
 
-                        val renderedDetails = mutableListOf<String>()
                         val issues = mutableListOf<ElmReviewIssue>()
                         messages.forEachIndexed { index, elmReviewError ->
                             val sourceLocation = elmReviewError.path ?: return@forEachIndexed
                             val virtualFile = baseDirPath.resolve(sourceLocation).let {
                                 LocalFileSystem.getInstance().findFileByPath(it.toString())
                             }
-                            renderedDetails += elmReviewError.html ?: (elmReviewError.message ?: "")
                             val encodedIndex = "\u200B".repeat(index)
                             val issue = ElmReviewIssue(baseDirPath, sourceLocation, virtualFile, elmReviewError)
                             issues += issue
@@ -60,13 +87,6 @@ class ElmReviewToolWindowFactory : ToolWindowFactory {
 
                         errorTreeViewPanel.setIssues(issues)
                         errorTreeViewPanel.reload()
-                        ToolWindowManager.getInstance(project).getToolWindow("Friendly Messages")?.let { friendly ->
-                            val reportPanel = friendly.contentManager.contents.firstOrNull()?.component as? ReportPanel
-                            reportPanel?.reportUI?.apply {
-                                text = renderedDetails.firstOrNull().orEmpty()
-                                caretPosition = 0
-                            }
-                        }
                         if (toolWindow.isVisible) {
                             toolWindow.show(null)
                             errorTreeViewPanel.expandAll()
@@ -92,7 +112,7 @@ class ElmReviewToolWindowFactory : ToolWindowFactory {
                 issue.virtualFile,
                 0,
                 0,
-                elmReviewError.html ?: "General Error !"
+                elmReviewError.formattedText ?: elmReviewError.message ?: "General Error !"
             )
         } else {
             errorTreeViewPanel.addErrorMessage(
@@ -100,8 +120,138 @@ class ElmReviewToolWindowFactory : ToolWindowFactory {
                 issue.virtualFile,
                 elmReviewError.region!!.start.let { it!!.line - 1 },
                 elmReviewError.region!!.start.let { it!!.column - 1 },
-                elmReviewError.html!!
+                elmReviewError.formattedText ?: elmReviewError.message.orEmpty()
             )
+        }
+    }
+}
+
+private class ElmReviewDetailsPanel(project: Project) : SimpleToolWindowPanel(true, false) {
+    private val colorTypeCache = ConcurrentHashMap<String, ConsoleViewContentType>()
+    private val detailsConsole: ConsoleView = TextConsoleBuilderFactory.getInstance().createBuilder(project).console
+    private val cardLayout = CardLayout()
+    private val detailsContainer = JPanel(cardLayout)
+    private val emptyPanel = JPanel(BorderLayout()).apply {
+        background = UIUtil.getPanelBackground()
+        add(
+            JBLabel("Select an elm-review issue to view details", SwingConstants.CENTER).apply {
+                foreground = JBColor.GRAY
+            },
+            BorderLayout.CENTER
+        )
+    }
+
+    init {
+        val header = JPanel(BorderLayout()).apply {
+            isOpaque = true
+            background = UIUtil.getPanelBackground()
+            border = JBUI.Borders.compound(
+                JBUI.Borders.customLine(JBColor.border(), 0, 0, 1, 0),
+                JBUI.Borders.empty(8, 10)
+            )
+            add(
+                JBLabel("Details").apply {
+                    font = font.deriveFont(Font.BOLD)
+                    foreground = UIUtil.getLabelForeground()
+                },
+                BorderLayout.WEST
+            )
+        }
+        val content = JPanel(BorderLayout()).apply {
+            background = UIUtil.getPanelBackground()
+            add(header, BorderLayout.NORTH)
+            detailsContainer.add(emptyPanel, "empty")
+            detailsContainer.add(detailsConsole.component, "details")
+            add(detailsContainer, BorderLayout.CENTER)
+        }
+        setContent(content)
+        cardLayout.show(detailsContainer, "empty")
+    }
+
+    fun showIssueDetails(issue: ElmReviewIssue?) {
+        val detailsText = issue?.error?.let { error ->
+            val message = error.message?.takeIf { it.isNotBlank() }
+            val detailLines = error.details.orEmpty()
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+            val formatted = error.formattedText?.takeIf { it.isNotBlank() }
+            when {
+                message != null && detailLines.isNotEmpty() && formatted != null ->
+                    listOf(message, detailLines.joinToString("\n\n"), formatted).joinToString("\n\n")
+                message != null && detailLines.isNotEmpty() ->
+                    listOf(message, detailLines.joinToString("\n\n")).joinToString("\n\n")
+                message != null && formatted != null ->
+                    listOf(message, formatted).joinToString("\n\n")
+                message != null -> message
+                formatted != null -> formatted
+                detailLines.isNotEmpty() -> detailLines.joinToString("\n\n")
+                else -> null
+            }
+        }
+
+        if (detailsText.isNullOrBlank()) {
+            clear()
+            return
+        }
+        detailsConsole.clear()
+        val chunks = issue.error.formattedChunks.orEmpty()
+        if (chunks.isNotEmpty()) {
+            renderChunks(chunks)
+        } else {
+            detailsConsole.print(detailsText, ConsoleViewContentType.NORMAL_OUTPUT)
+        }
+        cardLayout.show(detailsContainer, "details")
+    }
+
+    fun clear() {
+        detailsConsole.clear()
+        cardLayout.show(detailsContainer, "empty")
+    }
+
+    private fun renderChunks(chunks: List<Chunk>) {
+        chunks.forEach { chunk ->
+            when (chunk) {
+                is Chunk.Unstyled -> {
+                    if (chunk.str.isNotEmpty()) {
+                        detailsConsole.print(chunk.str, ConsoleViewContentType.NORMAL_OUTPUT)
+                    }
+                }
+                is Chunk.Styled -> {
+                    val text = chunk.string.orEmpty()
+                    if (text.isEmpty()) return@forEach
+                    detailsConsole.print(text, contentTypeFor(chunk))
+                }
+            }
+        }
+    }
+
+    private fun contentTypeFor(chunk: Chunk.Styled): ConsoleViewContentType {
+        val key = listOf(
+            chunk.color.orEmpty(),
+            chunk.bold == true,
+            chunk.underline == true
+        ).joinToString("|")
+
+        return colorTypeCache.computeIfAbsent(key) {
+            val fg = parseHexColor(chunk.color)
+            val effectType = if (chunk.underline == true) EffectType.LINE_UNDERSCORE else null
+            val attrs = TextAttributes(
+                fg,
+                null,
+                if (effectType != null) fg else null,
+                effectType,
+                if (chunk.bold == true) Font.BOLD else Font.PLAIN
+            )
+            ConsoleViewContentType("ELM_REVIEW_$key", attrs)
+        }
+    }
+
+    private fun parseHexColor(value: String?): Color {
+        if (value.isNullOrBlank()) return UIUtil.getLabelForeground()
+        return try {
+            Color.decode(value)
+        } catch (_: NumberFormatException) {
+            UIUtil.getLabelForeground()
         }
     }
 }
@@ -119,9 +269,15 @@ private data class ElmReviewIssue(
 private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPanel(project, "elm-review", false, true) {
     private val projectRef = project
     private var issues: List<ElmReviewIssue> = emptyList()
+    var onIssueSelected: (ElmReviewIssue?) -> Unit = {}
+
+    init {
+        myTree.addTreeSelectionListener { onIssueSelected(selectedIssue()) }
+    }
 
     fun setIssues(issues: List<ElmReviewIssue>) {
         this.issues = issues
+        onIssueSelected(null)
     }
 
     override fun fillRightToolbarGroup(group: DefaultActionGroup) {
