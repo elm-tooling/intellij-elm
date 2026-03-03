@@ -66,11 +66,15 @@ jobs:
           PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
         run: ./gradlew publishPlugin
 
+      # Build plugin ZIP bundle for GitHub release assets
+      - name: Build Release Bundle
+        run: ./gradlew buildPlugin
+
       # Upload artifact as a release asset
       - name: Upload Release Asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.event.release.tag_name }} ./build/distributions/*
+        run: gh release upload ${{ github.event.release.tag_name }} ./build/distributions/*.zip --clobber
 
       # Create a pull request
       - name: Create Pull Request
@@ -99,4 +103,3 @@ jobs:
             --body "Current pull request contains patched \`CHANGELOG.md\` file for the \`$VERSION\` version." \
             --label "$LABEL" \
             --head $BRANCH
-
