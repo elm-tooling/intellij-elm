@@ -53,7 +53,7 @@ class ElmFormatOnFileSaveListenerTest : ElmWorkspaceTestBase() {
         val fileEditor = FileEditorManager.getInstance(project).getSelectedEditor(file)
 
         val undoManager = UndoManager.getInstance(project)
-        TestCase.assertFalse(undoManager.isUndoAvailable(fileEditor))
+        assertFalse(undoManager.isUndoAvailable(fileEditor))
     }
 
     @Test

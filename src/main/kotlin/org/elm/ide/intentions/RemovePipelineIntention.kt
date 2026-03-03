@@ -23,11 +23,9 @@ class RemovePipelineIntention : ElmAtCaretIntentionActionBase<RemovePipelineInte
     override fun getFamilyName() = text
 
     override fun findApplicableContext(project: Project, editor: Editor, element: PsiElement): Context? =
-            element
-                    .ancestors
-                    .filter { isPipelineOperator(it) }
-                    .firstOrNull()
-                    ?.let { it.parent as? ElmBinOpExpr }
+        element
+            .ancestors.firstOrNull { isPipelineOperator(it) }
+            ?.let { it.parent as? ElmBinOpExpr }
                     ?.asPipeline()?.let { Context(it) }
 
     override fun invoke(project: Project, editor: Editor, context: Context) {

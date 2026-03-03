@@ -561,7 +561,7 @@ f =
         withMockTargetExpressionChooser(object : ExtractExpressionUi {
             override fun chooseTarget(exprs: List<ElmExpressionTag>): ElmExpressionTag {
                 shownTargetChooser = true
-                TestCase.assertEquals(exprs.map { it.text }, expressions)
+                assertEquals(exprs.map { it.text }, expressions)
                 return exprs[target]
             }
         }) {

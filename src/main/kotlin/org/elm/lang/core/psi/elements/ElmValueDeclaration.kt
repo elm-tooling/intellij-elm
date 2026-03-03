@@ -102,7 +102,7 @@ class ElmValueDeclaration : ElmStubbedElement<ElmPlaceholderStub>, ElmDocTarget 
         }
 
     override val docComment: PsiComment?
-        get() = (prevSiblings.withoutWs.filter { it !is ElmTypeAnnotation }.firstOrNull() as? PsiComment)
+        get() = (prevSiblings.withoutWs.firstOrNull { it !is ElmTypeAnnotation } as? PsiComment)
                 ?.takeIf { it.elementType == DOC_COMMENT }
 
     /** The `=` element. In a well-formed program, this will not be null */

@@ -501,9 +501,9 @@ main = 2 |. 3
         enableInspection()
         applyQuickFix("Import")
         // auto-adding an import must be done using stubs only
-        checkAstNotLoaded(VirtualFileFilter { file ->
+        checkAstNotLoaded { file ->
             !file.path.endsWith(testProject.fileWithCaret)
-        })
+        }
 
         myFixture.checkResult(replaceCaretMarker(after).trim())
     }

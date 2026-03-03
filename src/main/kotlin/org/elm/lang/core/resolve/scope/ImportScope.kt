@@ -40,7 +40,7 @@ class QualifiedImportScope(
         private val importsOnly: Boolean = true
 ) {
     fun getExposedValue(name: String): ElmNamedElement? {
-        return scopes().mapNotNull { it.getExposedValues()[name] }.firstOrNull()
+        return scopes().firstNotNullOfOrNull { it.getExposedValues()[name] }
     }
 
     fun getExposedValues(): Sequence<ElmNamedElement> {
@@ -48,7 +48,7 @@ class QualifiedImportScope(
     }
 
     fun getExposedType(name: String): ElmNamedElement? {
-        return scopes().mapNotNull { it.getExposedTypes()[name] }.firstOrNull()
+        return scopes().firstNotNullOfOrNull { it.getExposedTypes()[name] }
     }
 
     fun getExposedTypes(): Sequence<ElmNamedElement> {
@@ -56,7 +56,7 @@ class QualifiedImportScope(
     }
 
     fun getExposedConstructor(name: String): ElmNamedElement? {
-        return scopes().mapNotNull { it.getExposedConstructors()[name] }.firstOrNull()
+        return scopes().firstNotNullOfOrNull { it.getExposedConstructors()[name] }
     }
 
     fun getExposedConstructors(): Sequence<ElmNamedElement> {

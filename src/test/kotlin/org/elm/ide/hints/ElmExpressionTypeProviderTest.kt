@@ -83,7 +83,7 @@ f foo = foo.x.y
         addFileToFixture(str)
         val elem = findElementInEditor<ElmPsiElement>()
 
-        TestCase.assertEquals(choices, provider.getExpressionsAt(elem).map { it.text })
+        assertEquals(choices, provider.getExpressionsAt(elem).map { it.text })
     }
 
 }

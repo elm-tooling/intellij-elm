@@ -29,7 +29,6 @@ import com.intellij.ui.content.impl.ContentImpl
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.MessageCategory
 import com.intellij.util.ui.UIUtil
-import com.intellij.util.ui.tree.TreeUtil
 import org.elm.workspace.ElmReviewService
 import org.elm.workspace.elmReviewService
 import org.elm.workspace.elmreview.Chunk
@@ -46,7 +45,8 @@ import javax.swing.SwingConstants
 import javax.swing.tree.DefaultMutableTreeNode
 
 class ElmReviewToolWindowFactory : ToolWindowFactory {
-    override suspend fun isApplicableAsync(project: Project): Boolean = true
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun isApplicable(project: Project): Boolean = true
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val errorTreeViewPanel = ElmReviewErrorTreeViewPanel(project)

@@ -127,7 +127,7 @@ class ElmExternalFormatActionTest : ElmWorkspaceTestBase() {
         val fileEditor = FileEditorManager.getInstance(project).getSelectedEditor(file)
 
         val undoManager = UndoManager.getInstance(project)
-        TestCase.assertTrue(undoManager.isUndoAvailable(fileEditor))
+        assertTrue(undoManager.isUndoAvailable(fileEditor))
     }
 
     private fun reformat(file: VirtualFile) {

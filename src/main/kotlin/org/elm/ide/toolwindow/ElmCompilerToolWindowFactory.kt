@@ -1,20 +1,18 @@
 package org.elm.ide.toolwindow
 
 import com.google.gson.Gson
-import com.intellij.notification.NotificationType
 import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionManager
-import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.CustomShortcutSet
-import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.markup.EffectType
 import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.DumbAwareAction
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindow
@@ -32,14 +30,7 @@ import org.elm.ide.notifications.showBalloon
 import org.elm.workspace.ElmProject
 import org.elm.workspace.ElmWorkspaceService
 import org.elm.workspace.commandLineTools.makeProject
-import org.elm.workspace.compiler.COMPILER_OUTPUT_TOPIC
-import org.elm.workspace.compiler.Chunk
-import org.elm.workspace.compiler.ELM_BUILD_ACTION_ID
-import org.elm.workspace.compiler.ERRORS_TOPIC
-import org.elm.workspace.compiler.ElmBuildAction
-import org.elm.workspace.compiler.ElmError
-import org.elm.workspace.compiler.Report
-import org.elm.workspace.compiler.ResolvedBuildTarget
+import org.elm.workspace.compiler.*
 import org.elm.workspace.elmWorkspace
 import java.awt.BorderLayout
 import java.awt.CardLayout
@@ -50,14 +41,11 @@ import java.awt.event.MouseEvent
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
-import javax.swing.DefaultListModel
-import javax.swing.JButton
-import javax.swing.JPanel
-import javax.swing.JScrollPane
-import javax.swing.ListSelectionModel
+import javax.swing.*
 
 class ElmCompilerToolWindowFactory : ToolWindowFactory {
-    override suspend fun isApplicableAsync(project: Project): Boolean = true
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun isApplicable(project: Project): Boolean = true
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val errorTreeViewPanel = ElmErrorTreeViewPanel(project, "Elm Compiler", false, true)

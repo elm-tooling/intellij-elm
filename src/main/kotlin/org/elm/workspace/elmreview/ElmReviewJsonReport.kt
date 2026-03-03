@@ -294,10 +294,10 @@ fun JsonReader.readLocation(): Location {
 }
 
 private fun chunksToLines(chunks: List<Chunk>): List<String> {
-    return chunks.asSequence().map {
+    return chunks.asSequence().joinToString("") {
         when (it) {
             is Chunk.Unstyled -> it.str
-            is Chunk.Styled -> it.string
+            is Chunk.Styled -> it.string.orEmpty()
         }
-    }.joinToString("").lines()
+    }.lines()
 }

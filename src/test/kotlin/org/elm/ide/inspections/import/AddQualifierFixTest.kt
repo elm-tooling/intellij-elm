@@ -243,9 +243,9 @@ power a b = List.product (List.repeat b a)
         applyQuickFix("Qualify name")
 
         // adding a qualifier must be done using stubs only
-        checkAstNotLoaded(VirtualFileFilter { file ->
+        checkAstNotLoaded { file ->
             !file.path.endsWith(testProject.fileWithCaret)
-        })
+        }
 
         myFixture.checkResult(replaceCaretMarker(after).trim())
     }

@@ -126,7 +126,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
             "The build action should be enabled in this context"
         }
         action.actionPerformed(event)
-        TestCase.assertTrue(succeeded)
+        assertTrue(succeeded)
     }
 
     private fun doTest(files: List<VirtualFile>, expectedNumErrors: Int, expectedOffset: List<Int>, source: List<String> = listOf("src/Mail.elm")) {
@@ -135,8 +135,8 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
             subscribe(ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
                 override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int ) {
                     TestCase.assertEquals(expectedNumErrors, messages.size)
-                    TestCase.assertTrue(source.contains(targetPath))
-                    TestCase.assertTrue(expectedOffset.contains(offset))
+                    assertTrue(source.contains(targetPath))
+                    assertTrue(expectedOffset.contains(offset))
                     succeeded = true
                 }
             })
@@ -149,7 +149,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
             }
             action.actionPerformed(event)
         }
-        TestCase.assertTrue(succeeded)
+        assertTrue(succeeded)
     }
 
     private fun doTestShowsErrorBalloon(file: VirtualFile, errorFragment: String) {
@@ -159,7 +159,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
         }
         val ref = connectToBusAndGetNotificationRef()
         action.actionPerformed(event)
-        TestCase.assertTrue(ref.get().content.contains(errorFragment))
+        assertTrue(ref.get().content.contains(errorFragment))
     }
 
 

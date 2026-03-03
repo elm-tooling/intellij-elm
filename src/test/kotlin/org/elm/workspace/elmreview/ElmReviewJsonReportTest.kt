@@ -140,9 +140,9 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         }""".trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.setStrictness(Strictness.LENIENT)
+        reader.strictness = Strictness.LENIENT
 
-        TestCase.assertEquals(
+        assertEquals(
             listOf(
                 ElmReviewError(
                     suppressed = false,
@@ -287,9 +287,9 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         }""".trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.setStrictness(Strictness.LENIENT)
+        reader.strictness = Strictness.LENIENT
 
-        TestCase.assertEquals(
+        assertEquals(
             listOf(
                 ElmReviewError(
                     suppressed = true,
@@ -329,9 +329,9 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         """.trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.setStrictness(Strictness.LENIENT)
+        reader.strictness = Strictness.LENIENT
         val report = reader.readErrorReport()
-        TestCase.assertEquals(
+        assertEquals(
             listOf(
                 ElmReviewError(
                     path = "/home/jw/LamderaProjects/test/elm.json",
@@ -440,9 +440,9 @@ class ElmReviewJsonReportTest : ElmTestBase() {
 }""".trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.setStrictness(Strictness.LENIENT)
+        reader.strictness = Strictness.LENIENT
         val report = reader.readErrorReport()
-        TestCase.assertEquals(
+        assertEquals(
             listOf(
                 ElmReviewError(
                     path = "/home/jw/LamderaProjects/test/review/src/ReviewConfig.elm",
@@ -484,7 +484,7 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         """.trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.setStrictness(Strictness.LENIENT)
+        reader.strictness = Strictness.LENIENT
         val report = reader.readErrorReport()
 
         TestCase.assertEquals(1, report.size)
@@ -506,10 +506,10 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         """.trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.setStrictness(Strictness.LENIENT)
+        reader.strictness = Strictness.LENIENT
         val report = reader.readErrorReport()
 
-        TestCase.assertEquals(
+        assertEquals(
             listOf(
                 ElmReviewError(
                     path = "/tmp/elm.json",
@@ -536,7 +536,7 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         """.trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.setStrictness(Strictness.LENIENT)
+        reader.strictness = Strictness.LENIENT
         val report = reader.readErrorReport()
 
         TestCase.assertEquals(1, report.size)
@@ -607,9 +607,9 @@ class ElmReviewJsonReportTest : ElmTestBase() {
 ]""".trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.setStrictness(Strictness.LENIENT)
+        reader.strictness = Strictness.LENIENT
         val report = reader.readErrorReport()
-        TestCase.assertEquals(
+        assertEquals(
             emptyList<ElmReviewError>(),
             report
         )

@@ -135,7 +135,7 @@ private fun extractElmReviewJson(stdout: String, stderr: String): String? {
         if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed
         val start = trimmed.indexOf('{')
         val end = trimmed.lastIndexOf('}')
-        if (start < 0 || end <= start) return null
+        if (start !in 0..<end) return null
         return trimmed.substring(start, end + 1)
     }
 

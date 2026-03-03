@@ -251,9 +251,9 @@ foo { name } = name
         val testProject = fileTreeFromText(code)
                 .createAndOpenFileWithCaretMarker()
 
-        checkAstNotLoaded(VirtualFileFilter { file ->
+        checkAstNotLoaded { file ->
             !file.path.endsWith(testProject.fileWithCaret)
-        })
+        }
 
         checkExpectedType<T>()
         checkNoInferenceErrors()

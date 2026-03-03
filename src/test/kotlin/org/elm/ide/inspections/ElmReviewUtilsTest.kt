@@ -62,7 +62,7 @@ class ElmReviewUtilsTest : ElmWorkspaceTestBase() {
 
         val highlights = runReadAction { highlightsForFile(project, basePath, result) }
 
-        TestCase.assertTrue(highlights.isEmpty())
+        assertTrue(highlights.isEmpty())
     }
 }
 

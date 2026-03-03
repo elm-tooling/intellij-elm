@@ -277,7 +277,7 @@ g =
         try {
             myFixture.renameElementAtCaret(newName)
         } catch (e: RuntimeException) {
-            UsefulTestCase.assertInstanceOf(e.cause, IncorrectOperationException::class.java)
+            assertInstanceOf(e.cause, IncorrectOperationException::class.java)
             myFixture.checkResult(before.replace("{-caret-}", ""))
             return
         }

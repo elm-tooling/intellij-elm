@@ -93,6 +93,8 @@ class ImportVisitor(initialImports: List<ElmImportClause>) : PsiElementVisitor()
 
     override fun visitElement(element: PsiElement) {
         super.visitElement(element)
+        if (imports.isEmpty() && exposing.isEmpty() && moduleAliases.isEmpty()) return
+
         if (element is ElmReferenceElement && element !is ElmImportClause && element !is ElmExposedItemTag) {
             val reference = element.reference
             val resolved = reference.resolve() ?: return

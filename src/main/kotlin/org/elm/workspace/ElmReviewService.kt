@@ -57,11 +57,13 @@ class ElmReviewService(private val project: Project) {
         }
         ApplicationManager.getApplication().executeOnPooledThread {
             project.elmTaskStatus.reviewStarted()
+            val suggestedTools = ElmSuggest.suggestTools(project)
             try {
                 val compilerPathForReview = resolveCompilerPathForReview(
                     projectBasePath = projectBasePath,
                     elmProjectHint = elmProjectHint,
-                    compilerPathHint = compilerPathHint
+                    compilerPathHint = compilerPathHint,
+                    suggestedTools = suggestedTools
                 )
                 val arguments = buildList {
                     add("--report=json")
@@ -73,7 +75,7 @@ class ElmReviewService(private val project: Project) {
                 val command = GeneralCommandLine(elmReviewExecutablePath)
                     .withWorkDirectory(projectBasePath.toString())
                     .withParameters(arguments)
-                augmentPathForCliTools(command.environment, compilerPathForReview)
+                augmentPathForCliTools(command.environment, compilerPathForReview, suggestedTools)
 
                 val output = command.execute(
                     elmReviewTool,
@@ -116,7 +118,8 @@ class ElmReviewService(private val project: Project) {
                     val compilerPathForReview = resolveCompilerPathForReview(
                         projectBasePath = projectBasePath,
                         elmProjectHint = elmProjectHint,
-                        compilerPathHint = compilerPathHint
+                        compilerPathHint = compilerPathHint,
+                        suggestedTools = suggestedTools
                     )
                     val args = buildList {
                         add("--report=json")
@@ -144,7 +147,11 @@ class ElmReviewService(private val project: Project) {
         project.showBalloon(message, NotificationType.ERROR, *actions)
     }
 
-    private fun augmentPathForCliTools(env: MutableMap<String, String>, compilerPath: Path?) {
+    private fun augmentPathForCliTools(
+        env: MutableMap<String, String>,
+        compilerPath: Path?,
+        suggestedTools: Map<String, Path?>
+    ) {
         val existing = env["PATH"].orEmpty()
         val separator = java.io.File.pathSeparator
         val extraDirs = linkedSetOf<String>()
@@ -152,9 +159,9 @@ class ElmReviewService(private val project: Project) {
         project.elmToolchain.elmReviewPath?.parent?.toString()?.let(extraDirs::add)
         compilerPath?.parent?.toString()?.let(extraDirs::add)
         project.elmToolchain.compilerPath?.parent?.toString()?.let(extraDirs::add)
-        ElmSuggest.suggestTools(project)[elmCompilerTool]?.parent?.toString()?.let(extraDirs::add)
-        ElmSuggest.suggestTools(project)[lamderaCompilerTool]?.parent?.toString()?.let(extraDirs::add)
-        ElmSuggest.suggestTools(project)[elmWrapCompilerTool]?.parent?.toString()?.let(extraDirs::add)
+        suggestedTools[elmCompilerTool]?.parent?.toString()?.let(extraDirs::add)
+        suggestedTools[lamderaCompilerTool]?.parent?.toString()?.let(extraDirs::add)
+        suggestedTools[elmWrapCompilerTool]?.parent?.toString()?.let(extraDirs::add)
 
         val prefix = extraDirs.filter { it.isNotBlank() }.joinToString(separator)
         env["PATH"] = if (existing.isBlank()) prefix else "$prefix$separator$existing"
@@ -164,7 +171,8 @@ class ElmReviewService(private val project: Project) {
     private fun resolveCompilerPathForReview(
         projectBasePath: Path,
         elmProjectHint: ElmProject?,
-        compilerPathHint: Path?
+        compilerPathHint: Path?,
+        suggestedTools: Map<String, Path?>
     ): Path? {
         if (compilerPathHint != null && Files.isExecutable(compilerPathHint)) return compilerPathHint
 
@@ -190,9 +198,8 @@ class ElmReviewService(private val project: Project) {
             if (fromTargets != null) return fromTargets
         }
 
-        val suggested = ElmSuggest.suggestTools(project)
         return sequenceOf(elmCompilerTool, lamderaCompilerTool, elmWrapCompilerTool)
-            .mapNotNull { suggested[it] }
+            .mapNotNull { suggestedTools[it] }
             .firstOrNull { Files.isExecutable(it) }
     }
 }
@@ -212,7 +219,7 @@ private fun extractElmReviewJson(stdout: String, stderr: String): String? {
         if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed
         val start = trimmed.indexOf('{')
         val end = trimmed.lastIndexOf('}')
-        if (start < 0 || end <= start) return null
+        if (start !in 0..<end) return null
         return trimmed.substring(start, end + 1)
     }
 

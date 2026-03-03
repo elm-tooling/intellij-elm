@@ -119,7 +119,7 @@ private class InferenceScope(
 
     private val ancestors: Sequence<InferenceScope> get() = generateSequence(this) { it.parent }
 
-    private fun getBinding(e: ElmNamedElement): Ty? = ancestors.mapNotNull { it.bindings[e] }.firstOrNull()
+    private fun getBinding(e: ElmNamedElement): Ty? = ancestors.firstNotNullOfOrNull { it.bindings[e] }
 
     //<editor-fold desc="entry points">
     /*

@@ -51,6 +51,6 @@ main _ _ =
             if 1 + 2 == 3 then
         """.trimIndent()
 
-        UsefulTestCase.assertSameLines(expected, actual)
+        assertSameLines(expected, actual)
     }
 }

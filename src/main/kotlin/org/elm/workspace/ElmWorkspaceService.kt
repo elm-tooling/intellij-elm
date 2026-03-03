@@ -29,6 +29,8 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.impl.source.resolve.ResolveCache
 import com.intellij.util.io.systemIndependentPath
 import com.intellij.util.messages.Topic
+import com.intellij.util.ui.update.MergingUpdateQueue
+import com.intellij.util.ui.update.Update
 import org.elm.lang.core.psi.modificationTracker
 import org.elm.openapiext.*
 import org.elm.utils.MyDirectoryIndex
@@ -67,14 +69,27 @@ private val log = logger<ElmWorkspaceService>()
 @State(name = "ElmWorkspace", storages = [Storage(StoragePathMacros.WORKSPACE_FILE)])
 class ElmWorkspaceService(private val intellijProject: Project) : PersistentStateComponent<Element> {
 
+    private val refreshQueue = MergingUpdateQueue(
+        "ElmWorkspaceRefreshQueue",
+        300,
+        true,
+        MergingUpdateQueue.ANY_COMPONENT,
+        intellijProject,
+        null,
+        false
+    )
 
     init {
         with(intellijProject.messageBus.connect()) {
             subscribe(VirtualFileManager.VFS_CHANGES, ElmProjectWatcher {
-                asyncRefreshAllProjects().exceptionally {
-                    log.warn("Could not refresh Elm projects after VFS change", it)
-                    emptyList()
-                }
+                refreshQueue.queue(object : Update("refresh-all-projects") {
+                    override fun run() {
+                        asyncRefreshAllProjects().exceptionally {
+                            log.warn("Could not refresh Elm projects after VFS change", it)
+                            emptyList()
+                        }
+                    }
+                })
             })
         }
     }
@@ -233,7 +248,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
      */
     fun modifySettings(notify: Boolean = true, f: (RawSettings) -> RawSettings): RawSettings {
         return rawSettingsRef.getAndUpdate(f)
-            .also { if (notify) notifyDidChangeWorkspace() }
+            .also { if (notify) notifyDidChangeWorkspace(projectSetChanged = false) }
     }
 
 
@@ -286,7 +301,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         projectsRef.getAndUpdate(f)
         log.info("Resetting the directoryIndex for project lookup")
         directoryIndex.resetIndex()
-        notifyDidChangeWorkspace()
+        notifyDidChangeWorkspace(projectSetChanged = true)
         return allProjects
     }
 
@@ -305,10 +320,15 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     /**
      * Asynchronously load an Elm project described by a manifest file (e.g. `elm.json`).
      */
-    private fun asyncLoadProject(manifestPath: Path, installDeps: Boolean = false): CompletableFuture<ElmProject> =
+    private fun asyncLoadProject(
+        manifestPath: Path,
+        installDeps: Boolean = false,
+        compilerVersion: Version? = null
+    ): CompletableFuture<ElmProject> =
         runAsyncTask(intellijProject, "Loading Elm project '$manifestPath'") {
 
-            val elmCompilerVersion = settings.toolchain.queryCompilerVersion(intellijProject).orNull()
+            val elmCompilerVersion = compilerVersion
+                ?: settings.toolchain.queryCompilerVersion(intellijProject).orNull()
                 ?: throw ProjectLoadException("Could not determine version of the selected compiler")
 
             if (installDeps) {
@@ -429,23 +449,31 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
 
 
     fun asyncRefreshAllProjects(installDeps: Boolean = false): CompletableFuture<List<ElmProject>> =
-        allProjects.map { elmProject ->
-            asyncLoadProject(elmProject.manifestPath, installDeps = installDeps)
-                .exceptionally {
+        runAsyncTask(intellijProject, "Preparing Elm project refresh") {
+            settings.toolchain.queryCompilerVersion(intellijProject).orNull()
+                ?: throw ProjectLoadException("Could not determine version of the selected compiler")
+        }.thenCompose { elmCompilerVersion ->
+            allProjects.map { elmProject ->
+                asyncLoadProject(
+                    elmProject.manifestPath,
+                    installDeps = installDeps,
+                    compilerVersion = elmCompilerVersion
+                ).exceptionally {
                     // TODO Communicate this error in the UI (while warnings may be fine for tests)
                     log.warn("Could not load elm project", it)
                     null
                 }
-        }.joinAll()
-            .thenApply { rawProjects ->
-                val freshProjects = rawProjects.filterNotNull().associateBy { it.manifestPath }
-                modifyProjects { currentProjects ->
-                    // replace existing projects with the fresh ones, if possible
-                    currentProjects.map {
-                        freshProjects[it.manifestPath] ?: it
+            }.joinAll()
+                .thenApply { rawProjects ->
+                    val freshProjects = rawProjects.filterNotNull().associateBy { it.manifestPath }
+                    modifyProjects { currentProjects ->
+                        // replace existing projects with the fresh ones, if possible
+                        currentProjects.map {
+                            freshProjects[it.manifestPath] ?: it
+                        }
                     }
                 }
-            }
+        }
 
 
     fun asyncDiscoverAndRefresh(): CompletableFuture<List<ElmProject>> {
@@ -455,8 +483,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         val guessManifest = intellijProject.modules
             .asSequence()
             .flatMap { ModuleRootManager.getInstance(it).contentRoots.asSequence() }
-            .mapNotNull { dir -> dir.findFileBreadthFirst(maxDepth = 3) { it.name == ELM_JSON } }
-            .firstOrNull()
+            .firstNotNullOfOrNull { dir -> dir.findFileBreadthFirst(maxDepth = 3) { it.name == ELM_JSON } }
             ?: return CompletableFuture.completedFuture(allProjects)
 
         return asyncAttachElmProject(guessManifest.pathAsPath).exceptionally {
@@ -607,7 +634,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         }
         val compilerPath = when (compilerType) {
             ElmCompilerType.ELM -> elmCompilerPath
-            ElmCompilerType.LAMDERA -> if (lamderaCompilerPath.isNotBlank()) lamderaCompilerPath else elmCompilerPath
+            ElmCompilerType.LAMDERA -> lamderaCompilerPath.ifBlank { elmCompilerPath }
             ElmCompilerType.ELM_WRAP -> elmCompilerPath
         }
         val elmFormatPath = settingsElement.getAttributeValue("elmFormatPath") ?: ""
@@ -718,9 +745,10 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     // NOTIFICATIONS
 
 
-    private fun notifyDidChangeWorkspace() {
+    private fun notifyDidChangeWorkspace(projectSetChanged: Boolean) {
         if (intellijProject.isDisposed) return
-        ApplicationManager.getApplication().invokeAndWait {
+        ApplicationManager.getApplication().invokeLater {
+            if (intellijProject.isDisposed) return@invokeLater
             runWriteAction {
                 // Invalidate caches
                 ResolveCache.getInstance(intellijProject).clearCache(true) // PsiReference resolve
@@ -728,12 +756,14 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 changeTracker.incModificationCount()                       // CachedValuesManager: Elm workspace/settings
 
                 // Refresh library roots
-                ProjectRootManagerEx.getInstanceEx(intellijProject)
-                    .makeRootsChange(EmptyRunnable.getInstance(), TOTAL_RESCAN)
+                if (projectSetChanged) {
+                    ProjectRootManagerEx.getInstanceEx(intellijProject)
+                        .makeRootsChange(EmptyRunnable.getInstance(), TOTAL_RESCAN)
+                }
             }
+            intellijProject.messageBus.syncPublisher(WORKSPACE_TOPIC)
+                .didUpdate()
         }
-        intellijProject.messageBus.syncPublisher(WORKSPACE_TOPIC)
-            .didUpdate()
     }
 
 

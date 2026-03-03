@@ -8,7 +8,8 @@ import com.intellij.openapi.wm.ToolWindowFactory
  * Boilerplate to connect tool window content to IntelliJ.
  */
 class ElmToolWindowFactory : ToolWindowFactory {
-    override suspend fun isApplicableAsync(project: Project): Boolean = true
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun isApplicable(project: Project): Boolean = true
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         with(toolWindow.contentManager) {

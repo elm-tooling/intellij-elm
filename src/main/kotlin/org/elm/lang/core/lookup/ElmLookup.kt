@@ -151,7 +151,7 @@ private fun buildSearchScope(includeTests: Boolean, p: ElmProject, intellijProje
 private fun ElmPackageProject.exposedFiles(): Sequence<VirtualFile> =
         exposedModules.mapNotNull { moduleName ->
             val elmModuleRelativePath = moduleName.replace('.', '/') + ".elm"
-            absoluteSourceDirectories.mapNotNull { srcDirPath ->
+            absoluteSourceDirectories.firstNotNullOfOrNull { srcDirPath ->
                 findFileByPathTestAware(srcDirPath.resolve(elmModuleRelativePath))
-            }.firstOrNull()
+            }
         }.asSequence()

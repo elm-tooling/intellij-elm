@@ -89,7 +89,7 @@ fun PsiFile.getElementRange(startOffset: Int, endOffset: Int): Pair<PsiElement, 
 fun PsiFile.findElementAtIgnoreWhitespaceBefore(offset: Int): PsiElement? {
     val element = findElementAt(offset)
     if (element is PsiWhiteSpace) {
-        return findElementAt(element.getTextRange().endOffset)
+        return findElementAt(element.textRange.endOffset)
     }
     return element
 }
@@ -101,7 +101,7 @@ fun PsiFile.findElementAtIgnoreWhitespaceBefore(offset: Int): PsiElement? {
 fun PsiFile.findElementAtIgnoreWhitespaceAfter(offset: Int): PsiElement? {
     val element = findElementAt(offset)
     if (element is PsiWhiteSpace) {
-        return findElementAt(element.getTextRange().startOffset - 1)
+        return findElementAt(element.textRange.startOffset - 1)
     }
     return element
 }

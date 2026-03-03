@@ -92,12 +92,12 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
 
         val elmProject = workspace.allProjects.firstOrNull()
         if (elmProject == null) {
-            TestCase.fail("failed to find an Elm project")
+            fail("failed to find an Elm project")
             return
         }
 
         if (elmProject !is ElmApplicationProject) {
-            TestCase.fail("expected an Elm application project, got $elmProject")
+            fail("expected an Elm application project, got $elmProject")
             return
         }
 
@@ -154,12 +154,12 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
 
         val elmProject = workspace.allProjects.firstOrNull()
         if (elmProject == null) {
-            TestCase.fail("failed to find an Elm project")
+            fail("failed to find an Elm project")
             return
         }
 
         if (elmProject !is ElmPackageProject) {
-            TestCase.fail("expected an Elm package project, got $elmProject")
+            fail("expected an Elm package project, got $elmProject")
             return
         }
 

@@ -59,9 +59,9 @@ abstract class ElmLexerTestCaseBase : LexerTestCase(), ElmTestCase {
     override fun doTest(@NonNls text: String, expected: String?, lexer: Lexer) {
         val result = printTokens(text, 0, lexer)
         if (expected != null) {
-            UsefulTestCase.assertSameLines(expected, result)
+            assertSameLines(expected, result)
         } else {
-            UsefulTestCase.assertSameLinesWithFile(pathToGoldTestFile(getTestName(false)).toFile().canonicalPath, result)
+            assertSameLinesWithFile(pathToGoldTestFile(getTestName(false)).toFile().canonicalPath, result)
         }
     }
 }

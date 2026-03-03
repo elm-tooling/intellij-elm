@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
  * Provides suggestions about where Elm tools may be installed
  */
 object ElmSuggest {
-    private const val SUGGESTION_CACHE_TTL_MS = 10_000L
+    private const val SUGGESTION_CACHE_TTL_MS = 5 * 60_000L
     private const val NPM_SEARCH_MAX_DEPTH = 6
     private val suggestionsCache = ConcurrentHashMap<String, CachedSuggestions>()
 
@@ -53,19 +53,17 @@ object ElmSuggest {
         val nameVariants = executableNamesFor(programName)
         return searchLocations.ifEmpty {
             sequenceOf(
-                    suggestionsFromPath(),
-                    suggestionsForMac(),
-                    suggestionsForWindows(),
-                    suggestionsForUnix()
+                suggestionsFromPath(),
+                suggestionsForMac(),
+                suggestionsForWindows(),
+                suggestionsForUnix()
             ).flatten()
         }
-                .flatMap { binDir ->
-                    nameVariants.map { filename ->
-                        binDir.resolve(filename)
-                    }
+            .flatMap { binDir ->
+                nameVariants.map { filename ->
+                    binDir.resolve(filename)
                 }
-                .filter { Files.isExecutable(it) }
-                .any()
+            }.any { Files.isExecutable(it) }
     }
 
     /**

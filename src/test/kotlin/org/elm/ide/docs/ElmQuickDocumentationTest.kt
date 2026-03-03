@@ -1,6 +1,5 @@
 package org.elm.ide.docs
 
-import org.intellij.lang.annotations.Language
 import org.junit.Test
 
 class ElmQuickDocumentationTest : ElmDocumentationProviderTest() {

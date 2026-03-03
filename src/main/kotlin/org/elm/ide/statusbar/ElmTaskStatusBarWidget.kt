@@ -32,7 +32,7 @@ class ElmTaskStatusBarWidgetFactory : StatusBarWidgetFactory {
     override fun canBeEnabledOn(statusBar: StatusBar): Boolean = true
 }
 
-private class ElmTaskStatusBarWidget(private val project: Project) : CustomStatusBarWidget, Disposable {
+private class ElmTaskStatusBarWidget(project: Project) : CustomStatusBarWidget, Disposable {
 
     private val spinner = AsyncProcessIcon("ElmTaskStatus").apply { suspend() }
     private val label = JBLabel("Elm idle")

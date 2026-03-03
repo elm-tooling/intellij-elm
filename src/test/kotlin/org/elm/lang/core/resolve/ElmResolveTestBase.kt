@@ -60,9 +60,9 @@ abstract class ElmResolveTestBase : ElmTestBase() {
     protected fun stubOnlyResolve(@Language("Elm") code: String) {
         val testProject = fileTreeFromText(code).createAndOpenFileWithCaretMarker()
 
-        checkAstNotLoaded(VirtualFileFilter { file ->
+        checkAstNotLoaded { file ->
             !file.path.endsWith(testProject.fileWithCaret)
-        })
+        }
 
         val (ref, resolveFile) = findReferenceWithDataInEditor()
 
