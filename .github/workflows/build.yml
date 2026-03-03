@@ -35,6 +35,8 @@ jobs:
     outputs:
       version: ${{ steps.properties.outputs.version }}
       changelog: ${{ steps.properties.outputs.changelog }}
+      pluginVerifierHomeDir: ${{ steps.properties.outputs.pluginVerifierHomeDir }}
+      artifactName: ${{ steps.artifact.outputs.filename }}
     steps:
 
       # Check out current repository
@@ -76,11 +78,21 @@ jobs:
       - name: Build plugin
         run: ./gradlew buildPlugin
 
+      # Resolve plugin ZIP filename for artifact naming and downstream jobs
+      - name: Resolve plugin ZIP filename
+        id: artifact
+        shell: bash
+        run: |
+          ZIP_PATH="$(ls ./build/distributions/*.zip | head -n 1)"
+          ZIP_FILENAME="$(basename "$ZIP_PATH")"
+          ARTIFACT_NAME="${ZIP_FILENAME%.zip}"
+          echo "filename=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+
       # Store plugin ZIP for release draft asset upload
-      - name: Upload plugin ZIP artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: plugin-zip
+          name: ${{ steps.artifact.outputs.filename }}
           path: ./build/distributions/*.zip
 
 
@@ -260,7 +272,7 @@ jobs:
       - name: Download plugin ZIP artifact
         uses: actions/download-artifact@v4
         with:
-          name: plugin-zip
+          name: ${{ needs.build.outputs.artifactName }}
           path: ./build/distributions
 
       # Remove old release drafts by using the curl request for the available releases with a draft flag
