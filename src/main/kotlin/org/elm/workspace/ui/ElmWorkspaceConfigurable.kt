@@ -437,8 +437,8 @@ class ElmWorkspaceConfigurable(
             }
             is Result.Err -> {
                 if (result.reason == "Not configured") {
-                    label.text = ""
-                    label.foreground = JBColor.foreground()
+                    label.text = "Not configured"
+                    label.foreground = JBColor.GRAY
                 } else {
                     label.text = result.reason
                     label.foreground = JBColor.RED

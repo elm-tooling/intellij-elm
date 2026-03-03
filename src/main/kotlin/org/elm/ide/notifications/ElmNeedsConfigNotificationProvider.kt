@@ -12,6 +12,7 @@ import com.intellij.ui.EditorNotifications
 import org.elm.lang.core.psi.isElmFile
 import org.elm.openapiext.findFileByPath
 import org.elm.workspace.*
+import kotlin.io.path.exists
 import java.util.function.Function
 
 private val log = logger<ElmNeedsConfigNotificationProvider>()
@@ -55,8 +56,22 @@ class ElmNeedsConfigNotificationProvider(
             return noElmProjectPanel("No Elm projects found")
         }
 
-        project.elmWorkspace.findProjectForFile(file)
+        val elmProject = project.elmWorkspace.findProjectForFile(file)
             ?: return noElmProjectPanel("Could not find Elm project for this file")
+
+        val toolchain = project.elmToolchain
+        if (!toolchain.looksLikeValidToolchain()) {
+            return badToolchainPanel("Elm compiler is not configured or executable")
+        }
+
+        if (toolchain.isElmFormatOnSaveEnabled && toolchain.elmFormatCLI == null) {
+            return badToolchainPanel("elm-format on save is enabled, but elm-format is not configured")
+        }
+
+        val hasElmReviewConfig = elmProject.projectDirPath.resolve("review").exists()
+        if (toolchain.isElmReviewOnTheFlyEnabled && hasElmReviewConfig && toolchain.elmReviewCLI == null) {
+            return badToolchainPanel("elm-review on save is enabled, but elm-review is not configured")
+        }
 
         return null
     }

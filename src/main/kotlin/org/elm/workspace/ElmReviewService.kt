@@ -26,6 +26,7 @@ private val log = logger<ElmReviewService>()
 class ElmReviewService(private val project: Project) {
 
     private val runningReviews: MutableSet<Path> = ConcurrentHashMap.newKeySet()
+    private val missingExecutableNotified: MutableSet<Path> = ConcurrentHashMap.newKeySet()
     private val messages: MutableMap<Path, List<ElmReviewError>> = ConcurrentHashMap()
 
     interface ElmReviewWatchListener {
@@ -52,9 +53,12 @@ class ElmReviewService(private val project: Project) {
 
         val elmReviewExecutablePath = project.elmToolchain.elmReviewPath ?: run {
             runningReviews.remove(projectBasePath)
-            showError("Could not find elm-review executable", includeFixAction = true)
+            if (missingExecutableNotified.add(projectBasePath)) {
+                showError("Could not find elm-review executable", includeFixAction = true)
+            }
             return
         }
+        missingExecutableNotified.remove(projectBasePath)
         ApplicationManager.getApplication().executeOnPooledThread {
             project.elmTaskStatus.reviewStarted()
             val suggestedTools = ElmSuggest.suggestTools(project)
