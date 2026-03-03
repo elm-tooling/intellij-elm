@@ -104,6 +104,7 @@ sealed class ElmProject(
      * This is a looser form of a version check that allows for Elm compiler versions that include
      * alpha/beta/rc suffixes. e.g. "0.19.1-alpha-4"
      */
+    @Suppress("unused")
     fun isCompatibleWith(version: Version) =
             if (this is ElmPackageProject) {
                 elmVersion.contains(version.xyz)

@@ -32,6 +32,7 @@ import com.intellij.util.messages.Topic
 import com.intellij.util.ui.update.MergingUpdateQueue
 import com.intellij.util.ui.update.Update
 import org.elm.lang.core.psi.modificationTracker
+import org.elm.openapiext.isUnitTestMode
 import org.elm.openapiext.*
 import org.elm.utils.MyDirectoryIndex
 import org.elm.utils.joinAll
@@ -328,6 +329,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         runAsyncTask(intellijProject, "Loading Elm project '$manifestPath'") {
 
             val elmCompilerVersion = compilerVersion
+                ?: if (isUnitTestMode) Version(0, 19, 1) else null
                 ?: settings.toolchain.queryCompilerVersion(intellijProject).orNull()
                 ?: throw ProjectLoadException("Could not determine version of the selected compiler")
 
@@ -449,9 +451,18 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
 
 
     fun asyncRefreshAllProjects(installDeps: Boolean = false): CompletableFuture<List<ElmProject>> =
+        if (allProjects.isEmpty()) {
+            CompletableFuture.completedFuture(
+                modifyProjects { it }
+            )
+        } else
         runAsyncTask(intellijProject, "Preparing Elm project refresh") {
-            settings.toolchain.queryCompilerVersion(intellijProject).orNull()
-                ?: throw ProjectLoadException("Could not determine version of the selected compiler")
+            if (isUnitTestMode) {
+                Version(0, 19, 1)
+            } else {
+                settings.toolchain.queryCompilerVersion(intellijProject).orNull()
+                    ?: throw ProjectLoadException("Could not determine version of the selected compiler")
+            }
         }.thenCompose { elmCompilerVersion ->
             allProjects.map { elmProject ->
                 asyncLoadProject(
@@ -747,8 +758,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
 
     private fun notifyDidChangeWorkspace(projectSetChanged: Boolean) {
         if (intellijProject.isDisposed) return
-        ApplicationManager.getApplication().invokeLater {
-            if (intellijProject.isDisposed) return@invokeLater
+        ApplicationManager.getApplication().invokeAndWait {
             runWriteAction {
                 // Invalidate caches
                 ResolveCache.getInstance(intellijProject).clearCache(true) // PsiReference resolve

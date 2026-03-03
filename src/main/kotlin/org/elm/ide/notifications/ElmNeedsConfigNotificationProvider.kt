@@ -1,16 +1,12 @@
 package org.elm.ide.notifications
 
-import com.intellij.notification.NotificationType
 import com.intellij.openapi.diagnostic.logger
-import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.EditorNotificationPanel
 import com.intellij.ui.EditorNotificationProvider
 import com.intellij.ui.EditorNotifications
 import org.elm.lang.core.psi.isElmFile
-import org.elm.openapiext.findFileByPath
 import org.elm.workspace.*
 import kotlin.io.path.exists
 import java.util.function.Function
@@ -69,8 +65,10 @@ class ElmNeedsConfigNotificationProvider(
         }
 
         val hasElmReviewConfig = elmProject.projectDirPath.resolve("review").exists()
-        if (toolchain.isElmReviewOnTheFlyEnabled && hasElmReviewConfig && toolchain.elmReviewCLI == null) {
-            return badToolchainPanel("elm-review on save is enabled, but elm-review is not configured")
+        if (toolchain.isElmReviewOnTheFlyEnabled && hasElmReviewConfig) {
+            if (toolchain.elmReviewPath == null) {
+                return badToolchainPanel("elm-review on save is enabled, but elm-review is not configured")
+            }
         }
 
         return null
@@ -90,34 +88,5 @@ class ElmNeedsConfigNotificationProvider(
             text = message
             createActionLabel("Attach elm.json", "Elm.AttachElmProject")
         }
-
-
-    private fun versionConflictPanel(
-        project: Project,
-        elmProject: ElmProject,
-        compilerVersion: Version
-    ): EditorNotificationPanel {
-        val expectedVersionText = when (elmProject) {
-            is LamderaApplicationProject -> elmProject.elmVersion.toString()
-            is ElmApplicationProject -> elmProject.elmVersion.toString()
-            is ElmPackageProject -> elmProject.elmVersion.toString()
-            is ElmReviewProject -> elmProject.elmVersion.toString()
-        }
-        val manifestFileName = elmProject.manifestPath.fileName.toString()
-        return EditorNotificationPanel().apply {
-            text = "Your $manifestFileName file requires Elm $expectedVersionText but your Elm compiler is $compilerVersion"
-            createActionLabel("Open $manifestFileName") {
-                val didNavigate = LocalFileSystem.getInstance().findFileByPath(elmProject.manifestPath)
-                    ?.let { OpenFileDescriptor(project, it) }
-                    ?.navigateInEditor(project, true)
-                if (didNavigate != true)
-                    project.showBalloon("Cannot open $manifestFileName", NotificationType.ERROR)
-            }
-            createActionLabel("Setup toolchain") {
-                project.elmWorkspace.showConfigureToolchainUI()
-            }
-        }
-    }
-
 
 }

@@ -62,6 +62,7 @@ fun fullyRefreshDirectory(directory: VirtualFile) {
     VfsUtil.markDirtyAndRefresh(/* async = */ false, /* recursive = */ true, /* reloadChildren = */ true, directory)
 }
 
+@Suppress("unused")
 fun VirtualFile.findFileBreadthFirst(maxDepth: Int, predicate: (VirtualFile) -> Boolean): VirtualFile? {
     val queue = LinkedList<Pair<VirtualFile, Int>>()
         .also { it.push(this to 0) }

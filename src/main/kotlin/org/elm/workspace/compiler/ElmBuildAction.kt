@@ -12,7 +12,6 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.messages.Topic
 import org.elm.ide.notifications.showBalloon
 import org.elm.lang.core.ElmFileType
-import org.elm.lang.core.lookup.ClientLocation
 import org.elm.lang.core.psi.ElmFile
 import org.elm.openapiext.saveAllDocuments
 import org.elm.workspace.*
@@ -68,12 +67,6 @@ interface ElmCompilerOutputListener {
     @Suppress("unused")
     fun update(toolName: String, commandLine: String, stdout: String, stderr: String, exitCode: Int)
 }
-
-    data class LookupClientLocation(
-        override val intellijProject: Project,
-        override val elmProject: ElmProject?,
-        override val isInTestsDirectory: Boolean = false
-    ) : ClientLocation
 }
 
 private fun showError(project: Project, message: String, includeFixAction: Boolean = false) {
