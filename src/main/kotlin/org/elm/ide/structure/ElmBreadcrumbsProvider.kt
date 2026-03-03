@@ -7,9 +7,10 @@ import org.elm.lang.core.ElmLanguage
 import org.elm.lang.core.psi.ElmPsiElement
 import org.elm.lang.core.psi.elements.*
 
+private val ELM_BREADCRUMB_LANGUAGES: Array<Language> = arrayOf(ElmLanguage)
 
 class ElmBreadcrumbsProvider : BreadcrumbsProvider {
-    override fun getLanguages(): Array<Language> = LANGUAGES
+    override fun getLanguages(): Array<Language> = ELM_BREADCRUMB_LANGUAGES
 
     override fun acceptElement(element: PsiElement): Boolean {
         return element is ElmPsiElement && breadcrumbName(element) != null
@@ -20,8 +21,6 @@ class ElmBreadcrumbsProvider : BreadcrumbsProvider {
     }
 
     companion object {
-        private val LANGUAGES: Array<Language> = arrayOf(ElmLanguage)
-
         fun breadcrumbName(e: ElmPsiElement): String? {
             return when (e) {
                 is ElmLetInExpr -> "let … in"
@@ -50,4 +49,3 @@ class ElmBreadcrumbsProvider : BreadcrumbsProvider {
         }
     }
 }
-

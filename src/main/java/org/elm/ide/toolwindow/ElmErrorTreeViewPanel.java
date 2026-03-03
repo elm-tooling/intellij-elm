@@ -8,12 +8,12 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public abstract class ElmErrorTreeViewPanel extends NewErrorTreeViewPanel {
+public class ElmErrorTreeViewPanel extends NewErrorTreeViewPanel {
     protected ElmErrorTreeViewPanel(Project project, @Nullable String helpId, boolean createExitAction, boolean createToolbar) {
         super(project, helpId, createExitAction, createToolbar);
     }
 
-    public void addErrorMessage(int type, String[] text, @Nullable VirtualFile file, int line, int column, String html) {
+    public void addErrorMessage(int type, String[] text, @Nullable VirtualFile file, int line, int column) {
         super.addMessage(type, text, file, line, column, null);
     }
 

@@ -11,7 +11,7 @@ import org.elm.lang.core.psi.offsetIn
 import org.elm.lang.core.resolve.ElmReferenceElement
 import org.elm.lang.core.resolve.scope.GlobalScope
 import org.elm.lang.core.resolve.scope.ModuleScope
-import org.elm.lang.core.stubs.index.ElmModulesIndex
+import org.elm.lang.core.stubs.index.ElmModules
 
 /**
  * A module-name (or alias) reference which qualifies a name from the value or type namespaces.
@@ -47,7 +47,7 @@ class ModuleNameQualifierReference<T : ElmReferenceElement>(
 
         // Otherwise, try to resolve the import directly
         val targetModuleName = GlobalScope.defaultAliases[refText] ?: refText
-        val targetDecl = ElmModulesIndex.get(targetModuleName, clientFile)
+        val targetDecl = ElmModules.get(targetModuleName, clientFile)
                 ?: return null
 
         // Ensure that it's in scope

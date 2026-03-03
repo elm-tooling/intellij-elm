@@ -309,7 +309,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
         }
 
         testProject.run {
-            IndexingTestUtil.waitUntilIndexesAreReady(project);
+            IndexingTestUtil.waitUntilIndexesAreReady(project)
             checkReferenceIsResolved<ElmImportClause>("a/src/Main.elm", toPackage = "elm/parser 1.0.0")
             checkReferenceIsResolved<ElmImportClause>("b/src/Main.elm", toPackage = "elm/parser 1.1.0")
         }

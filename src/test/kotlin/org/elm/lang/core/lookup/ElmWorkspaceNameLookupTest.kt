@@ -8,7 +8,6 @@ import org.elm.lang.core.psi.moduleName
 import org.elm.workspace.ElmWorkspaceTestBase
 import org.elm.workspace.elmWorkspace
 import org.intellij.lang.annotations.Language
-import org.junit.Test
 
 
 class ElmWorkspaceNameLookupTest : ElmWorkspaceTestBase() {
@@ -107,7 +106,7 @@ class ElmWorkspaceNameLookupTest : ElmWorkspaceTestBase() {
 
     private fun lookup(name: String): Collection<ElmNamedElement> {
         val elmProject = project.elmWorkspace.allProjects.single()
-        IndexingTestUtil.waitUntilIndexesAreReady(project);
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
         val clientLocation = TestClientLocation(project, elmProject)
         return ElmLookup.findByName(name, clientLocation)
     }

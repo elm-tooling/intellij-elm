@@ -9,7 +9,7 @@ import org.elm.lang.core.psi.stubDirectChildrenOfType
 import org.elm.lang.core.resolve.ElmReferenceElement
 import org.elm.lang.core.resolve.reference.ElmReferenceCached
 import org.elm.lang.core.stubs.ElmPlaceholderStub
-import org.elm.lang.core.stubs.index.ElmModulesIndex
+import org.elm.lang.core.stubs.index.ElmModules
 
 /**
  * An import declaration at the top of the module.
@@ -54,9 +54,9 @@ class ElmImportClause : ElmStubbedElement<ElmPlaceholderStub>, ElmReferenceEleme
             object : ElmReferenceCached<ElmImportClause>(this) {
 
                 override fun resolveInner(): ElmNamedElement? =
-                        ElmModulesIndex.get(moduleQID.fullName, elmFile)
+                        ElmModules.get(moduleQID.fullName, elmFile)
 
                 override fun getVariants(): Array<ElmNamedElement> =
-                        ElmModulesIndex.getAll(elmFile).toTypedArray()
+                        ElmModules.getAll(elmFile).toTypedArray()
             }
 }

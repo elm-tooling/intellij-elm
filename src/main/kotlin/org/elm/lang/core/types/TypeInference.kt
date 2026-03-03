@@ -28,10 +28,9 @@ fun PsiElement.findInference(): InferenceResult? {
 /** Find the type of a given element, if the element is a value expression or declaration */
 fun ElmPsiElement.findTy(): Ty? {
     return when (this) {
-        is ElmFunctionDeclarationLeft -> {
-            val decl = parentOfType<ElmValueDeclaration>() ?: return null
-            return findInference()?.let { it.expressionTypes[decl] ?: it.ty }
-        }
+        is ElmFunctionDeclarationLeft ->
+            parentOfType<ElmValueDeclaration>()
+                ?.let { decl -> findInference()?.let { it.expressionTypes[decl] ?: it.ty } }
         is ElmValueDeclaration -> {
             findInference()?.let { it.expressionTypes[this] ?: it.ty }
         }
@@ -702,13 +701,12 @@ private class InferenceScope(
                 // All patterns should now be bound
                 error(expr, "failed to bind pattern")
             }
-            is ElmFieldType -> {
-                return (ref.parentOfType<ElmTypeAliasDeclaration>()
-                        ?.typeExpressionInference()
-                        ?.value as? TyRecord)
-                        ?.fields?.get(ref.name)
-                        ?: TyUnknown()
-            }
+            is ElmFieldType ->
+                (ref.parentOfType<ElmTypeAliasDeclaration>()
+                    ?.typeExpressionInference()
+                    ?.value as? TyRecord)
+                    ?.fields?.get(ref.name)
+                    ?: TyUnknown()
             else -> error(ref, "Unexpected reference type")
         }
     }

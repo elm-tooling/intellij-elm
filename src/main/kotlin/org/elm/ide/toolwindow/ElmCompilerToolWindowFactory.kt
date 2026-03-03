@@ -15,7 +15,6 @@ import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.DumbAwareAction
-import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindow
@@ -61,13 +60,7 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
     override suspend fun isApplicableAsync(project: Project): Boolean = true
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val errorTreeViewPanel = object : ElmErrorTreeViewPanel(project, "Elm Compiler", false, true) {
-            override fun getRerunAction(): AnAction? = null
-
-            override fun fillRightToolbarGroup(group: DefaultActionGroup) {
-                super.fillRightToolbarGroup(group)
-            }
-        }
+        val errorTreeViewPanel = ElmErrorTreeViewPanel(project, "Elm Compiler", false, true)
         val outputPanel = ElmCompilerOutputPanel(project)
         val splitPane = OnePixelSplitter(false, 0.58f).apply {
             firstComponent = errorTreeViewPanel
@@ -175,7 +168,7 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
         }
         val buildShortcutSet = ActionManager.getInstance().getAction(ELM_BUILD_ACTION_ID)?.shortcutSet
             ?: CustomShortcutSet.fromString("alt shift P")
-        buildSelectedShortcutAction.registerCustomShortcutSet(buildShortcutSet, this, project)
+        buildSelectedShortcutAction.registerCustomShortcutSet(buildShortcutSet, this)
 
         refreshTargets()
     }
@@ -183,7 +176,7 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
     fun refreshTargets() {
         targetListModel.clear()
         for (elmProject in project.elmWorkspace.allProjects.sortedBy { it.presentableName }) {
-            val resolved = when (val result = project.elmWorkspace.resolveBuildTargets(elmProject, compileOnSaveOnly = false)) {
+            val resolved = when (val result = project.elmWorkspace.resolveBuildTargets(elmProject)) {
                 is org.elm.openapiext.Result.Ok -> result.value
                 is org.elm.openapiext.Result.Err -> emptyList()
             }
@@ -231,7 +224,7 @@ private fun displayTargetName(target: ResolvedBuildTarget, index: Int): String =
         }
     }
 
-private class ElmCompilerOutputPanel(project: Project) : SimpleToolWindowPanel(true, false) {
+private class ElmCompilerOutputPanel(project: Project) : JPanel(BorderLayout()) {
     private val console: ConsoleView = TextConsoleBuilderFactory.getInstance().createBuilder(project).console
     private val colorTypeCache = ConcurrentHashMap<String, ConsoleViewContentType>()
     private val cardLayout = CardLayout()
@@ -268,7 +261,7 @@ private class ElmCompilerOutputPanel(project: Project) : SimpleToolWindowPanel(t
             add(header, BorderLayout.NORTH)
             add(content, BorderLayout.CENTER)
         }
-        setContent(panel)
+        add(panel, BorderLayout.CENTER)
         cardLayout.show(content, "empty")
     }
 
@@ -379,20 +372,28 @@ private class ElmCompilerOutputPanel(project: Project) : SimpleToolWindowPanel(t
         if (raw.isNullOrBlank()) return UIUtil.getLabelForeground()
         val normalized = raw.trim()
         if (normalized.startsWith("#")) {
-            return runCatching { Color.decode(normalized) }.getOrElse { UIUtil.getLabelForeground() }
+            return runCatching {
+                val c = Color.decode(normalized)
+                JBColor(c, c)
+            }.getOrElse { UIUtil.getLabelForeground() }
         }
         return when (normalized.uppercase()) {
-            "RED" -> Color(0xFF, 0x59, 0x59)
-            "YELLOW" -> Color(0xFA, 0xCF, 0x5A)
-            "GREEN" -> Color(0x5A, 0xD6, 0x7D)
-            "BLUE" -> Color(0x6C, 0xA0, 0xFF)
-            "MAGENTA", "PURPLE" -> Color(0xC5, 0x7B, 0xFF)
-            "CYAN" -> Color(0x4F, 0x9D, 0xA6)
-            "BLACK" -> Color.BLACK
-            "WHITE" -> Color.WHITE
-            "GRAY", "GREY" -> Color.GRAY
+            "RED" -> fixedColor(0xFF, 0x59, 0x59)
+            "YELLOW" -> fixedColor(0xFA, 0xCF, 0x5A)
+            "GREEN" -> fixedColor(0x5A, 0xD6, 0x7D)
+            "BLUE" -> fixedColor(0x6C, 0xA0, 0xFF)
+            "MAGENTA", "PURPLE" -> fixedColor(0xC5, 0x7B, 0xFF)
+            "CYAN" -> fixedColor(0x4F, 0x9D, 0xA6)
+            "BLACK" -> JBColor.BLACK
+            "WHITE" -> JBColor.WHITE
+            "GRAY", "GREY" -> JBColor.GRAY
             else -> UIUtil.getLabelForeground()
         }
+    }
+
+    private fun fixedColor(r: Int, g: Int, b: Int): JBColor {
+        val rgb = (r shl 16) or (g shl 8) or b
+        return JBColor(rgb, rgb)
     }
 
     private fun extractJsonPayload(text: String): String? {
@@ -400,7 +401,7 @@ private class ElmCompilerOutputPanel(project: Project) : SimpleToolWindowPanel(t
         if (trimmed.startsWith("{") || trimmed.startsWith("[")) return trimmed
         val start = trimmed.indexOf('{')
         val end = trimmed.lastIndexOf('}')
-        if (start >= 0 && end > start) {
+        if (start in 0..<end) {
             return trimmed.substring(start, end + 1)
         }
         return null

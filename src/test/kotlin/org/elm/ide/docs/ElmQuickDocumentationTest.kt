@@ -549,7 +549,4 @@ bar = 11 ~~ 11
 <b>foo</b> a b</pre></div>
 <div class='content'><p>included <em>docs</em></p></div>
 """)
-
-    private fun doTest(@Language("Elm") code: String, @Language("Html") expected: String) =
-            doTest(code, expected, ElmDocumentationProvider::generateDoc)
 }

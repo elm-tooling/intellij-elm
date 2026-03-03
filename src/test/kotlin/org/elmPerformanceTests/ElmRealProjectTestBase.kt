@@ -31,7 +31,6 @@ import com.intellij.openapi.vfs.*
 import com.intellij.util.ui.UIUtil
 import org.elm.openapiext.fullyRefreshDirectory
 import org.elm.workspace.ElmWorkspaceTestBase
-import org.elm.workspace.elmWorkspace
 
 abstract class ElmRealProjectTestBase : ElmWorkspaceTestBase() {
 

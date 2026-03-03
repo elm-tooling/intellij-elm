@@ -10,7 +10,7 @@ import org.elm.lang.core.psi.elements.ElmImportClause
 import org.elm.lang.core.psi.elements.ElmTypeAliasDeclaration
 import org.elm.lang.core.psi.elements.ElmTypeDeclaration
 import org.elm.lang.core.psi.globalModificationTracker
-import org.elm.lang.core.stubs.index.ElmModulesIndex
+import org.elm.lang.core.stubs.index.ElmModules
 
 private val EXPOSED_VALUES_KEY: Key<ParameterizedCachedValue<ExposedNames, ElmFile>> = Key.create("EXPOSED_VALUES_KEY")
 private val EXPOSED_TYPES_KEY: Key<ParameterizedCachedValue<ExposedNames, ElmFile>> = Key.create("EXPOSED_TYPES_KEY")
@@ -69,7 +69,7 @@ class QualifiedImportScope(
             yieldAll(explicitScopes())
             yieldAll(implicitScopes())
         } else {
-            val projectWideScopes = ElmModulesIndex.getAll(listOf(qualifierPrefix), clientFile)
+            val projectWideScopes = ElmModules.getAll(listOf(qualifierPrefix), clientFile)
                     .asSequence().map { ImportScope(it.elmFile) }
             val allScopes = explicitScopes() + implicitScopes() + projectWideScopes
             yieldAll(allScopes.distinctBy { it.elmFile.virtualFile.path })
@@ -97,7 +97,7 @@ class ImportScope(val elmFile: ElmFile) {
          */
         fun fromImportDecl(importDecl: ElmImportClause): ImportScope? {
             val moduleName = importDecl.referenceName
-            return ElmModulesIndex.get(moduleName, importDecl.elmFile)
+            return ElmModules.get(moduleName, importDecl.elmFile)
                     ?.let { ImportScope(it.elmFile) }
         }
     }

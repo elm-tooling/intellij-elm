@@ -149,9 +149,6 @@ data class ElmToolchain(
                 isElmBuildOnSaveEnabled = DEFAULT_BUILD_ON_SAVE
         )
 
-        val MIN_SUPPORTED_COMPILER_VERSION = Version(0, 19, 0)
-        val MIN_SUPPORTED_LAMDERA_COMPILER_VERSION = Version(0, 19, 1) // TODO ? 0.19.1-1.0.1
-
         /**
          * Suggest a default toolchain based on common locations where Elm tools are frequently installed.
          * This performs file I/O.

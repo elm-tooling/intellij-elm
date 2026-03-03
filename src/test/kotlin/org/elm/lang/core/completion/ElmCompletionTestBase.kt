@@ -75,11 +75,6 @@ abstract class ElmCompletionTestBase: ElmTestBase() {
         noCompletionCheck()
     }
 
-    protected fun checkNoCompletionWithMultiFile(@Language("Elm") code: String) {
-        fileTreeFromText(code).createAndOpenFileWithCaretMarker()
-        noCompletionCheck()
-    }
-
     private fun noCompletionCheck() {
         val variants = myFixture.completeBasic()
         checkNotNull(variants) {

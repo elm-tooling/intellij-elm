@@ -1,40 +1,35 @@
 package org.elm.ide.toolwindow
 
-import com.intellij.ide.DataManager
-import com.intellij.ide.errorTreeView.ErrorTreeNodeDescriptor
 import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.icons.AllIcons
+import com.intellij.ide.errorTreeView.ErrorTreeNodeDescriptor
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Document
+import com.intellij.openapi.editor.markup.EffectType
+import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.wm.IdeFocusManager
-import com.intellij.openapi.editor.markup.EffectType
-import com.intellij.openapi.editor.markup.TextAttributes
-import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
-import com.intellij.openapi.util.TextRange
 import com.intellij.ui.JBColor
-import com.intellij.ui.components.JBLabel
 import com.intellij.ui.OnePixelSplitter
-import com.intellij.ui.ScrollPaneFactory
+import com.intellij.ui.components.JBLabel
 import com.intellij.ui.content.impl.ContentImpl
-import com.intellij.util.ui.tree.TreeUtil
-import com.intellij.util.ui.MessageCategory
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.MessageCategory
 import com.intellij.util.ui.UIUtil
+import com.intellij.util.ui.tree.TreeUtil
 import org.elm.workspace.ElmReviewService
 import org.elm.workspace.elmReviewService
 import org.elm.workspace.elmreview.Chunk
@@ -48,6 +43,7 @@ import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import javax.swing.JPanel
 import javax.swing.SwingConstants
+import javax.swing.tree.DefaultMutableTreeNode
 
 class ElmReviewToolWindowFactory : ToolWindowFactory {
     override suspend fun isApplicableAsync(project: Project): Boolean = true
@@ -79,7 +75,8 @@ class ElmReviewToolWindowFactory : ToolWindowFactory {
                             val virtualFile = baseDirPath.resolve(sourceLocation).let {
                                 LocalFileSystem.getInstance().findFileByPath(it.toString())
                             }
-                            val encodedIndex = "\u200B".repeat(index)
+                            // Encode 1-based index so the first issue has a marker too.
+                            val encodedIndex = "\u200B".repeat(index + 1)
                             val issue = ElmReviewIssue(baseDirPath, sourceLocation, virtualFile, elmReviewError)
                             issues += issue
                             updateErrorTree(errorTreeViewPanel, encodedIndex, issue)
@@ -108,22 +105,20 @@ class ElmReviewToolWindowFactory : ToolWindowFactory {
                 MessageCategory.SIMPLE, arrayOf("$encodedIndex$ruleText:", elmReviewError.message ?: ""),
                 issue.virtualFile,
                 0,
-                0,
-                elmReviewError.formattedText ?: elmReviewError.message ?: "General Error !"
+                0
             )
         } else {
             errorTreeViewPanel.addErrorMessage(
                 MessageCategory.SIMPLE, arrayOf("$encodedIndex$ruleText:", "${elmReviewError.message}"),
                 issue.virtualFile,
                 elmReviewError.region!!.start.let { it!!.line - 1 },
-                elmReviewError.region!!.start.let { it!!.column - 1 },
-                elmReviewError.formattedText ?: elmReviewError.message.orEmpty()
+                elmReviewError.region!!.start.let { it!!.column - 1 }
             )
         }
     }
 }
 
-private class ElmReviewDetailsPanel(project: Project) : SimpleToolWindowPanel(true, false) {
+private class ElmReviewDetailsPanel(project: Project) : JPanel(BorderLayout()) {
     private val colorTypeCache = ConcurrentHashMap<String, ConsoleViewContentType>()
     private val detailsConsole: ConsoleView = TextConsoleBuilderFactory.getInstance().createBuilder(project).console
     private val cardLayout = CardLayout()
@@ -161,7 +156,7 @@ private class ElmReviewDetailsPanel(project: Project) : SimpleToolWindowPanel(tr
             detailsContainer.add(detailsConsole.component, "details")
             add(detailsContainer, BorderLayout.CENTER)
         }
-        setContent(content)
+        add(content, BorderLayout.CENTER)
         cardLayout.show(detailsContainer, "empty")
     }
 
@@ -309,11 +304,17 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
     }
 
     private fun selectedIssue(): ElmReviewIssue? {
-        val selected = TreeUtil.collectSelectedUserObjects(myTree).firstOrNull() as? ErrorTreeNodeDescriptor
-            ?: return null
-        val prefixedErrorMessage = selected.element.text.firstOrNull() ?: return null
-        val index = prefixedErrorMessage.count { it == '\u200B' }
-        return issues.getOrNull(index)
+        var node = myTree.selectionPath?.lastPathComponent as? DefaultMutableTreeNode ?: return null
+        while (true) {
+            val descriptor = node.userObject as? ErrorTreeNodeDescriptor
+            val prefixedErrorMessage = descriptor?.element?.text?.firstOrNull().orEmpty()
+            val encoded = prefixedErrorMessage.count { it == '\u200B' }
+            if (encoded > 0) {
+                return issues.getOrNull(encoded - 1)
+            }
+            node = node.parent as? DefaultMutableTreeNode ?: break
+        }
+        return null
     }
 
     private fun applyFixes(targetIssues: List<ElmReviewIssue>) {
@@ -377,15 +378,6 @@ private sealed class PatchLocation : Comparable<PatchLocation> {
             } else {
                 region.toTextRange(document)?.let { Range(it) }
             }
-        }
-    }
-}
-
-fun focusEditor(project: Project) {
-    DataManager.getInstance().dataContextFromFocusAsync.then {
-        val editor = it.getData(CommonDataKeys.EDITOR)
-        if (editor != null) {
-            IdeFocusManager.getInstance(project).requestFocus(editor.contentComponent, true)
         }
     }
 }

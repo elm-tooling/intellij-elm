@@ -11,7 +11,6 @@ import org.elm.workspace.compiler.ElmCompilerKind
 import org.elm.workspace.compiler.ResolvedBuildTarget
 import org.elm.workspace.compiler.nullOutputTargetPathString
 import org.intellij.lang.annotations.Language
-import java.nio.file.Path
 import java.nio.file.Paths
 
 /*

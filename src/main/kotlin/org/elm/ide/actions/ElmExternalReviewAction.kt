@@ -64,7 +64,7 @@ class ElmExternalReviewAction : AnAction() {
 
         val elmProject = project.elmWorkspace.findProjectForFile(activeFile)
             ?: return showError(project, "Could not determine active Elm project")
-        val entryPoints = when (val result = project.elmWorkspace.resolveBuildTargets(elmProject, compileOnSaveOnly = false)) {
+        val entryPoints = when (val result = project.elmWorkspace.resolveBuildTargets(elmProject)) {
             is org.elm.openapiext.Result.Ok -> result.value
             is org.elm.openapiext.Result.Err -> {
                 val suffix = if (result.reason.isBlank()) "" else "\n${result.reason}"

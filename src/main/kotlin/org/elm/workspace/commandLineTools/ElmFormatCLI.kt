@@ -117,7 +117,7 @@ class ElmFormatCLI(private val elmFormatExecutablePath: Path) {
                 is ElmApplicationProject -> elmProject.elmVersion
                 is ElmPackageProject -> elmProject.elmVersion.low
                 is LamderaApplicationProject -> elmProject.elmVersion
-                else -> return null
+                else -> null
             }
         }
     }

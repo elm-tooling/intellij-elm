@@ -34,19 +34,12 @@ import org.elm.openapiext.*
 import org.elm.utils.MyDirectoryIndex
 import org.elm.utils.joinAll
 import org.elm.utils.runAsyncTask
-import org.elm.workspace.ElmToolchain.Companion.DEFAULT_FORMAT_ON_SAVE
-import org.elm.workspace.ElmToolchain.Companion.DEFAULT_REVIEW_ON_THE_FLY
 import org.elm.workspace.ElmToolchain.Companion.DEFAULT_BUILD_ON_SAVE
 import org.elm.workspace.ElmToolchain.Companion.DEFAULT_COMPILER_TYPE
+import org.elm.workspace.ElmToolchain.Companion.DEFAULT_FORMAT_ON_SAVE
+import org.elm.workspace.ElmToolchain.Companion.DEFAULT_REVIEW_ON_THE_FLY
 import org.elm.workspace.ElmToolchain.Companion.ELM_JSON
-import org.elm.workspace.compiler.ElmBuildTargetConfig
-import org.elm.workspace.compiler.ElmBuildMode
-import org.elm.workspace.compiler.ElmCompilerKind
-import org.elm.workspace.compiler.ElmProjectBuildTargetConfig
-import org.elm.workspace.compiler.ResolvedBuildTarget
-import org.elm.workspace.compiler.nullOutputTargetPathString
-import org.elm.workspace.compiler.toPathOrNull
-import org.elm.workspace.commandLineTools.ElmCLI
+import org.elm.workspace.compiler.*
 import org.elm.workspace.ui.ElmWorkspaceConfigurable
 import org.jdom.Element
 import java.nio.file.Files
@@ -158,8 +151,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     }
 
     fun resolveBuildTargets(
-        elmProject: ElmProject,
-        compileOnSaveOnly: Boolean
+        elmProject: ElmProject
     ): Result<List<ResolvedBuildTarget>> {
         val targets = buildTargetConfigsFor(elmProject)
         if (targets.isEmpty()) {

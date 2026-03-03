@@ -5,7 +5,6 @@ import com.google.gson.stream.JsonReader
 import junit.framework.TestCase
 import org.elm.lang.ElmTestBase
 import org.intellij.lang.annotations.Language
-import org.junit.Ignore
 import org.junit.Test
 
 

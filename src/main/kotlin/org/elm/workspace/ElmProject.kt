@@ -105,12 +105,19 @@ sealed class ElmProject(
      * alpha/beta/rc suffixes. e.g. "0.19.1-alpha-4"
      */
     fun isCompatibleWith(version: Version) =
-            when (this) {
-                is ElmApplicationProject -> elmVersion.xyz == version.xyz
-                is LamderaApplicationProject -> elmVersion.xyz == version.xyz
-                is ElmPackageProject -> elmVersion.contains(version.xyz)
-                is ElmReviewProject -> elmVersion.xyz == version.xyz
+            if (this is ElmPackageProject) {
+                elmVersion.contains(version.xyz)
+            } else {
+                compilerVersionForAppLikeProject().xyz == version.xyz
             }
+
+    private fun compilerVersionForAppLikeProject(): Version =
+        when (this) {
+            is ElmApplicationProject -> elmVersion
+            is LamderaApplicationProject -> elmVersion
+            is ElmReviewProject -> elmVersion
+            is ElmPackageProject -> error("ElmPackageProject does not have a single compiler version target")
+        }
 
     /**
      * Return `true` iff this package is the core package for the current version of Elm.

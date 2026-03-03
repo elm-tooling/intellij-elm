@@ -1,8 +1,6 @@
 package org.elm.ide.notifications
 
-import com.intellij.execution.process.ProcessIOExecutorService
 import com.intellij.notification.NotificationType
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
@@ -16,12 +14,6 @@ import org.elm.openapiext.findFileByPath
 import org.elm.workspace.*
 import java.util.function.Function
 
-sealed class VersionCheck {
-    object NotChecked : VersionCheck()
-    object Checking : VersionCheck()
-    class Checked(val version: Version?) : VersionCheck()
-}
-
 private val log = logger<ElmNeedsConfigNotificationProvider>()
 
 /**
@@ -34,18 +26,12 @@ class ElmNeedsConfigNotificationProvider(
 
     private val notifications = EditorNotifications.getInstance(project)
 
-    private val lock = Any()
-    private var versionCheck: VersionCheck = VersionCheck.NotChecked
-
     init {
         project.messageBus.connect(project).apply {
             subscribe(ElmWorkspaceService.WORKSPACE_TOPIC,
                 object : ElmWorkspaceService.ElmWorkspaceListener {
                     override fun didUpdate() {
-                        log.debug("Workspace did change; invalidating cache and refreshing UI")
-                        synchronized(lock) {
-                            versionCheck = VersionCheck.NotChecked // Elm toolchain may have changed
-                        }
+                        log.debug("Workspace did change; refreshing UI")
                         notifications.updateAllNotifications()
                     }
                 })
@@ -73,19 +59,6 @@ class ElmNeedsConfigNotificationProvider(
             ?: return noElmProjectPanel("Could not find Elm project for this file")
 
         return null
-    }
-
-    private fun asyncQueryElmCompilerVersion(toolchain: ElmToolchain) {
-        ProcessIOExecutorService.INSTANCE.submit {
-            val v = toolchain.queryCompilerVersion(project).orNull()
-            synchronized(lock) {
-                versionCheck = VersionCheck.Checked(v)
-            }
-            // refresh the UI
-            ApplicationManager.getApplication().invokeLater {
-                notifications.updateAllNotifications()
-            }
-        }
     }
 
     private fun badToolchainPanel(message: String) =
