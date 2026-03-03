@@ -8,9 +8,6 @@ import com.intellij.openapi.wm.ToolWindowFactory
  * Boilerplate to connect tool window content to IntelliJ.
  */
 class ElmToolWindowFactory : ToolWindowFactory {
-    @Suppress("OVERRIDE_DEPRECATION")
-    override fun isApplicable(project: Project): Boolean = true
-
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         with(toolWindow.contentManager) {
             addContent(factory.createContent(ElmWorkspacePanel(project), "Projects", true))

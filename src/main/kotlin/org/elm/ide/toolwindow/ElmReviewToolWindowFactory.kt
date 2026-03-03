@@ -45,9 +45,6 @@ import javax.swing.SwingConstants
 import javax.swing.tree.DefaultMutableTreeNode
 
 class ElmReviewToolWindowFactory : ToolWindowFactory {
-    @Suppress("OVERRIDE_DEPRECATION")
-    override fun isApplicable(project: Project): Boolean = true
-
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val errorTreeViewPanel = ElmReviewErrorTreeViewPanel(project)
         val detailsPanel = ElmReviewDetailsPanel(project)

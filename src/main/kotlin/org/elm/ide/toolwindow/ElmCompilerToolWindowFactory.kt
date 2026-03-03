@@ -44,9 +44,6 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.swing.*
 
 class ElmCompilerToolWindowFactory : ToolWindowFactory {
-    @Suppress("OVERRIDE_DEPRECATION")
-    override fun isApplicable(project: Project): Boolean = true
-
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val errorTreeViewPanel = ElmErrorTreeViewPanel(project, "Elm Compiler", false, true)
         val outputPanel = ElmCompilerOutputPanel(project)
