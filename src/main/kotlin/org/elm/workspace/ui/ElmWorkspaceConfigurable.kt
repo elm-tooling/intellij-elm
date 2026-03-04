@@ -17,6 +17,7 @@ import com.intellij.ui.HyperlinkLabel
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.JBColor
 import com.intellij.ui.ToolbarDecorator
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.update.Activatable
 import com.intellij.util.ui.update.UiNotifyConnector
 import org.elm.ide.actions.ElmExternalFormatAction
@@ -44,6 +45,7 @@ import org.elm.workspace.compiler.ElmCompilerKind
 import org.elm.workspace.compiler.ElmProjectBuildTargetConfig
 import java.awt.CardLayout
 import java.awt.BorderLayout
+import java.awt.Dimension
 import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 import javax.swing.BoxLayout
@@ -166,7 +168,8 @@ class ElmWorkspaceConfigurable(
         val panel = layout {
             block("Build") {
                 row("Project:", projectSelector)
-                row("Targets:", buildTargetsPanel())
+                noteRow("Targets:")
+                row(buildTargetsPanel())
             }
             block(elmFormatTool) {
                 row("Location:", pathFieldPlusAutoDiscoverButton(elmFormatPathField, elmFormatTool))
@@ -259,15 +262,21 @@ class ElmWorkspaceConfigurable(
         targetDetailsPanel.add(formPanel, "form")
         targetDetailsLayout.show(targetDetailsPanel, "empty")
 
-        return JBSplitter(false, 0.35f).apply {
+        return JBSplitter(false, 0.25f).apply {
+            setHonorComponentsMinimumSize(false)
+            leftPanel.minimumSize = Dimension(0, 0)
+            targetDetailsPanel.minimumSize = Dimension(0, 0)
             firstComponent = leftPanel
             secondComponent = targetDetailsPanel
         }
     }
 
     private fun labeledField(label: String, component: JComponent): JComponent =
-        JPanel(BorderLayout(10, 0)).apply {
-            add(JLabel(label), BorderLayout.WEST)
+        JPanel(BorderLayout(0, 2)).apply {
+            minimumSize = Dimension(0, 0)
+            border = JBUI.Borders.empty(2, 0, 6, 0)
+            component.minimumSize = Dimension(0, component.minimumSize.height)
+            add(JLabel(label), BorderLayout.NORTH)
             add(component, BorderLayout.CENTER)
         }
 
@@ -371,6 +380,8 @@ class ElmWorkspaceConfigurable(
 
     private fun pathFieldPlusAutoDiscoverButton(field: TextFieldWithBrowseButton, executableName: String): JPanel {
         val panel = JPanel().apply { layout = BoxLayout(this, BoxLayout.X_AXIS) }
+        panel.minimumSize = Dimension(0, 0)
+        field.minimumSize = Dimension(0, field.minimumSize.height)
         panel.add(field)
         panel.add(
             JButton("Auto Discover").apply {
@@ -384,6 +395,8 @@ class ElmWorkspaceConfigurable(
 
     private fun targetCompilerPathWithAutoDiscoverButton(): JPanel {
         val panel = JPanel().apply { layout = BoxLayout(this, BoxLayout.X_AXIS) }
+        panel.minimumSize = Dimension(0, 0)
+        targetCompilerPath.minimumSize = Dimension(0, targetCompilerPath.minimumSize.height)
         panel.add(targetCompilerPath)
         panel.add(
             JButton("Auto Discover").apply {
