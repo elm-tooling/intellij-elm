@@ -10,6 +10,7 @@ import com.intellij.openapi.actionSystem.ActionToolbarPosition
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ex.Settings
 import com.intellij.openapi.project.Project
+import com.intellij.util.messages.MessageBusConnection
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.ui.HyperlinkLabel
@@ -110,6 +111,8 @@ class ElmWorkspaceConfigurable(
     private val buildTargetsByManifest = mutableMapOf<String, MutableList<ElmBuildTargetConfig>>()
     private var lastSelectedTargetIndex = -1
     private var isLoadingTargetDetails = false
+    private var isLoadingProjectChoices = false
+    private var workspaceBusConnection: MessageBusConnection? = null
 
     override fun createComponent(): JComponent {
         elmFormatOnSaveCheckbox.addChangeListener { update(emptySet()) }
@@ -118,6 +121,7 @@ class ElmWorkspaceConfigurable(
         }
 
         projectSelector.addActionListener {
+            if (isLoadingProjectChoices) return@addActionListener
             persistCurrentProjectTargets()
             loadSelectedProjectTargets()
         }
@@ -189,6 +193,17 @@ class ElmWorkspaceConfigurable(
         UiNotifyConnector.installOn(panel, object : Activatable {
             override fun showNotify() = update(null)
         }, true)
+
+        workspaceBusConnection = project.messageBus.connect(this).also { connection ->
+            connection.subscribe(
+                ElmWorkspaceService.WORKSPACE_TOPIC,
+                object : ElmWorkspaceService.ElmWorkspaceListener {
+                    override fun didUpdate() {
+                        reloadProjectChoices(preserveSelection = true)
+                    }
+                }
+            )
+        }
 
         return panel
     }
@@ -496,23 +511,38 @@ class ElmWorkspaceConfigurable(
             buildTargetsByManifest[cfg.manifestPath] = cfg.targets.toMutableList()
         }
 
-        projectSelector.removeAllItems()
-        project.elmWorkspace.allProjects
-            .sortedBy { it.presentableName }
-            .forEach { elmProject ->
-                val manifestPath = elmProject.manifestPath.toString()
-                projectSelector.addItem(ProjectChoice("${elmProject.presentableName} ($manifestPath)", manifestPath))
-            }
-        if (projectSelector.itemCount > 0) {
-            projectSelector.selectedIndex = 0
-            loadSelectedProjectTargets()
-        } else {
-            targetListModel.clear()
-            clearTargetEditor()
-            targetDetailsLayout.show(targetDetailsPanel, "empty")
-        }
+        reloadProjectChoices(preserveSelection = false)
 
         update(null)
+    }
+
+    private fun reloadProjectChoices(preserveSelection: Boolean) {
+        val selectedManifestPath = if (preserveSelection) selectedManifestPath() else null
+        isLoadingProjectChoices = true
+        try {
+            projectSelector.removeAllItems()
+            project.elmWorkspace.allProjects
+                .sortedBy { it.presentableName }
+                .forEach { elmProject ->
+                    val manifestPath = elmProject.manifestPath.toString()
+                    projectSelector.addItem(ProjectChoice("${elmProject.presentableName} ($manifestPath)", manifestPath))
+                }
+
+            if (projectSelector.itemCount > 0) {
+                val preserveIdx = selectedManifestPath
+                    ?.let { wanted -> (0 until projectSelector.itemCount).firstOrNull { idx ->
+                        (projectSelector.getItemAt(idx) as? ProjectChoice)?.manifestPath == wanted
+                    } }
+                projectSelector.selectedIndex = preserveIdx ?: 0
+                loadSelectedProjectTargets()
+            } else {
+                targetListModel.clear()
+                clearTargetEditor()
+                targetDetailsLayout.show(targetDetailsPanel, "empty")
+            }
+        } finally {
+            isLoadingProjectChoices = false
+        }
     }
 
     override fun apply() {
