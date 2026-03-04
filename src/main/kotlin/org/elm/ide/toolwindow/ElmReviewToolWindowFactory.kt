@@ -8,6 +8,7 @@ import com.intellij.ide.errorTreeView.ErrorTreeNodeDescriptor
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Document
@@ -63,54 +64,22 @@ class ElmReviewToolWindowFactory : ToolWindowFactory {
 
                 override fun update(baseDirPath: Path, messages: List<ElmReviewError>) {
                     invokeLater {
-                        errorTreeViewPanel.clearMessages()
                         detailsPanel.clear()
 
                         val issues = mutableListOf<ElmReviewIssue>()
-                        messages.forEachIndexed { index, elmReviewError ->
-                            val sourceLocation = elmReviewError.path ?: return@forEachIndexed
+                        messages.forEach { elmReviewError ->
+                            val sourceLocation = elmReviewError.path ?: return@forEach
                             val virtualFile = baseDirPath.resolve(sourceLocation).let {
                                 LocalFileSystem.getInstance().findFileByPath(it.toString())
                             }
-                            // Encode 1-based index so the first issue has a marker too.
-                            val encodedIndex = "\u200B".repeat(index + 1)
                             val issue = ElmReviewIssue(baseDirPath, sourceLocation, virtualFile, elmReviewError)
                             issues += issue
-                            updateErrorTree(errorTreeViewPanel, encodedIndex, issue)
                         }
 
-                        errorTreeViewPanel.setIssues(issues)
-                        errorTreeViewPanel.reload()
-                        if (toolWindow.isVisible) {
-                            errorTreeViewPanel.expandAll()
-                        }
+                        errorTreeViewPanel.setIssues(issues, expand = toolWindow.isVisible)
                     }
                 }
             })
-        }
-    }
-
-    private fun updateErrorTree(
-        errorTreeViewPanel: ElmErrorTreeViewPanel,
-        encodedIndex: String,
-        issue: ElmReviewIssue
-    ) {
-        val elmReviewError = issue.error
-        val ruleText = (elmReviewError.rule ?: "") + if (issue.isFixable) " (auto-fix)" else ""
-        if (elmReviewError.region == null) {
-            errorTreeViewPanel.addErrorMessage(
-                MessageCategory.SIMPLE, arrayOf("$encodedIndex$ruleText:", elmReviewError.message ?: ""),
-                issue.virtualFile,
-                0,
-                0
-            )
-        } else {
-            errorTreeViewPanel.addErrorMessage(
-                MessageCategory.SIMPLE, arrayOf("$encodedIndex$ruleText:", "${elmReviewError.message}"),
-                issue.virtualFile,
-                elmReviewError.region!!.start.let { it!!.line - 1 },
-                elmReviewError.region!!.start.let { it!!.column - 1 }
-            )
         }
     }
 }
@@ -257,23 +226,73 @@ private data class ElmReviewIssue(
 
 private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPanel(project, "elm-review", false, true) {
     private val projectRef = project
+    private var allIssues: List<ElmReviewIssue> = emptyList()
     private var issues: List<ElmReviewIssue> = emptyList()
+    private var showSuppressed: Boolean = false
     var onIssueSelected: (ElmReviewIssue?) -> Unit = {}
 
     init {
         myTree.addTreeSelectionListener { onIssueSelected(selectedIssue()) }
     }
 
-    fun setIssues(issues: List<ElmReviewIssue>) {
-        this.issues = issues
+    fun setIssues(issues: List<ElmReviewIssue>, expand: Boolean) {
+        this.allIssues = issues
+        renderIssues(expand)
+    }
+
+    private fun renderIssues(expand: Boolean) {
+        clearMessages()
+        issues = if (showSuppressed) {
+            allIssues
+        } else {
+            allIssues.filter { it.error.suppressed != true }
+        }
         onIssueSelected(null)
+        issues.forEachIndexed { index, issue ->
+            // Encode 1-based index so the first issue has a marker too.
+            val encodedIndex = "\u200B".repeat(index + 1)
+            val elmReviewError = issue.error
+            val ruleText = (elmReviewError.rule ?: "") + if (issue.isFixable) " (auto-fix)" else ""
+            if (elmReviewError.region == null) {
+                addErrorMessage(
+                    MessageCategory.SIMPLE,
+                    arrayOf("$encodedIndex$ruleText:", elmReviewError.message ?: ""),
+                    issue.virtualFile,
+                    0,
+                    0
+                )
+            } else {
+                addErrorMessage(
+                    MessageCategory.SIMPLE,
+                    arrayOf("$encodedIndex$ruleText:", "${elmReviewError.message}"),
+                    issue.virtualFile,
+                    elmReviewError.region!!.start.let { it!!.line - 1 },
+                    elmReviewError.region!!.start.let { it!!.column - 1 }
+                )
+            }
+        }
+        reload()
+        if (expand) expandAll()
     }
 
     override fun fillRightToolbarGroup(group: DefaultActionGroup) {
         super.fillRightToolbarGroup(group)
         group.addSeparator()
+        group.add(ShowSuppressedAction())
         group.add(FixSelectedIssueAction())
         group.add(FixAllIssuesAction())
+    }
+
+    private inner class ShowSuppressedAction : ToggleAction("Show Suppressed", "Show suppressed elm-review findings", null) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun isSelected(e: AnActionEvent): Boolean = showSuppressed
+
+        override fun setSelected(e: AnActionEvent, state: Boolean) {
+            if (showSuppressed == state) return
+            showSuppressed = state
+            renderIssues(expand = true)
+        }
     }
 
     private inner class FixSelectedIssueAction : DumbAwareAction("Fix", "Apply fix to selected issue", AllIcons.Actions.Lightning) {
