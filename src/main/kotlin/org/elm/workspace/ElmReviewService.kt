@@ -17,6 +17,7 @@ import org.elm.workspace.elmreview.readErrorReport
 import org.elm.workspace.compiler.toPathOrNull
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.exists
 
@@ -26,8 +27,13 @@ private val log = logger<ElmReviewService>()
 class ElmReviewService(private val project: Project) {
 
     private val runningReviews: MutableSet<Path> = ConcurrentHashMap.newKeySet()
+    private val pendingReviews: MutableSet<Path> = ConcurrentHashMap.newKeySet()
     private val missingExecutableNotified: MutableSet<Path> = ConcurrentHashMap.newKeySet()
     private val messages: MutableMap<Path, List<ElmReviewError>> = ConcurrentHashMap()
+    private val lastRequestedStampByFile: MutableMap<Path, Long> = ConcurrentHashMap()
+    private val reviewGeneration = AtomicLong(0)
+    private val requestedGenerationByProject: MutableMap<Path, Long> = ConcurrentHashMap()
+    private val completedGenerationByProject: MutableMap<Path, Long> = ConcurrentHashMap()
 
     interface ElmReviewWatchListener {
         fun update(baseDirPath: Path, messages: List<ElmReviewError>)
@@ -40,6 +46,12 @@ class ElmReviewService(private val project: Project) {
     fun messagesForCurrentProject(path: Path): List<ElmReviewError> =
         messages[path] ?: emptyList()
 
+    fun hasFreshResults(path: Path): Boolean {
+        val requested = requestedGenerationByProject[path] ?: return true
+        val completed = completedGenerationByProject[path] ?: 0L
+        return completed >= requested
+    }
+
     fun runReview(projectBasePath: Path) {
         runReview(projectBasePath, elmProjectHint = null, compilerPathHint = null)
     }
@@ -49,7 +61,12 @@ class ElmReviewService(private val project: Project) {
         if (!projectBasePath.resolve("elm.json").exists()) return
         if (!projectBasePath.resolve("review").exists()) return
 
-        if (!runningReviews.add(projectBasePath)) return
+        val runGeneration = requestedGenerationByProject[projectBasePath] ?: markReviewRequested(projectBasePath)
+
+        if (!runningReviews.add(projectBasePath)) {
+            pendingReviews.add(projectBasePath)
+            return
+        }
 
         val elmReviewExecutablePath = project.elmToolchain.elmReviewPath ?: run {
             runningReviews.remove(projectBasePath)
@@ -137,9 +154,33 @@ class ElmReviewService(private val project: Project) {
                 log.warn("elm-review run failed", t)
             } finally {
                 runningReviews.remove(projectBasePath)
+                completedGenerationByProject.merge(projectBasePath, runGeneration, ::maxOf)
                 project.elmTaskStatus.reviewFinished()
+                if (pendingReviews.remove(projectBasePath) && !project.isDisposed) {
+                    runReview(projectBasePath, elmProjectHint = null, compilerPathHint = null)
+                }
             }
         }
+    }
+
+    fun runReviewOnDocumentChange(
+        projectBasePath: Path,
+        sourceFilePath: Path,
+        documentModificationStamp: Long,
+        elmProjectHint: ElmProject?
+    ) {
+        if (!project.elmSettings.toolchain.isElmReviewOnTheFlyEnabled) return
+        val previousStamp = lastRequestedStampByFile[sourceFilePath]
+        if (previousStamp != null && previousStamp >= documentModificationStamp) return
+        lastRequestedStampByFile[sourceFilePath] = documentModificationStamp
+        markReviewRequested(projectBasePath)
+        runReview(projectBasePath, elmProjectHint = elmProjectHint)
+    }
+
+    private fun markReviewRequested(projectBasePath: Path): Long {
+        val generation = reviewGeneration.incrementAndGet()
+        requestedGenerationByProject[projectBasePath] = generation
+        return generation
     }
 
     private fun showError(message: String, includeFixAction: Boolean = false) {

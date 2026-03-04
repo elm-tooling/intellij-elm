@@ -41,10 +41,23 @@ class ElmReviewPass(
 
     override fun doCollectInformation(progress: ProgressIndicator) {
         if (file !is ElmFile || !isPassEnabled()) return
-        val pathToListenFor: Path = file.elmProject?.projectDirPath ?: return
+        val elmProject = file.elmProject ?: return
+        val pathToListenFor: Path = elmProject.projectDirPath
 
         val service = editor.project?.elmReviewService ?: return
-        annotationInfo = ElmReviewResult(service.messagesForCurrentProject(pathToListenFor), pathToListenFor, 0)
+        val sourceFilePath = runReadAction { file.virtualFile.path }?.let(Path::of) ?: return
+        service.runReviewOnDocumentChange(
+            projectBasePath = pathToListenFor,
+            sourceFilePath = sourceFilePath,
+            documentModificationStamp = document.modificationStamp,
+            elmProjectHint = elmProject
+        )
+        val messages = if (service.hasFreshResults(pathToListenFor)) {
+            service.messagesForCurrentProject(pathToListenFor)
+        } else {
+            emptyList()
+        }
+        annotationInfo = ElmReviewResult(messages, pathToListenFor, 0)
     }
 
     override fun doApplyInformationToEditor() {
