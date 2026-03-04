@@ -49,6 +49,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CompletionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.io.path.exists
@@ -81,17 +82,19 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     )
 
     init {
-        with(intellijProject.messageBus.connect()) {
-            subscribe(VirtualFileManager.VFS_CHANGES, ElmProjectWatcher {
-                refreshQueue.queue(object : Update("refresh-all-projects") {
-                    override fun run() {
-                        asyncRefreshAllProjects().exceptionally {
-                            log.warn("Could not refresh Elm projects after VFS change", it)
-                            emptyList()
+        if (!isUnitTestMode) {
+            with(intellijProject.messageBus.connect()) {
+                subscribe(VirtualFileManager.VFS_CHANGES, ElmProjectWatcher {
+                    refreshQueue.queue(object : Update("refresh-all-projects") {
+                        override fun run() {
+                            asyncRefreshAllProjects().exceptionally {
+                                logRefreshFailure("Could not refresh Elm projects after VFS change", it)
+                                emptyList()
+                            }
                         }
-                    }
+                    })
                 })
-            })
+            }
         }
     }
 
@@ -469,18 +472,25 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                     elmProject.manifestPath,
                     installDeps = installDeps,
                     compilerVersion = elmCompilerVersion
-                ).exceptionally {
+                ).thenApply { loadedProject ->
+                    RefreshOutcome(elmProject.manifestPath, loadedProject, null)
+                }.exceptionally { error ->
                     // TODO Communicate this error in the UI (while warnings may be fine for tests)
-                    log.warn("Could not load elm project", it)
-                    null
+                    val root = unwrapCompletionError(error)
+                    logRefreshFailure("Could not load elm project", root)
+                    RefreshOutcome(elmProject.manifestPath, null, root)
                 }
             }.joinAll()
-                .thenApply { rawProjects ->
-                    val freshProjects = rawProjects.filterNotNull().associateBy { it.manifestPath }
+                .thenApply { outcomes ->
+                    val refreshOutcomeByManifest = outcomes.associateBy { it.manifestPath }
                     modifyProjects { currentProjects ->
-                        // replace existing projects with the fresh ones, if possible
-                        currentProjects.map {
-                            freshProjects[it.manifestPath] ?: it
+                        currentProjects.mapNotNull { current ->
+                            val outcome = refreshOutcomeByManifest[current.manifestPath] ?: return@mapNotNull current
+                            when {
+                                outcome.project != null -> outcome.project
+                                isMissingManifestFailure(outcome.error) -> null
+                                else -> current
+                            }
                         }
                     }
                 }
@@ -507,6 +517,25 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     fun hasAtLeastOneValidProject() =
         allProjects.any { it.manifestPath.exists() }
 
+    private fun logRefreshFailure(context: String, error: Throwable) {
+        val root = unwrapCompletionError(error)
+        if (isUnitTestMode || isMissingManifestFailure(root)) {
+            log.warn("$context: ${root.message ?: root::class.java.simpleName}")
+        } else {
+            log.warn(context, error)
+        }
+    }
+
+    private fun unwrapCompletionError(error: Throwable): Throwable {
+        val completionCause = (error as? CompletionException)?.cause
+        return completionCause ?: error
+    }
+
+    private fun isMissingManifestFailure(error: Throwable?): Boolean {
+        if (error !is ProjectLoadException) return false
+        return error.message?.startsWith("Manifest file not found:") == true
+    }
+
     private fun resolveCompilerVersionForProjectLoad(): Version {
         if (isUnitTestMode) return Version(0, 19, 1)
         return settings.toolchain.queryCompilerVersion(intellijProject).orNull()
@@ -515,6 +544,12 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 Version(0, 19, 1)
             }
     }
+
+    private data class RefreshOutcome(
+        val manifestPath: Path,
+        val project: ElmProject?,
+        val error: Throwable?
+    )
 
 
     // PROJECT LOOKUP
@@ -806,6 +841,7 @@ class ProjectLoadException(msg: String, cause: Exception? = null) : RuntimeExcep
 
 
 fun asyncAutoDiscoverWorkspace(project: Project, explicitRequest: Boolean = false): CompletableFuture<Unit> {
+    if (isUnitTestMode) return CompletableFuture.completedFuture(Unit)
     if (!explicitRequest) {
         val alreadyTried = run {
             val key = "org.elm.workspace.PROJECT_DISCOVERY"

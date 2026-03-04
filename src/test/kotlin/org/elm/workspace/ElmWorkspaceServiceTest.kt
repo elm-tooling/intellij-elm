@@ -1,5 +1,6 @@
 package org.elm.workspace
 
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.testFramework.PlatformTestUtil
 import junit.framework.TestCase
 import org.elm.fileTree
@@ -240,6 +241,32 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
 
         val elmProjects = project.elmWorkspace.asyncDiscoverAndRefresh().get()
         check(elmProjects.isEmpty()) { "Should have found zero Elm projects but found ${elmProjects.size}" }
+    }
+
+    @Test
+    fun `test refresh detaches project when manifest is deleted`() {
+        val testProject = fileTree {
+            dir("a") {
+                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                dir("src") {
+                    elm("Main.elm")
+                }
+            }
+        }.create(project, elmWorkspaceDirectory)
+
+        val rootPath = testProject.root.pathAsPath
+        val workspace = project.elmWorkspace
+        workspace.asyncAttachElmProject(rootPath.resolve("a/elm.json")).get()
+        check(workspace.allProjects.size == 1) { "Expected one attached project before deleting manifest" }
+
+        val manifestFile = testProject.root.findFileByRelativePath("a/elm.json")
+            ?: error("Could not find manifest to delete")
+        runWriteAction {
+            manifestFile.delete(this)
+        }
+
+        workspace.asyncRefreshAllProjects().get()
+        check(workspace.allProjects.isEmpty()) { "Expected no attached projects after deleting manifest and refreshing" }
     }
 
     @Test
