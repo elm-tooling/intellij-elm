@@ -3,6 +3,14 @@
 # Changelog for et-intellij-elm
 
 ## [Unreleased]
+*   Reworked the elm-review panel
+*   Rebuilt the elm compiler panel
+*   Restructured how the elm compiler is defined
+*   Permit multiple compilers, and multiple entry points
+*   Added support for elm-test-rs (in addition to elm-test)
+*   Added support for elm-wrap
+*   Optimized unused symbol lookups
+*   Fixed deprecated APIs and review warnings
 
 ## [5.2.0] - 2025-10-21
 *   Major code review and clean-up (@ahankinson)
