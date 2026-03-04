@@ -327,11 +327,8 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         compilerVersion: Version? = null
     ): CompletableFuture<ElmProject> =
         runAsyncTask(intellijProject, "Loading Elm project '$manifestPath'") {
-
             val elmCompilerVersion = compilerVersion
-                ?: if (isUnitTestMode) Version(0, 19, 1) else null
-                ?: settings.toolchain.queryCompilerVersion(intellijProject).orNull()
-                ?: throw ProjectLoadException("Could not determine version of the selected compiler")
+                ?: resolveCompilerVersionForProjectLoad()
 
             if (installDeps) {
                 installProjectDeps(manifestPath)
@@ -461,7 +458,10 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 Version(0, 19, 1)
             } else {
                 settings.toolchain.queryCompilerVersion(intellijProject).orNull()
-                    ?: throw ProjectLoadException("Could not determine version of the selected compiler")
+                    ?: run {
+                        log.warn("Could not determine version of the selected compiler while refreshing Elm projects. Falling back to 0.19.1.")
+                        Version(0, 19, 1)
+                    }
             }
         }.thenCompose { elmCompilerVersion ->
             allProjects.map { elmProject ->
@@ -506,6 +506,15 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
 
     fun hasAtLeastOneValidProject() =
         allProjects.any { it.manifestPath.exists() }
+
+    private fun resolveCompilerVersionForProjectLoad(): Version {
+        if (isUnitTestMode) return Version(0, 19, 1)
+        return settings.toolchain.queryCompilerVersion(intellijProject).orNull()
+            ?: run {
+                log.warn("Could not determine version of the selected compiler while loading Elm projects. Falling back to 0.19.1.")
+                Version(0, 19, 1)
+            }
+    }
 
 
     // PROJECT LOOKUP
