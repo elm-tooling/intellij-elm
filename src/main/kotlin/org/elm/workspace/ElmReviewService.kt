@@ -13,10 +13,9 @@ import org.elm.openapiext.execute
 import com.intellij.util.messages.Topic
 import org.elm.ide.notifications.showBalloon
 import org.elm.ide.statusbar.elmTaskStatus
+import org.elm.workspace.elmreview.resolveElmReviewCompiler
 import org.elm.workspace.elmreview.ElmReviewError
 import org.elm.workspace.elmreview.readErrorReport
-import org.elm.workspace.compiler.toPathOrNull
-import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
@@ -54,10 +53,10 @@ class ElmReviewService(private val project: Project) {
     }
 
     fun runReview(projectBasePath: Path) {
-        runReview(projectBasePath, elmProjectHint = null, compilerPathHint = null)
+        runReview(projectBasePath, elmProjectHint = null)
     }
 
-    fun runReview(projectBasePath: Path, elmProjectHint: ElmProject?, compilerPathHint: Path? = null) {
+    fun runReview(projectBasePath: Path, elmProjectHint: ElmProject?) {
         if (!project.elmSettings.toolchain.isElmReviewOnTheFlyEnabled) return
         if (!projectBasePath.resolve("elm.json").exists()) return
         if (!projectBasePath.resolve("review").exists()) return
@@ -87,12 +86,13 @@ class ElmReviewService(private val project: Project) {
             project.elmTaskStatus.reviewStarted()
             val suggestedTools = ElmSuggest.suggestTools(project)
             try {
-                val compilerPathForReview = resolveCompilerPathForReview(
+                val compilerResolution = resolveElmReviewCompiler(
+                    project = project,
                     projectBasePath = projectBasePath,
                     elmProjectHint = elmProjectHint,
-                    compilerPathHint = compilerPathHint,
                     suggestedTools = suggestedTools
                 )
+                val compilerPathForReview = compilerResolution.path
                 val arguments = buildList {
                     add("--report=json")
                     add("--namespace=intellij-elm")
@@ -147,12 +147,12 @@ class ElmReviewService(private val project: Project) {
                 // Expected during shutdown/test teardown if an async review completes late.
             } catch (t: Throwable) {
                 if (!project.isDisposed) {
-                    val compilerPathForReview = resolveCompilerPathForReview(
+                    val compilerPathForReview = resolveElmReviewCompiler(
+                        project = project,
                         projectBasePath = projectBasePath,
                         elmProjectHint = elmProjectHint,
-                        compilerPathHint = compilerPathHint,
                         suggestedTools = suggestedTools
-                    )
+                    ).path
                     val args = buildList {
                         add("--report=json")
                         add("--namespace=intellij-elm")
@@ -174,7 +174,7 @@ class ElmReviewService(private val project: Project) {
                     project.elmTaskStatus.reviewFinished()
                 }
                 if (pendingReviews.remove(projectBasePath) && !project.isDisposed) {
-                    runReview(projectBasePath, elmProjectHint = null, compilerPathHint = null)
+                    runReview(projectBasePath, elmProjectHint = null)
                 }
             }
         }
@@ -228,41 +228,6 @@ class ElmReviewService(private val project: Project) {
         val prefix = extraDirs.filter { it.isNotBlank() }.joinToString(separator)
         env["PATH"] = if (existing.isBlank()) prefix else "$prefix$separator$existing"
 
-    }
-
-    private fun resolveCompilerPathForReview(
-        projectBasePath: Path,
-        elmProjectHint: ElmProject?,
-        compilerPathHint: Path?,
-        suggestedTools: Map<String, Path?>
-    ): Path? {
-        if (compilerPathHint != null && Files.isExecutable(compilerPathHint)) return compilerPathHint
-
-        val fromToolchain = project.elmToolchain.compilerPath
-        if (fromToolchain != null && Files.isExecutable(fromToolchain)) return fromToolchain
-
-        val elmProject = elmProjectHint
-            ?: project.elmWorkspace.allProjects.firstOrNull { it.projectDirPath.normalize() == projectBasePath.normalize() }
-        if (elmProject != null) {
-            val fromTargets = project.elmWorkspace.buildTargetConfigsFor(elmProject)
-                .asSequence()
-                .mapNotNull { target ->
-                    val raw = target.compilerPath.trim()
-                    if (raw.isBlank()) return@mapNotNull null
-                    val path = raw.toPathOrNull() ?: return@mapNotNull null
-                    when {
-                        path.isAbsolute && Files.isExecutable(path) -> path
-                        !path.isAbsolute -> projectBasePath.resolve(path).normalize().takeIf { Files.isExecutable(it) }
-                        else -> null
-                    }
-                }
-                .firstOrNull()
-            if (fromTargets != null) return fromTargets
-        }
-
-        return sequenceOf(elmCompilerTool, lamderaCompilerTool, elmWrapCompilerTool)
-            .mapNotNull { suggestedTools[it] }
-            .firstOrNull { Files.isExecutable(it) }
     }
 }
 

@@ -57,7 +57,7 @@ class ElmNeedsConfigNotificationProvider(
 
         val toolchain = project.elmToolchain
         if (!toolchain.looksLikeValidToolchain()) {
-            return badToolchainPanel("Elm compiler is not configured or executable")
+            return badToolchainPanel("Elm toolchain compiler is not configured or executable")
         }
 
         if (toolchain.isElmFormatOnSaveEnabled && toolchain.elmFormatCLI == null) {

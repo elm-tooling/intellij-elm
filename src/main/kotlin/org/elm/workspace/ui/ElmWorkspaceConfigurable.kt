@@ -39,10 +39,13 @@ import org.elm.workspace.elmWorkspace
 import org.elm.workspace.commandLineTools.ElmFormatCLI
 import org.elm.workspace.commandLineTools.ElmReviewCLI
 import org.elm.workspace.commandLineTools.ElmTestCLI
+import org.elm.workspace.elmreview.ElmReviewCompilerSource
+import org.elm.workspace.elmreview.resolveElmReviewCompiler
 import org.elm.workspace.compiler.ElmBuildMode
 import org.elm.workspace.compiler.ElmBuildTargetConfig
 import org.elm.workspace.compiler.ElmCompilerKind
 import org.elm.workspace.compiler.ElmProjectBuildTargetConfig
+import org.elm.workspace.compiler.toPathOrNull
 import java.awt.CardLayout
 import java.awt.BorderLayout
 import java.awt.Dimension
@@ -79,12 +82,20 @@ class ElmWorkspaceConfigurable(
     private val elmFormatPathField = toolPathTextField(elmFormatTool)
     private val elmTestPathField = toolPathTextField(elmTestTool)
     private val elmReviewPathField = toolPathTextField(elmReviewTool)
+    private val toolchainCompilerPathField = fileSystemPathTextField(
+        this,
+        "Select '$elmCompilerTool'",
+        FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
+            .withFileFilter { it.name in ElmSuggest.executableNamesFor(elmCompilerTool) }
+            .also { it.isForcedToUseIdeaFileChooser = true }
+    ) { updateReviewCompilerStatusLabel() }
 
     private val elmFormatVersionLabel = JLabel()
     private val elmFormatOnSaveCheckbox = JCheckBox()
     private val elmFormatShortcutLabel = HyperlinkLabel()
     private val elmTestVersionLabel = JLabel()
     private val elmReviewVersionLabel = JLabel()
+    private val elmReviewCompilerStatusLabel = JLabel()
     private val elmReviewOnTheFlyCheckbox = JCheckBox()
 
     private val versionCache = ConcurrentHashMap<Pair<String, String>, Result<Version>>()
@@ -126,6 +137,7 @@ class ElmWorkspaceConfigurable(
             if (isLoadingProjectChoices) return@addActionListener
             persistCurrentProjectTargets()
             loadSelectedProjectTargets()
+            updateReviewCompilerStatusLabel()
         }
 
         targetList.addListSelectionListener {
@@ -166,6 +178,10 @@ class ElmWorkspaceConfigurable(
         }
 
         val panel = layout {
+            block("Toolchain Compiler") {
+                row("Location:", pathFieldPlusAutoDiscoverButton(toolchainCompilerPathField, elmCompilerTool))
+                noteRow("Path to the compiler used by other tools")
+            }
             block("Build") {
                 row("Project:", projectSelector)
                 noteRow("Targets:")
@@ -184,6 +200,7 @@ class ElmWorkspaceConfigurable(
             block(elmReviewTool) {
                 row("Location:", pathFieldPlusAutoDiscoverButton(elmReviewPathField, elmReviewTool))
                 row("Version:", elmReviewVersionLabel)
+                row("Compiler used:", elmReviewCompilerStatusLabel)
                 row("Run when file saved?", elmReviewOnTheFlyCheckbox)
             }
             block("") {
@@ -203,6 +220,7 @@ class ElmWorkspaceConfigurable(
                 object : ElmWorkspaceService.ElmWorkspaceListener {
                     override fun didUpdate() {
                         reloadProjectChoices(preserveSelection = true)
+                        updateReviewCompilerStatusLabel()
                     }
                 }
             )
@@ -303,6 +321,7 @@ class ElmWorkspaceConfigurable(
         }
         val nextSelection = if (select in targets.indices) select else 0
         targetList.selectedIndex = nextSelection
+        updateReviewCompilerStatusLabel()
     }
 
     private fun persistTarget(index: Int) {
@@ -318,6 +337,7 @@ class ElmWorkspaceConfigurable(
             compilerPath = targetCompilerPath.text.trim(),
             compileOnSave = true
         )
+        updateReviewCompilerStatusLabel()
     }
 
     private fun persistCurrentProjectTargets() {
@@ -387,6 +407,9 @@ class ElmWorkspaceConfigurable(
             JButton("Auto Discover").apply {
                 addActionListener {
                     field.text = ElmSuggest.suggestTools(project)[executableName]?.toString() ?: ""
+                    if (field === toolchainCompilerPathField) {
+                        updateReviewCompilerStatusLabel()
+                    }
                 }
             }
         )
@@ -440,6 +463,7 @@ class ElmWorkspaceConfigurable(
                 }
             )
         }
+        updateReviewCompilerStatusLabel()
 
         val shortcuts = KeymapUtil.getActiveKeymapShortcuts(ElmExternalFormatAction.ID).shortcuts
         val shortcutStatus = when {
@@ -447,6 +471,31 @@ class ElmWorkspaceConfigurable(
             else -> shortcuts.joinToString(", ") { KeymapUtil.getShortcutText(it) }
         }
         elmFormatShortcutLabel.setTextWithHyperlink("$shortcutStatus <hyperlink>Change</hyperlink>")
+    }
+
+    private fun updateReviewCompilerStatusLabel() {
+        val manifestPath = selectedManifestPath()
+        val projectBasePath = manifestPath
+            ?.let { runCatching { Paths.get(it).parent }.getOrNull() }
+        if (projectBasePath == null) {
+            elmReviewCompilerStatusLabel.text = "None"
+            elmReviewCompilerStatusLabel.foreground = JBColor.GRAY
+            return
+        }
+
+        val toolchainCompilerPath = toolchainCompilerPathField.text.trim().toPathOrNull()
+        val buildTargets = buildTargetsByManifest[manifestPath].orEmpty()
+        val resolution = resolveElmReviewCompiler(
+            projectBasePath = projectBasePath,
+            toolchainCompilerPath = toolchainCompilerPath,
+            buildTargets = buildTargets,
+            suggestedTools = ElmSuggest.suggestTools(project)
+        )
+        elmReviewCompilerStatusLabel.text = resolution.asDisplayText()
+        elmReviewCompilerStatusLabel.foreground = when (resolution.source) {
+            ElmReviewCompilerSource.NONE -> JBColor.GRAY
+            else -> JBColor.foreground()
+        }
     }
 
     private fun renderToolVersion(toolName: String) {
@@ -507,12 +556,14 @@ class ElmWorkspaceConfigurable(
 
     override fun reset() {
         val settings = project.elmWorkspace.rawSettings
+        val elmCompilerPath = settings?.elmCompilerPath
         val elmFormatPath = settings?.elmFormatPath
         val isElmFormatOnSaveEnabled = settings?.isElmFormatOnSaveEnabled
         val isElmReviewOnTheFlyEnabled = settings?.isElmReviewOnTheFlyEnabled
         val elmTestPath = settings?.elmTestPath
         val elmReviewPath = settings?.elmReviewPath
 
+        if (elmCompilerPath != null) toolchainCompilerPathField.text = elmCompilerPath
         if (elmFormatPath != null) elmFormatPathField.text = elmFormatPath
         elmFormatOnSaveCheckbox.isSelected = isElmFormatOnSaveEnabled == true
         if (elmTestPath != null) elmTestPathField.text = elmTestPath
@@ -552,6 +603,7 @@ class ElmWorkspaceConfigurable(
                 targetListModel.clear()
                 clearTargetEditor()
                 targetDetailsLayout.show(targetDetailsPanel, "empty")
+                updateReviewCompilerStatusLabel()
             }
         } finally {
             isLoadingProjectChoices = false
@@ -567,6 +619,7 @@ class ElmWorkspaceConfigurable(
             }
         project.elmWorkspace.modifySettings {
             it.copy(
+                elmCompilerPath = toolchainCompilerPathField.text,
                 elmFormatPath = elmFormatPathField.text,
                 elmTestPath = elmTestPathField.text,
                 elmReviewPath = elmReviewPathField.text,
@@ -588,7 +641,8 @@ class ElmWorkspaceConfigurable(
             .map { (manifestPath, targets) ->
                 ElmProjectBuildTargetConfig(manifestPath = manifestPath, targets = targets.toList())
             }
-        return elmFormatPathField.text != settings.elmFormatPath
+        return toolchainCompilerPathField.text != settings.elmCompilerPath
+            || elmFormatPathField.text != settings.elmFormatPath
             || elmTestPathField.text != settings.elmTestPath
             || elmReviewPathField.text != settings.elmReviewPath
             || elmReviewOnTheFlyCheckbox.isSelected != settings.isElmReviewOnTheFlyEnabled

@@ -14,6 +14,7 @@ import org.elm.ide.notifications.showBalloon
 import org.elm.lang.core.ElmFileType
 import org.elm.openapiext.saveAllDocuments
 import org.elm.workspace.commandLineTools.makeProject
+import org.elm.workspace.elmreview.resolveElmReviewCompiler
 import org.elm.workspace.elmToolchain
 import org.elm.workspace.elmWorkspace
 
@@ -64,21 +65,26 @@ class ElmExternalReviewAction : AnAction() {
 
         val elmProject = project.elmWorkspace.findProjectForFile(activeFile)
             ?: return showError(project, "Could not determine active Elm project")
-        val entryPoints = when (val result = project.elmWorkspace.resolveBuildTargets(elmProject)) {
-            is org.elm.openapiext.Result.Ok -> result.value
-            is org.elm.openapiext.Result.Err -> {
-                val suffix = if (result.reason.isBlank()) "" else "\n${result.reason}"
-                return showError(project, "Invalid build target configuration.$suffix", includeFixAction = true)
-            }
-        }
 
         try {
             val currentFileInEditor: VirtualFile? = e.getData(PlatformDataKeys.VIRTUAL_FILE)
-            val compiledSuccessfully = makeProject(elmProject, project, entryPoints, currentFileInEditor)
-            if (compiledSuccessfully) {
-                val reviewCompilerPath = entryPoints.firstOrNull()?.compilerPath ?: project.elmToolchain.compilerPath
-                elmReviewCLI.runReview(project, elmProject, reviewCompilerPath, currentFileInEditor)
+            when (val result = project.elmWorkspace.resolveBuildTargets(elmProject)) {
+                is org.elm.openapiext.Result.Ok -> {
+                    val entryPoints = result.value
+                    val compiledSuccessfully = makeProject(elmProject, project, entryPoints, currentFileInEditor)
+                    if (!compiledSuccessfully) return
+                }
+                is org.elm.openapiext.Result.Err -> {
+                    // Keep review action working even when build targets are absent/invalid.
+                    // Build targets are optional for running elm-review on the current file.
+                }
             }
+            val reviewCompilerPath = resolveElmReviewCompiler(
+                project = project,
+                projectBasePath = elmProject.projectDirPath,
+                elmProjectHint = elmProject
+            ).path
+            elmReviewCLI.runReview(project, elmProject, reviewCompilerPath, currentFileInEditor)
         } catch (_: ExecutionException) {
             return showError(
                 project,
