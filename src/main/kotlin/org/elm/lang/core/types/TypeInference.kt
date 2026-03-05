@@ -313,9 +313,17 @@ private class InferenceScope(
 
     private fun inferBinOpExpr(expr: ElmBinOpExpr): Ty {
         val parts: List<ElmBinOpPartTag> = expr.parts.toList()
+        fun unknown(): Ty {
+            val ty = TyUnknown()
+            expressionTypes[expr] = ty
+            return ty
+        }
 
-        // Get the operator types and precedences. We don't have to worry about invalid
-        // code like `1 + + 1`, since it won't parse as an expression.
+        // During live editing we can observe incomplete PSI (e.g. operand/op without RHS).
+        // Degrade to TyUnknown instead of throwing in BinaryExprTree.parse.
+        if (parts.isEmpty() || parts.size % 2 == 0) return unknown()
+
+        // Get the operator types and precedences.
         val operatorPrecedences = HashMap<ElmOperator, OperatorPrecedence>(parts.size / 2)
         val operatorTys = HashMap<ElmOperator, TyFunction>(parts.size / 2)
         var lastPrecedence: OperatorPrecedence? = null
@@ -323,12 +331,12 @@ private class InferenceScope(
             if (part is ElmOperator) {
                 val (ty, precedence) = inferOperatorAndPrecedence(part)
                 when {
-                    precedence == null || ty !is TyFunction || ty.parameters.size < 2 -> return TyUnknown()
+                    precedence == null || ty !is TyFunction || ty.parameters.size < 2 -> return unknown()
                     precedence.associativity == NON && lastPrecedence?.associativity == NON -> {
                         // Non-associative operators can't be chained directly with other non-associative
                         // operators.
                         diagnostics += NonAssociativeOperatorError(expr, part)
-                        return TyUnknown()
+                        return unknown()
                     }
                     else -> {
                         operatorPrecedences[part] = precedence
@@ -365,7 +373,12 @@ private class InferenceScope(
             }
         }
 
-        val result = validateTree(BinaryExprTree.parse(parts, operatorPrecedences))
+        val tree = try {
+            BinaryExprTree.parse(parts, operatorPrecedences)
+        } catch (_: IllegalArgumentException) {
+            return unknown()
+        }
+        val result = validateTree(tree)
         expressionTypes[expr] = result.ty
         return result.ty
     }
