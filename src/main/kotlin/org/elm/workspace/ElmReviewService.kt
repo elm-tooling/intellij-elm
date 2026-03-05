@@ -7,6 +7,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
+import com.intellij.serviceContainer.AlreadyDisposedException
 import org.elm.openapiext.GeneralCommandLine
 import org.elm.openapiext.execute
 import com.intellij.util.messages.Topic
@@ -77,6 +78,12 @@ class ElmReviewService(private val project: Project) {
         }
         missingExecutableNotified.remove(projectBasePath)
         ApplicationManager.getApplication().executeOnPooledThread {
+            if (project.isDisposed) {
+                runningReviews.remove(projectBasePath)
+                completedGenerationByProject.merge(projectBasePath, runGeneration, ::maxOf)
+                pendingReviews.remove(projectBasePath)
+                return@executeOnPooledThread
+            }
             project.elmTaskStatus.reviewStarted()
             val suggestedTools = ElmSuggest.suggestTools(project)
             try {
@@ -133,7 +140,11 @@ class ElmReviewService(private val project: Project) {
                 }
                 messages[projectBasePath] = reviewErrors
                 log.debug("elm-review update for $projectBasePath: ${reviewErrors.size} messages")
-                project.messageBus.syncPublisher(ELM_REVIEW_WATCH_TOPIC).update(projectBasePath, reviewErrors)
+                if (!project.isDisposed) {
+                    project.messageBus.syncPublisher(ELM_REVIEW_WATCH_TOPIC).update(projectBasePath, reviewErrors)
+                }
+            } catch (_: AlreadyDisposedException) {
+                // Expected during shutdown/test teardown if an async review completes late.
             } catch (t: Throwable) {
                 if (!project.isDisposed) {
                     val compilerPathForReview = resolveCompilerPathForReview(
@@ -151,11 +162,17 @@ class ElmReviewService(private val project: Project) {
                     val commandText = buildCommandText(elmReviewExecutablePath, projectBasePath, args)
                     showError("elm-review failed: ${t.message}\n$commandText")
                 }
-                log.warn("elm-review run failed", t)
+                if (project.isDisposed || t is AlreadyDisposedException) {
+                    log.debug("elm-review task finished after project disposal")
+                } else {
+                    log.warn("elm-review run failed", t)
+                }
             } finally {
                 runningReviews.remove(projectBasePath)
                 completedGenerationByProject.merge(projectBasePath, runGeneration, ::maxOf)
-                project.elmTaskStatus.reviewFinished()
+                if (!project.isDisposed) {
+                    project.elmTaskStatus.reviewFinished()
+                }
                 if (pendingReviews.remove(projectBasePath) && !project.isDisposed) {
                     runReview(projectBasePath, elmProjectHint = null, compilerPathHint = null)
                 }
