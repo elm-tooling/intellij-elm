@@ -283,8 +283,19 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
         group.add(FixAllIssuesAction())
     }
 
-    private inner class ShowSuppressedAction : ToggleAction("Show Suppressed", "Show suppressed elm-review findings", null) {
+    private inner class ShowSuppressedAction : ToggleAction(
+        "Show Suppressed",
+        "Show suppressed elm-review findings",
+        AllIcons.Actions.ToggleVisibility
+    ) {
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            super.update(e)
+            val isShowing = isSelected(e)
+            e.presentation.text = if (isShowing) "Hide Suppressed" else "Show Suppressed"
+            e.presentation.icon = if (isShowing) AllIcons.Actions.Unshare else AllIcons.Actions.ToggleVisibility
+        }
 
         override fun isSelected(e: AnActionEvent): Boolean = showSuppressed
 
