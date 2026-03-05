@@ -7,6 +7,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.errorTreeView.ErrorTreeNodeDescriptor
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.application.invokeLater
@@ -30,11 +31,17 @@ import com.intellij.ui.content.impl.ContentImpl
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.MessageCategory
 import com.intellij.util.ui.UIUtil
+import org.elm.ide.actions.findActiveElmFile
+import org.elm.ide.actions.runElmReviewOnCurrentFile
+import org.elm.ide.notifications.showBalloon
+import org.elm.openapiext.saveAllDocuments
 import org.elm.workspace.ElmReviewService
 import org.elm.workspace.elmReviewService
+import org.elm.workspace.elmWorkspace
 import org.elm.workspace.elmreview.Chunk
 import org.elm.workspace.elmreview.ElmReviewError
 import org.elm.workspace.elmreview.Region
+import com.intellij.notification.NotificationType
 import java.awt.BorderLayout
 import java.awt.CardLayout
 import java.awt.Color
@@ -277,11 +284,64 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
 
     override fun fillRightToolbarGroup(group: DefaultActionGroup) {
         super.fillRightToolbarGroup(group)
+        group.add(RunOnCurrentFileAction())
+        group.add(RunOnProjectAction())
         group.addSeparator()
         group.add(ShowSuppressedAction())
         group.add(FixSelectedIssueAction())
         group.add(FixAllIssuesAction())
     }
+
+    private inner class RunOnCurrentFileAction : DumbAwareAction(
+        "Run on current file",
+        "Run elm-review on the current editor file",
+        AllIcons.Actions.Execute
+    ) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            val activeFile = findActiveEditorElmFile(e)
+            e.presentation.isEnabled = activeFile != null && activeFile.canonicalPath?.contains("/review") != true
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            val activeFile = findActiveEditorElmFile(e) ?: return
+            saveAllDocuments()
+            val failure = runElmReviewOnCurrentFile(projectRef, activeFile, activeFile)
+            if (failure != null) {
+                val actions = if (failure.includeFixAction) {
+                    arrayOf("Fix" to { projectRef.elmWorkspace.showConfigureToolchainUI() })
+                } else {
+                    emptyArray()
+                }
+                projectRef.showBalloon(failure.message, NotificationType.ERROR, *actions)
+            }
+        }
+    }
+
+    private inner class RunOnProjectAction : DumbAwareAction(
+        "Run on project",
+        "Run elm-review on the project for the current editor file",
+        AllIcons.Actions.RunAll
+    ) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            e.presentation.isEnabled = activeEditorElmProject(e) != null
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            val elmProject = activeEditorElmProject(e) ?: return
+            saveAllDocuments()
+            projectRef.elmReviewService.runReview(elmProject.projectDirPath, elmProject)
+        }
+    }
+
+    private fun findActiveEditorElmFile(e: AnActionEvent): VirtualFile? =
+        findActiveElmFile(projectRef, e.getData(CommonDataKeys.VIRTUAL_FILE))
+
+    private fun activeEditorElmProject(e: AnActionEvent) =
+        findActiveEditorElmFile(e)?.let { projectRef.elmWorkspace.findProjectForFile(it) }
 
     private inner class ShowSuppressedAction : ToggleAction(
         "Show Suppressed",

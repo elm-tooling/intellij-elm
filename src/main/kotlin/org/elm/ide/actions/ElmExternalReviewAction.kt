@@ -18,6 +18,52 @@ import org.elm.workspace.elmreview.resolveElmReviewCompiler
 import org.elm.workspace.elmToolchain
 import org.elm.workspace.elmWorkspace
 
+internal data class ElmReviewRunFailure(val message: String, val includeFixAction: Boolean = false)
+
+internal fun findActiveElmFile(project: Project, preferredFile: VirtualFile? = null): VirtualFile? =
+    preferredFile?.takeIf { it.fileType == ElmFileType }
+        ?: FileEditorManager.getInstance(project).selectedFiles.firstOrNull { it.fileType == ElmFileType }
+
+internal fun runElmReviewOnCurrentFile(
+    project: Project,
+    activeFile: VirtualFile,
+    currentFileInEditor: VirtualFile? = activeFile
+): ElmReviewRunFailure? {
+    if (activeFile.canonicalPath?.contains("/review") == true) return null
+
+    val elmReviewCLI = project.elmToolchain.elmReviewCLI
+        ?: return ElmReviewRunFailure("Please set the path to the 'elm-review' binary", includeFixAction = true)
+
+    val elmProject = project.elmWorkspace.findProjectForFile(activeFile)
+        ?: return ElmReviewRunFailure("Could not determine active Elm project")
+
+    return try {
+        when (val result = project.elmWorkspace.resolveBuildTargets(elmProject)) {
+            is org.elm.openapiext.Result.Ok -> {
+                val entryPoints = result.value
+                val compiledSuccessfully = makeProject(elmProject, project, entryPoints, currentFileInEditor)
+                if (!compiledSuccessfully) return null
+            }
+            is org.elm.openapiext.Result.Err -> {
+                // Keep review action working even when build targets are absent/invalid.
+                // Build targets are optional for running elm-review on the current file.
+            }
+        }
+        val reviewCompilerPath = resolveElmReviewCompiler(
+            project = project,
+            projectBasePath = elmProject.projectDirPath,
+            elmProjectHint = elmProject
+        ).path
+        elmReviewCLI.runReview(project, elmProject, reviewCompilerPath, currentFileInEditor)
+        null
+    } catch (_: ExecutionException) {
+        ElmReviewRunFailure(
+            "Failed to 'make' or 'review'. Are the path settings correct ?",
+            includeFixAction = true
+        )
+    }
+}
+
 class ElmExternalReviewAction : AnAction() {
 
     override fun getActionUpdateThread(): ActionUpdateThread {
@@ -36,61 +82,16 @@ class ElmExternalReviewAction : AnAction() {
         project.showBalloon(message, NotificationType.ERROR, *actions)
     }
 
-    private fun findActiveFile(e: AnActionEvent, project: Project): VirtualFile? =
-        e.getData(CommonDataKeys.VIRTUAL_FILE)
-            ?: FileEditorManager.getInstance(project).selectedFiles.firstOrNull { it.fileType == ElmFileType }
-
     override fun actionPerformed(e: AnActionEvent) {
         saveAllDocuments()
         val project = e.project ?: return
 
-        val activeFile = findActiveFile(e, project)
+        val activeFile = findActiveElmFile(project, e.getData(CommonDataKeys.VIRTUAL_FILE))
             ?: return showError(project, "Could not determine active Elm file")
 
-        if (activeFile.canonicalPath != null) {
-            // TODO improve exclusion of elm-review project
-            if (activeFile.canonicalPath!!.contains("/review")) return
-        }
-
-        val elmReviewCLI = project.elmToolchain.elmReviewCLI
-            ?: return showError(project, "Please set the path to the 'elm-review' binary", includeFixAction = true)
-
-        val fixAction = "Fix" to { project.elmWorkspace.showConfigureToolchainUI() }
-
-        val elmReview = project.elmToolchain.elmReviewCLI
-        if (elmReview == null) {
-            project.showBalloon("Could not find elm-review", NotificationType.ERROR, fixAction)
-            return
-        }
-
-        val elmProject = project.elmWorkspace.findProjectForFile(activeFile)
-            ?: return showError(project, "Could not determine active Elm project")
-
-        try {
-            val currentFileInEditor: VirtualFile? = e.getData(PlatformDataKeys.VIRTUAL_FILE)
-            when (val result = project.elmWorkspace.resolveBuildTargets(elmProject)) {
-                is org.elm.openapiext.Result.Ok -> {
-                    val entryPoints = result.value
-                    val compiledSuccessfully = makeProject(elmProject, project, entryPoints, currentFileInEditor)
-                    if (!compiledSuccessfully) return
-                }
-                is org.elm.openapiext.Result.Err -> {
-                    // Keep review action working even when build targets are absent/invalid.
-                    // Build targets are optional for running elm-review on the current file.
-                }
-            }
-            val reviewCompilerPath = resolveElmReviewCompiler(
-                project = project,
-                projectBasePath = elmProject.projectDirPath,
-                elmProjectHint = elmProject
-            ).path
-            elmReviewCLI.runReview(project, elmProject, reviewCompilerPath, currentFileInEditor)
-        } catch (_: ExecutionException) {
-            return showError(
-                project,
-                "Failed to 'make' or 'review'. Are the path settings correct ?",
-                includeFixAction = true
-            )
+        val failure = runElmReviewOnCurrentFile(project, activeFile, e.getData(PlatformDataKeys.VIRTUAL_FILE))
+        if (failure != null) {
+            showError(project, failure.message, includeFixAction = failure.includeFixAction)
         }
     }
 }
