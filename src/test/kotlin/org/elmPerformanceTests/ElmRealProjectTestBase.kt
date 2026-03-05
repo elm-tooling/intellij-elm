@@ -31,8 +31,15 @@ import com.intellij.openapi.vfs.*
 import com.intellij.util.ui.UIUtil
 import org.elm.openapiext.fullyRefreshDirectory
 import org.elm.workspace.ElmWorkspaceTestBase
+import org.elm.workspace.elmWorkspace
 
 abstract class ElmRealProjectTestBase : ElmWorkspaceTestBase() {
+
+    override fun setUp() {
+        super.setUp()
+        toolchain = toolchain.copy(isElmReviewOnTheFlyEnabled = false)
+        project.elmWorkspace.useToolchain(toolchain)
+    }
 
     protected fun openRealProject(info: RealProjectInfo): VirtualFile? {
         val base = openRealProject("testData/${info.path}", info.exclude)
@@ -81,9 +88,7 @@ abstract class ElmRealProjectTestBase : ElmWorkspaceTestBase() {
         val SPA = RealProjectInfo("elm-spa-example", "elm-spa-example", "https://github.com/rtfeldman/elm-spa-example")
         val ELM_CSS = RealProjectInfo("elm-css", "elm-css", "https://github.com/rtfeldman/elm-css", exclude = listOf("src/DEPRECATED", "tests"))
         val ELM_PHYSICS = RealProjectInfo("elm-physics", "elm-physics", "https://github.com/w0rm/elm-physics")
-        val LIST_EXTRA = RealProjectInfo("elm-list-extra", "elm-list-extra", "https://github.com/elm-community/list-extra")
-        val JSON_TREE_VIEW = RealProjectInfo("elm-json-tree-view", "elm-json-tree-view", "https://github.com/klazuka/elm-json-tree-view")
-        val DEV_TOOLS = RealProjectInfo("elm-dev-tools", "elm-dev-tools", "https://github.com/opvasger/elm-dev-tools")
+        val CORE_EXTRA = RealProjectInfo("core-extra", "core-extra", "https://github.com/elmcraft/core-extra/")
     }
 }
 

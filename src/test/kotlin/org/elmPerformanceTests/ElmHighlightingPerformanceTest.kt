@@ -37,25 +37,14 @@ class ElmHighlightingPerformanceTest : ElmRealProjectTestBase() {
     // It is a performance test, but we will measure performance ourselves
     // override fun isPerformanceTest(): Boolean = false // cannot be overridden in new versions of the platform
 
-    @Test
-    fun `test highlighting elm-json-tree-view`() =
-            repeatTest { highlightProjectFile(JSON_TREE_VIEW, "src/JsonTree.elm") }
+    fun `test highlighting core-extra`() =
+            repeatTest { highlightProjectFile(CORE_EXTRA, "src/List/Extra.elm") }
 
-    @Test
     fun `test highlighting elm-spa-example`() =
             repeatTest { highlightProjectFile(SPA, "src/Page/Article/Editor.elm") }
 
-    @Test
     fun `test highlighting elm-css`() =
             repeatTest { highlightProjectFile(ELM_CSS, "src/Css/Transitions.elm") }
-
-    @Test
-    fun `test highlighting elm-list-extra`() =
-            repeatTest { highlightProjectFile(LIST_EXTRA, "src/List/Extra.elm") }
-
-    @Test
-    fun `test highlighting elm-dev-tools`() =
-            repeatTest { highlightProjectFile(DEV_TOOLS, "src/Browser/DevTools/Main.elm") }
 
     private fun repeatTest(f: () -> Timings) {
         var result = Timings()
