@@ -595,7 +595,7 @@ class ElmWorkspaceConfigurable(
             if (projectSelector.itemCount > 0) {
                 val preserveIdx = selectedManifestPath
                     ?.let { wanted -> (0 until projectSelector.itemCount).firstOrNull { idx ->
-                        (projectSelector.getItemAt(idx) as? ProjectChoice)?.manifestPath == wanted
+                        projectSelector.getItemAt(idx).manifestPath == wanted
                     } }
                 projectSelector.selectedIndex = preserveIdx ?: 0
                 loadSelectedProjectTargets()

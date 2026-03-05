@@ -20,7 +20,7 @@ const val elmTestTool = "elm-test"
 const val elmReviewTool = "elm-review"
 val elmTools = listOf(elmCompilerTool, lamderaCompilerTool, elmWrapCompilerTool, elmFormatTool, elmTestTool, elmReviewTool)
 
-enum class ElmCompilerType(val displayName: String, val toolName: String) {
+enum class ElmCompilerType(private val displayName: String, val toolName: String) {
     ELM("Elm", elmCompilerTool),
     LAMDERA("Lamdera", lamderaCompilerTool),
     ELM_WRAP("Elm Wrap", elmWrapCompilerTool);

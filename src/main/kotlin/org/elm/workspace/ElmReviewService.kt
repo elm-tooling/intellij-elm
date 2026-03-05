@@ -162,7 +162,7 @@ class ElmReviewService(private val project: Project) {
                     val commandText = buildCommandText(elmReviewExecutablePath, projectBasePath, args)
                     showError("elm-review failed: ${t.message}\n$commandText")
                 }
-                if (project.isDisposed || t is AlreadyDisposedException) {
+                if (project.isDisposed) {
                     log.debug("elm-review task finished after project disposal")
                 } else {
                     log.warn("elm-review run failed", t)

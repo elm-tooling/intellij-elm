@@ -45,7 +45,7 @@ class ElmReviewPass(
         val pathToListenFor: Path = elmProject.projectDirPath
 
         val service = editor.project?.elmReviewService ?: return
-        val sourceFilePath = runReadAction { file.virtualFile.path }?.let(Path::of) ?: return
+        val sourceFilePath = runReadAction { Path.of(file.virtualFile.path) }
         service.runReviewOnDocumentChange(
             projectBasePath = pathToListenFor,
             sourceFilePath = sourceFilePath,
