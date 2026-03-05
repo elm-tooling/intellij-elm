@@ -118,6 +118,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
             asyncAttachElmProject(rootPath.resolve("example/elm.json")).get()
             asyncAttachElmProject(rootPath.resolve("elm.json")).get()
         }
+        flushWorkspaceEvents()
 
         testProject.run {
             checkReferenceIsResolved<ElmImportClause>("example/src/Main.elm")
@@ -307,6 +308,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
             asyncAttachElmProject(rootPath.resolve("a/elm.json")).get()
             asyncAttachElmProject(rootPath.resolve("b/elm.json")).get()
         }
+        flushWorkspaceEvents()
 
         testProject.run {
             IndexingTestUtil.waitUntilIndexesAreReady(project)

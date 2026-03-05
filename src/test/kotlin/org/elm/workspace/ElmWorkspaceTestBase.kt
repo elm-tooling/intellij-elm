@@ -8,6 +8,7 @@
 package org.elm.workspace
 
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.builders.ModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.CodeInsightFixtureTestCase
 import org.elm.FileTreeBuilder
@@ -37,9 +38,16 @@ abstract class ElmWorkspaceTestBase : CodeInsightFixtureTestCase<ModuleFixtureBu
         return false
     }
 
+    protected fun flushWorkspaceEvents() {
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+    }
+
     fun buildProject(builder: FileTreeBuilder.() -> Unit): TestProject {
         val result = fileTree(builder).create(project, elmWorkspaceDirectory)
-        if (awaitWorkspaceLoaded()) return result
+        if (awaitWorkspaceLoaded()) {
+            flushWorkspaceEvents()
+            return result
+        }
         require(project.elmWorkspace.allProjects.isNotEmpty()) { "no Elm project was loaded" }
         return result
     }

@@ -802,7 +802,8 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
 
     private fun notifyDidChangeWorkspace(projectSetChanged: Boolean) {
         if (intellijProject.isDisposed) return
-        ApplicationManager.getApplication().invokeAndWait {
+        ApplicationManager.getApplication().invokeLater {
+            if (intellijProject.isDisposed) return@invokeLater
             runWriteAction {
                 // Invalidate caches
                 ResolveCache.getInstance(intellijProject).clearCache(true) // PsiReference resolve
@@ -815,9 +816,10 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                         .makeRootsChange(EmptyRunnable.getInstance(), TOTAL_RESCAN)
                 }
             }
+            if (intellijProject.isDisposed) return@invokeLater
             intellijProject.messageBus.syncPublisher(WORKSPACE_TOPIC)
                 .didUpdate()
-        }
+            }
     }
 
 

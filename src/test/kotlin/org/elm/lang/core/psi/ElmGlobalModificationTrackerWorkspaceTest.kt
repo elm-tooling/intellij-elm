@@ -34,7 +34,7 @@ internal class ElmGlobalModificationTrackerWorkspaceTest : ElmWorkspaceTestBase(
         val modTracker = project.modificationTracker
         val oldCount = modTracker.modificationCount
         project.elmWorkspace.asyncRefreshAllProjects().get()
+        flushWorkspaceEvents()
         check(modTracker.modificationCount > oldCount)
     }
 }
-
