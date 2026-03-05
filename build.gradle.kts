@@ -16,7 +16,7 @@ plugins {
     // Kotlin code coverage
     id("org.jetbrains.kotlinx.kover") version "0.9.1"
     // Gradle IntelliJ Plugin
-    id("org.jetbrains.intellij.platform") version "2.6.0"
+    id("org.jetbrains.intellij.platform") version "2.11.0"
     // GrammarKit Plugin
     id("org.jetbrains.grammarkit") version "2022.3.2.2"
     // Gradle Changelog Plugin
@@ -75,8 +75,12 @@ intellijPlatform {
     pluginVerification {
         ides {
             // Earliest and latest stable IC releases from the current compatibility window.
-            ide(properties("platformType"), "2024.3.7", useInstaller = false)
-            ide(properties("platformType"), "2025.3.3", useInstaller = false)
+            create(properties("platformType"), "2024.3.7") {
+                useInstaller = false
+            }
+            create(properties("platformType"), "2025.3.3") {
+                useInstaller = false
+            }
         }
     }
 }
