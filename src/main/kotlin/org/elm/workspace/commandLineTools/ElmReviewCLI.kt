@@ -66,12 +66,7 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
                     else {
                         val reader = JsonReader(json.byteInputStream().bufferedReader())
                         reader.strictness = Strictness.LENIENT
-                        val msgs = reader.readErrorReport().sortedWith(
-                            compareBy(
-                                { it.path },
-                                { it.region!!.start!!.line },
-                                { it.region!!.start!!.column }
-                            ))
+                        val msgs = sortElmReviewErrors(reader.readErrorReport())
                         if (currentFile != null) {
                             val predicate: (ElmReviewError) -> Boolean = { it.path == currentFile.pathRelative(project).toString() }
                             val sortedMessages = msgs.filter(predicate) + msgs.filterNot(predicate)
@@ -111,6 +106,16 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
             Result.Err("invalid elm-review version: ${e.message}")
         }
     }
+}
+
+internal fun sortElmReviewErrors(errors: List<ElmReviewError>): List<ElmReviewError> {
+    return errors.sortedWith(
+        compareBy<ElmReviewError>(
+            { it.path.orEmpty() },
+            { it.region?.start?.line ?: Int.MAX_VALUE },
+            { it.region?.start?.column ?: Int.MAX_VALUE }
+        )
+    )
 }
 
 @Throws(ExecutionException::class)

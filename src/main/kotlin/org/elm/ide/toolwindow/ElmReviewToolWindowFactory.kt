@@ -231,6 +231,11 @@ private data class ElmReviewIssue(
     val isFixable: Boolean get() = fixes.isNotEmpty()
 }
 
+internal fun elmReviewLocation(error: ElmReviewError): Pair<Int, Int>? {
+    val start = error.region?.start ?: return null
+    return (start.line - 1) to (start.column - 1)
+}
+
 private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPanel(project, "elm-review", false, true) {
     private val projectRef = project
     private var allIssues: List<ElmReviewIssue> = emptyList()
@@ -260,7 +265,8 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
             val encodedIndex = "\u200B".repeat(index + 1)
             val elmReviewError = issue.error
             val ruleText = (elmReviewError.rule ?: "") + if (issue.isFixable) " (auto-fix)" else ""
-            if (elmReviewError.region == null) {
+            val location = elmReviewLocation(elmReviewError)
+            if (location == null) {
                 addErrorMessage(
                     MessageCategory.SIMPLE,
                     arrayOf("$encodedIndex$ruleText:", elmReviewError.message ?: ""),
@@ -273,8 +279,8 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
                     MessageCategory.SIMPLE,
                     arrayOf("$encodedIndex$ruleText:", "${elmReviewError.message}"),
                     issue.virtualFile,
-                    elmReviewError.region!!.start.let { it!!.line - 1 },
-                    elmReviewError.region!!.start.let { it!!.column - 1 }
+                    location.first,
+                    location.second
                 )
             }
         }
