@@ -417,4 +417,29 @@ class ElmTestJsonProcessorTest {
         val list = processor.accept("Compilation failed BLA")
         assertNull(list)
     }
+
+    @Test
+    fun acceptCompileErrorsWithMissingFieldsFallsBackSafely() {
+        val json = """
+            {
+              "type": "compile-errors",
+              "errors": [
+                {
+                  "problems": [
+                    {
+                      "message": null
+                    }
+                  ]
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val list = processor.accept(json)?.toList()
+        assertEquals(2, list!!.size)
+        assertEquals("Compilation error", list[0].name)
+        assertEquals("Compilation error", list[1].name)
+        assertEquals("elmTestError://::0::0", (list[0] as TestStartedEvent).locationUrl)
+        assertEquals("", (list[1] as TestFailedEvent).localizedFailureMessage)
+    }
 }

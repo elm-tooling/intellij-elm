@@ -120,13 +120,15 @@ class ElmTestJsonProcessor(private val testsRelativeDirPath: String) {
         return error.problems
                 ?.asSequence()
                 ?.flatMap { problem ->
+                    val title = problem.title ?: "Compilation error"
+                    val start = problem.region?.start
                     sequenceOf(
-                            TestStartedEvent(problem.title!!, ErrorLabelLocation(
-                                    file = error.path!!,
-                                    line = problem.region?.start!!.line,
-                                    column = problem.region?.start!!.column
+                            TestStartedEvent(title, ErrorLabelLocation(
+                                    file = error.path.orEmpty(),
+                                    line = start?.line ?: 0,
+                                    column = start?.column ?: 0
                             ).toUrl()),
-                            TestFailedEvent(problem.title!!, null, problem.textMessage, null, true, null, null, null, null, false, false, -1)
+                            TestFailedEvent(title, null, problem.textMessage, null, true, null, null, null, null, false, false, -1)
                     )
                 }
                 ?: emptySequence()
