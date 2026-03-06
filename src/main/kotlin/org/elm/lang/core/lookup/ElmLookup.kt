@@ -152,11 +152,8 @@ private fun ElmPackageProject.exposedFiles(): Sequence<VirtualFile> =
         sequence {
             for (moduleName in exposedModules) {
                 val elmModuleRelativePath = moduleName.replace('.', '/') + ".elm"
-                val file = absoluteSourceDirectories.firstNotNullOfOrNull { srcDirPath ->
+                absoluteSourceDirectories.firstNotNullOfOrNull { srcDirPath ->
                     findFileByPathTestAware(srcDirPath.resolve(elmModuleRelativePath))
-                }
-                if (file != null) {
-                    yield(file)
-                }
+                }?.let { yield(it) }
             }
         }
