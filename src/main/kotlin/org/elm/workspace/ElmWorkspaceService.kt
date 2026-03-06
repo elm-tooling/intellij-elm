@@ -12,6 +12,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.TransactionGuard
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.*
 import com.intellij.openapi.diagnostic.logger
@@ -802,24 +804,27 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
 
     private fun notifyDidChangeWorkspace(projectSetChanged: Boolean) {
         if (intellijProject.isDisposed) return
-        ApplicationManager.getApplication().invokeLater {
+        ApplicationManager.getApplication().invokeLater({
             if (intellijProject.isDisposed) return@invokeLater
-            runWriteAction {
-                // Invalidate caches
-                ResolveCache.getInstance(intellijProject).clearCache(true) // PsiReference resolve
-                intellijProject.modificationTracker.incModificationCount() // CachedValuesManager: Elm Psi content
-                changeTracker.incModificationCount()                       // CachedValuesManager: Elm workspace/settings
+            TransactionGuard.submitTransaction(intellijProject) {
+                if (intellijProject.isDisposed) return@submitTransaction
+                runWriteAction {
+                    // Invalidate caches
+                    ResolveCache.getInstance(intellijProject).clearCache(true) // PsiReference resolve
+                    intellijProject.modificationTracker.incModificationCount() // CachedValuesManager: Elm Psi content
+                    changeTracker.incModificationCount()                       // CachedValuesManager: Elm workspace/settings
 
-                // Refresh library roots
-                if (projectSetChanged) {
-                    ProjectRootManagerEx.getInstanceEx(intellijProject)
-                        .makeRootsChange(EmptyRunnable.getInstance(), TOTAL_RESCAN)
+                    // Refresh library roots
+                    if (projectSetChanged) {
+                        ProjectRootManagerEx.getInstanceEx(intellijProject)
+                            .makeRootsChange(EmptyRunnable.getInstance(), TOTAL_RESCAN)
+                    }
                 }
+                if (intellijProject.isDisposed) return@submitTransaction
+                intellijProject.messageBus.syncPublisher(WORKSPACE_TOPIC)
+                    .didUpdate()
             }
-            if (intellijProject.isDisposed) return@invokeLater
-            intellijProject.messageBus.syncPublisher(WORKSPACE_TOPIC)
-                .didUpdate()
-            }
+        }, ModalityState.NON_MODAL)
     }
 
 
