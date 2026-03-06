@@ -69,7 +69,7 @@ enum class ReviewOutputType(val label: String) {
                 ERROR.label -> ERROR
                 COMPILE_ERRORS.label -> COMPILE_ERRORS
                 REVIEW_ERRORS.label -> REVIEW_ERRORS
-                else -> TODO("unknown type $label")
+                else -> null
             }
     }
 }
@@ -169,7 +169,7 @@ fun JsonReader.readErrorReport(): List<ElmReviewError> {
                         endArray()
                     }
                     ReviewOutputType.ERROR -> throw RuntimeException("Unexpected json-type 'error' with 'errors' array")
-                    null -> println("ERROR: no report 'type'")
+                    null -> skipValue()
                 }
             }
             "title" -> {
@@ -286,7 +286,7 @@ fun JsonReader.readLocation(): Location {
         when (val prop = nextName()) {
             "line" -> location.line = nextInt()
             "column" -> location.column = nextInt()
-            else -> TODO("unexpected property $prop")
+            else -> skipValue()
         }
     }
     endObject()

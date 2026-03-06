@@ -545,6 +545,64 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         TestCase.assertEquals("Line oneLine two", report[0].message)
     }
 
+    @Test
+    fun `ignores unknown type with errors payload`() {
+        @Language("JSON")
+        val json = """
+{
+  "type": "future-errors",
+  "errors": [
+    {
+      "path": "src/Main.elm",
+      "errors": [
+        {
+          "rule": "NoUnused.Variables",
+          "message": "Unused variable `x`"
+        }
+      ]
+    }
+  ]
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.strictness = Strictness.LENIENT
+
+        assertEquals(emptyList<ElmReviewError>(), reader.readErrorReport())
+    }
+
+    @Test
+    fun `parses location with extra properties`() {
+        @Language("JSON")
+        val json = """
+{
+  "type": "review-errors",
+  "errors": [
+    {
+      "path": "src/Main.elm",
+      "errors": [
+        {
+          "rule": "NoUnused.Variables",
+          "message": "Unused variable `x`",
+          "region": {
+            "start": { "line": 1, "column": 1, "offset": 0 },
+            "end": { "line": 1, "column": 2 }
+          }
+        }
+      ]
+    }
+  ]
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.strictness = Strictness.LENIENT
+        val report = reader.readErrorReport()
+
+        assertEquals(1, report.size)
+        assertEquals(Region(Location(1, 1), Location(1, 2)), report[0].region)
+    }
+
     // TODO: complete this test, then add @Test annotation
     fun `parses type 'compile-errors' with errors array`() {
         @Language("JSON")
