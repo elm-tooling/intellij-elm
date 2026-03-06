@@ -5,6 +5,7 @@ import org.elm.workspace.elmreview.Location
 import org.elm.workspace.elmreview.Region
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.nio.file.Paths
 
 class ElmReviewCLITest {
 
@@ -17,5 +18,19 @@ class ElmReviewCLITest {
         val sorted = sortElmReviewErrors(listOf(noRegion, laterLine, earlierLine))
 
         assertEquals(listOf(earlierLine, laterLine, noRegion), sorted)
+    }
+
+    @Test
+    fun `elm-review command line uses console environment`() {
+        val commandLine = buildReviewCommandLine(
+            executablePath = Paths.get("/tmp/elm-review"),
+            workDir = Paths.get("/tmp/project"),
+            arguments = listOf("--report=json")
+        )
+
+        assertEquals(
+            com.intellij.execution.configurations.GeneralCommandLine.ParentEnvironmentType.CONSOLE,
+            commandLine.parentEnvironmentType
+        )
     }
 }

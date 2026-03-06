@@ -3,6 +3,7 @@ package org.elm.workspace.commandLineTools
 import com.google.gson.Strictness
 import com.google.gson.stream.JsonReader
 import com.intellij.execution.ExecutionException
+import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.CapturingProcessHandler
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -41,7 +42,7 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
             if (compilerPath != null) add("--compiler=$compilerPath")
         }
 
-        val generalCommandLine = GeneralCommandLine(elmReviewExecutablePath).withWorkDirectory(elmProject.projectDirPath.toString()).withParameters(arguments)
+        val generalCommandLine = buildReviewCommandLine(elmReviewExecutablePath, elmProject.projectDirPath, arguments)
 
         executeReviewAsync(project) { indicator ->
             project.elmTaskStatus.reviewStarted()
@@ -106,6 +107,17 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
             Result.Err("invalid elm-review version: ${e.message}")
         }
     }
+}
+
+internal fun buildReviewCommandLine(
+    executablePath: Path,
+    workDir: Path,
+    arguments: List<String>
+): GeneralCommandLine {
+    return GeneralCommandLine(executablePath)
+        .withWorkDirectory(workDir.toString())
+        .withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
+        .withParameters(arguments)
 }
 
 internal fun sortElmReviewErrors(errors: List<ElmReviewError>): List<ElmReviewError> {
