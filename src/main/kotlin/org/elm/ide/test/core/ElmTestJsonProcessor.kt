@@ -91,7 +91,7 @@ class ElmTestJsonProcessor(private val testsRelativeDirPath: String) {
                 sequenceOf(newTestStartedEvent(path))
                         .plus(newTestFailedEvent(path, actual, expected, message
                                 ?: ""))
-            } catch (e: Throwable) {
+            } catch (e: Exception) {
                 val failures = GsonBuilder().setPrettyPrinting().create().toJson(obj.get("failures"))
                 sequenceOf(newTestStartedEvent(path))
                         .plus(newTestFailedEvent(path, null, null, failures))

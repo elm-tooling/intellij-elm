@@ -253,6 +253,19 @@ class ElmTestJsonProcessorTest {
                 "]", (list[1] as TestFailedEvent).localizedFailureMessage)
     }
 
+    @Test
+    fun failFallbackOnEmptyFailuresArray() {
+        val text = "{\"event\":\"testCompleted\",\"status\":\"fail\",\"labels\":[\"Module\",\"Fails\"],\"failures\":[],\"duration\":\"1\"}\n"
+        val obj = getObject(text)
+        val path = ElmTestJsonProcessor.toPath(obj)
+
+        val list = processor.testEvents(path, obj).toList()
+
+        assertEquals(2, list.size.toLong())
+        assertTrue(list[1] is TestFailedEvent)
+        assertEquals("[]", (list[1] as TestFailedEvent).localizedFailureMessage)
+    }
+
     private fun getObject(text: String): JsonObject {
         return Gson().fromJson(text, JsonObject::class.java)
     }
