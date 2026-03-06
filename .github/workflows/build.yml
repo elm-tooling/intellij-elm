@@ -86,6 +86,7 @@ jobs:
           ZIP_PATH="$(ls ./build/distributions/*.zip | head -n 1)"
           ZIP_FILENAME="$(basename "$ZIP_PATH")"
           ARTIFACT_NAME="${ZIP_FILENAME%.zip}"
+          echo "path=$ZIP_PATH" >> "$GITHUB_OUTPUT"
           echo "filename=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
 
       # Store plugin ZIP for release draft asset upload
@@ -93,7 +94,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.artifact.outputs.filename }}
-          path: ./build/distributions/*.zip
+          path: ${{ steps.artifact.outputs.path }}
+          if-no-files-found: error
 
 
   # Run tests and upload a code coverage report
