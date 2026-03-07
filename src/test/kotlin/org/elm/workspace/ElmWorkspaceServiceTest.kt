@@ -7,6 +7,9 @@ import org.elm.fileTree
 import org.elm.openapiext.elementFromXmlString
 import org.elm.openapiext.pathAsPath
 import org.elm.openapiext.toXmlString
+import org.elm.workspace.compiler.ElmBuildMode
+import org.elm.workspace.compiler.ElmBuildTargetConfig
+import org.elm.workspace.compiler.ElmCompilerKind
 import org.junit.Test
 import java.io.File
 import java.nio.file.Paths
@@ -343,6 +346,83 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
     @Test
     fun `test ignores custom tests location for packages`() =
             testSidecarManifest(getSidecarManifest("custom-tests"), "tests", expectedIsCustomTestsDir = false, isApplicationProject = false)
+
+    @Test
+    fun `test build target allows blank input for package project`() {
+        val testProject = fileTree {
+            dir("pkg") {
+                project("elm.json", BASIC_PACKAGE_MANIFEST)
+                dir("src") {
+                    elm("Foo.elm")
+                }
+            }
+        }.create(project, elmWorkspaceDirectory)
+
+        val workspace = project.elmWorkspace
+        val rootPath = testProject.root.pathAsPath
+        workspace.asyncAttachElmProject(rootPath.resolve("pkg/elm.json")).get()
+
+        val elmProject = workspace.allProjects.single() as ElmPackageProject
+        val compilerPath = project.elmToolchain.compilerPath?.toString()
+            ?: error("Compiler path is not configured in test toolchain")
+        workspace.setBuildTargetConfigsFor(
+            elmProject.manifestPath,
+            listOf(
+                ElmBuildTargetConfig(
+                    name = "Package build",
+                    inputPath = "",
+                    outputPath = "",
+                    mode = ElmBuildMode.NONE,
+                    compilerKind = ElmCompilerKind.ELM,
+                    compilerPath = compilerPath,
+                    compileOnSave = true
+                )
+            )
+        )
+
+        val resolved = workspace.resolveBuildTargets(elmProject)
+        check(resolved is org.elm.openapiext.Result.Ok) { "Expected package target to resolve, got $resolved" }
+        val target = resolved.value.single()
+        checkEquals("", target.inputPathForCompiler)
+    }
+
+    @Test
+    fun `test build target rejects blank input for application project`() {
+        val testProject = fileTree {
+            dir("app") {
+                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                dir("src") {
+                    elm("Main.elm")
+                }
+            }
+        }.create(project, elmWorkspaceDirectory)
+
+        val workspace = project.elmWorkspace
+        val rootPath = testProject.root.pathAsPath
+        workspace.asyncAttachElmProject(rootPath.resolve("app/elm.json")).get()
+
+        val elmProject = workspace.allProjects.single() as ElmApplicationProject
+        val compilerPath = project.elmToolchain.compilerPath?.toString()
+            ?: error("Compiler path is not configured in test toolchain")
+        workspace.setBuildTargetConfigsFor(
+            elmProject.manifestPath,
+            listOf(
+                ElmBuildTargetConfig(
+                    name = "App build",
+                    inputPath = "",
+                    outputPath = "",
+                    mode = ElmBuildMode.NONE,
+                    compilerKind = ElmCompilerKind.ELM,
+                    compilerPath = compilerPath,
+                    compileOnSave = true
+                )
+            )
+        )
+
+        val resolved = workspace.resolveBuildTargets(elmProject)
+        check(resolved is org.elm.openapiext.Result.Err) { "Expected application target to fail, got $resolved" }
+        check(resolved.reason.contains("input path is blank"))
+    }
 
     @Test
     fun `test auto discover Elm project skips project with bad sidecar manifest`() {

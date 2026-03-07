@@ -185,24 +185,30 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         for ((index, target) in targets.withIndex()) {
             val row = index + 1
             val inputRaw = target.inputPath.trim()
-            if (inputRaw.isBlank()) {
+            val inputAllowedBlank = elmProject is ElmPackageProject
+            if (inputRaw.isBlank() && !inputAllowedBlank) {
                 errors += "Row $row: input path is blank"
                 continue
             }
 
-            val inputRelPath = inputRaw.toPathOrNull()
-            if (inputRelPath == null || inputRelPath.isAbsolute) {
-                errors += "Row $row: input path must be project-relative"
-                continue
-            }
-            val inputAbsPath = projectRoot.resolve(inputRelPath).normalize()
-            if (!inputAbsPath.startsWith(projectRoot) || !Files.exists(inputAbsPath)) {
-                errors += "Row $row: input file '$inputRaw' does not exist in the project"
-                continue
-            }
-            if (inputAbsPath.fileName?.toString()?.endsWith(".elm") != true) {
-                errors += "Row $row: input file '$inputRaw' is not an Elm file"
-                continue
+            val inputAbsPath = if (inputRaw.isBlank()) {
+                projectRoot.resolve(ELM_JSON).normalize()
+            } else {
+                val inputRelPath = inputRaw.toPathOrNull()
+                if (inputRelPath == null || inputRelPath.isAbsolute) {
+                    errors += "Row $row: input path must be project-relative"
+                    continue
+                }
+                val input = projectRoot.resolve(inputRelPath).normalize()
+                if (!input.startsWith(projectRoot) || !Files.exists(input)) {
+                    errors += "Row $row: input file '$inputRaw' does not exist in the project"
+                    continue
+                }
+                if (input.fileName?.toString()?.endsWith(".elm") != true) {
+                    errors += "Row $row: input file '$inputRaw' is not an Elm file"
+                    continue
+                }
+                input
             }
 
             val compilerRaw = target.compilerPath.trim()

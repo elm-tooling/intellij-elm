@@ -38,11 +38,11 @@ class ElmCLI(val elmExecutablePath: Path) {
             var allSucceeded = true
             for (entry in entryPoints) {
                 val modeFlag = entry.mode.asFlag()
-                val params = mutableListOf(
-                    "make",
-                    entry.inputPathForCompiler,
-                    "--output=${entry.outputPathForCompiler}"
-                )
+                val params = mutableListOf("make")
+                if (entry.inputPathForCompiler.isNotBlank()) {
+                    params += entry.inputPathForCompiler
+                }
+                params += "--output=${entry.outputPathForCompiler}"
                 if (modeFlag != null) params += modeFlag
 
                 val commandLine = GeneralCommandLine(elmExecutablePath)
