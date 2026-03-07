@@ -10,6 +10,7 @@ import com.intellij.openapi.project.Project
 import org.elm.openapiext.GeneralCommandLine
 import org.elm.openapiext.Result
 import org.elm.openapiext.execute
+import org.elm.workspace.ElmSuggest
 import org.elm.workspace.ElmProject
 import org.elm.workspace.ParseException
 import org.elm.workspace.Version
@@ -32,11 +33,20 @@ class ElmTestCLI(private val executablePath: Path) {
      * the compiler from the environment/PATH.
      * @param elmProject The [ElmProject] containing the tests to be run.
      */
-    fun runTestsProcessHandler(elmCompilerPath: Path?, elmProject: ElmProject): ProcessHandler {
+    fun runTestsProcessHandler(project: Project, elmCompilerPath: Path?, elmProject: ElmProject): ProcessHandler {
+        val suggestedTools = ElmSuggest.suggestTools(project)
         val commandLine = GeneralCommandLine(executablePath.toString(), "--report=json")
                 .withWorkDirectory(elmProject.projectDirPath.toString())
                 .withRedirectErrorStream(true)
                 .withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
+                .apply {
+                    augmentPathForNodeBackedTool(
+                        env = environment,
+                        executablePath = executablePath,
+                        compilerPath = elmCompilerPath,
+                        suggestedTools = suggestedTools
+                    )
+                }
         if (elmCompilerPath != null) {
             commandLine.withParameters("--compiler", elmCompilerPath.toString())
         }
@@ -59,7 +69,17 @@ class ElmTestCLI(private val executablePath: Path) {
         // Output of `elm-test --version` can be a plain version or include a binary prefix
         // (for example: `elm-test-rs 3.0.1`).
         val firstLine = try {
-            GeneralCommandLine(executablePath).withParameters("--version")
+            GeneralCommandLine(executablePath)
+                    .withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
+                    .apply {
+                        augmentPathForNodeBackedTool(
+                            env = environment,
+                            executablePath = executablePath,
+                            compilerPath = null,
+                            suggestedTools = ElmSuggest.suggestTools(project)
+                        )
+                    }
+                    .withParameters("--version")
                     .execute(elmTestTool, project)
                     .stdoutLines
                     .firstOrNull()

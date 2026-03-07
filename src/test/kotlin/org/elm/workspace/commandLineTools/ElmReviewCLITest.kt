@@ -25,7 +25,9 @@ class ElmReviewCLITest {
         val commandLine = buildReviewCommandLine(
             executablePath = Paths.get("/tmp/elm-review"),
             workDir = Paths.get("/tmp/project"),
-            arguments = listOf("--report=json")
+            arguments = listOf("--report=json"),
+            compilerPath = null,
+            suggestedTools = emptyMap()
         )
 
         assertEquals(

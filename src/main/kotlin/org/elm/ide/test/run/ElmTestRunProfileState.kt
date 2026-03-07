@@ -57,7 +57,7 @@ class ElmTestRunProfileState internal constructor(
         if (elmProject == null) return handleBadConfiguration(project, "Could not find the Elm project for these tests")
 
         val elmCompilerBinary = toolchain.elmCompilerPath?.takeIf { Files.exists(it) }
-        return elmTestCLI.runTestsProcessHandler(elmCompilerBinary, elmProject)
+        return elmTestCLI.runTestsProcessHandler(project, elmCompilerBinary, elmProject)
     }
 
     @Throws(ExecutionException::class)

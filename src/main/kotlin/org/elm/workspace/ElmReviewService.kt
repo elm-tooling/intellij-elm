@@ -13,6 +13,7 @@ import org.elm.openapiext.execute
 import com.intellij.util.messages.Topic
 import org.elm.ide.notifications.showBalloon
 import org.elm.ide.statusbar.elmTaskStatus
+import org.elm.workspace.commandLineTools.buildReviewCommandLine
 import org.elm.workspace.elmreview.resolveElmReviewCompiler
 import org.elm.workspace.elmreview.ElmReviewError
 import org.elm.workspace.elmreview.readErrorReport
@@ -100,10 +101,13 @@ class ElmReviewService(private val project: Project) {
                     compilerPathForReview?.let { add("--compiler=$it") }
                 }
                 val commandText = buildCommandText(elmReviewExecutablePath, projectBasePath, arguments)
-                val command = GeneralCommandLine(elmReviewExecutablePath)
-                    .withWorkDirectory(projectBasePath.toString())
-                    .withParameters(arguments)
-                augmentPathForCliTools(command.environment, compilerPathForReview, suggestedTools)
+                val command = buildReviewCommandLine(
+                    executablePath = elmReviewExecutablePath,
+                    workDir = projectBasePath,
+                    arguments = arguments,
+                    compilerPath = compilerPathForReview,
+                    suggestedTools = suggestedTools
+                )
 
                 val output = command.execute(
                     elmReviewTool,
@@ -207,27 +211,6 @@ class ElmReviewService(private val project: Project) {
             emptyArray()
         }
         project.showBalloon(message, NotificationType.ERROR, *actions)
-    }
-
-    private fun augmentPathForCliTools(
-        env: MutableMap<String, String>,
-        compilerPath: Path?,
-        suggestedTools: Map<String, Path?>
-    ) {
-        val existing = env["PATH"].orEmpty()
-        val separator = java.io.File.pathSeparator
-        val extraDirs = linkedSetOf<String>()
-        extraDirs += "/opt/homebrew/bin"
-        project.elmToolchain.elmReviewPath?.parent?.toString()?.let(extraDirs::add)
-        compilerPath?.parent?.toString()?.let(extraDirs::add)
-        project.elmToolchain.compilerPath?.parent?.toString()?.let(extraDirs::add)
-        suggestedTools[elmCompilerTool]?.parent?.toString()?.let(extraDirs::add)
-        suggestedTools[lamderaCompilerTool]?.parent?.toString()?.let(extraDirs::add)
-        suggestedTools[elmWrapCompilerTool]?.parent?.toString()?.let(extraDirs::add)
-
-        val prefix = extraDirs.filter { it.isNotBlank() }.joinToString(separator)
-        env["PATH"] = if (existing.isBlank()) prefix else "$prefix$separator$existing"
-
     }
 }
 

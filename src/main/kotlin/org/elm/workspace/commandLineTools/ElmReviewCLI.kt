@@ -42,7 +42,13 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
             if (compilerPath != null) add("--compiler=$compilerPath")
         }
 
-        val generalCommandLine = buildReviewCommandLine(elmReviewExecutablePath, elmProject.projectDirPath, arguments)
+        val generalCommandLine = buildReviewCommandLine(
+            executablePath = elmReviewExecutablePath,
+            workDir = elmProject.projectDirPath,
+            arguments = arguments,
+            compilerPath = compilerPath,
+            suggestedTools = ElmSuggest.suggestTools(project)
+        )
 
         executeReviewAsync(project) { indicator ->
             project.elmTaskStatus.reviewStarted()
@@ -93,6 +99,15 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
         val firstLine = try {
             val arguments: List<String> = listOf("--version")
             GeneralCommandLine(elmReviewExecutablePath)
+                .withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
+                .apply {
+                    augmentPathForNodeBackedTool(
+                        env = environment,
+                        executablePath = elmReviewExecutablePath,
+                        compilerPath = null,
+                        suggestedTools = ElmSuggest.suggestTools(project)
+                    )
+                }
                 .withParameters(arguments)
                 .execute(elmReviewTool, project)
                 .stdoutLines
@@ -112,11 +127,21 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
 internal fun buildReviewCommandLine(
     executablePath: Path,
     workDir: Path,
-    arguments: List<String>
+    arguments: List<String>,
+    compilerPath: Path?,
+    suggestedTools: Map<String, Path?>
 ): GeneralCommandLine {
     return GeneralCommandLine(executablePath)
         .withWorkDirectory(workDir.toString())
         .withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
+        .apply {
+            augmentPathForNodeBackedTool(
+                env = environment,
+                executablePath = executablePath,
+                compilerPath = compilerPath,
+                suggestedTools = suggestedTools
+            )
+        }
         .withParameters(arguments)
 }
 
