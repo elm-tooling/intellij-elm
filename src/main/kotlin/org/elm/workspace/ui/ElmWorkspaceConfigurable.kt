@@ -59,6 +59,7 @@ import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JList
 import javax.swing.JPanel
+import javax.swing.JScrollPane
 import javax.swing.JTextField
 import javax.swing.ListSelectionModel
 import javax.swing.DefaultListModel
@@ -66,6 +67,9 @@ import javax.swing.DefaultListModel
 class ElmWorkspaceConfigurable(
     private val project: Project
 ) : Configurable, Disposable {
+    private companion object {
+        const val BUILD_TARGETS_PANEL_PREFERRED_HEIGHT = 240
+    }
 
     private val uiDebouncer = UiDebouncer(this)
 
@@ -259,17 +263,11 @@ class ElmWorkspaceConfigurable(
         val formPanel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             add(labeledField("Name", targetName))
+            add(labeledField("Compiler", targetCompilerKind))
+            add(labeledField("Compiler Path", targetCompilerPathWithAutoDiscoverButton()))
             add(labeledField("Input Elm File", targetInputPath))
             add(labeledField("Output", targetOutputPath))
             add(labeledField("Mode", targetMode))
-            add(labeledField("Compiler", targetCompilerKind))
-            add(labeledField("Compiler Path", targetCompilerPathWithAutoDiscoverButton()))
-            add(JButton("Clear Output").apply {
-                addActionListener {
-                    targetOutputPath.text = ""
-                    persistTarget(targetList.selectedIndex)
-                }
-            })
         }
 
         val emptyPanel = JPanel(BorderLayout()).apply {
@@ -277,7 +275,12 @@ class ElmWorkspaceConfigurable(
         }
 
         targetDetailsPanel.add(emptyPanel, "empty")
-        targetDetailsPanel.add(formPanel, "form")
+        targetDetailsPanel.add(
+            JScrollPane(formPanel).apply {
+                border = JBUI.Borders.empty()
+            },
+            "form"
+        )
         targetDetailsLayout.show(targetDetailsPanel, "empty")
 
         return JBSplitter(false, 0.25f).apply {
@@ -286,6 +289,7 @@ class ElmWorkspaceConfigurable(
             targetDetailsPanel.minimumSize = Dimension(0, 0)
             firstComponent = leftPanel
             secondComponent = targetDetailsPanel
+            preferredSize = Dimension(0, JBUI.scale(BUILD_TARGETS_PANEL_PREFERRED_HEIGHT))
         }
     }
 
