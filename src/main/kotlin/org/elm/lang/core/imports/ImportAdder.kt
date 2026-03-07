@@ -14,7 +14,7 @@ object ImportAdder {
      * @param moduleName    the module where this value/type lives
      * @param moduleAlias   if present, the alias to use when importing [moduleName]
      * @param nameToBeExposed the name suitable for insert into an exposing clause.
-     *                      Typically this is the same as `name`, but when importing
+     *                      Typically, this is the same as `name`, but when importing
      *                      a bare union type variant, it will be the parenthesized
      *                      form: "TypeName(VariantName)"
      */
