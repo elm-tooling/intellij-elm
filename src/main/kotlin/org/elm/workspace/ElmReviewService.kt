@@ -8,18 +8,17 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.serviceContainer.AlreadyDisposedException
-import org.elm.openapiext.GeneralCommandLine
-import org.elm.openapiext.execute
 import com.intellij.util.messages.Topic
 import org.elm.ide.notifications.showBalloon
 import org.elm.ide.statusbar.elmTaskStatus
+import org.elm.openapiext.execute
 import org.elm.workspace.commandLineTools.buildReviewCommandLine
-import org.elm.workspace.elmreview.resolveElmReviewCompiler
 import org.elm.workspace.elmreview.ElmReviewError
 import org.elm.workspace.elmreview.readErrorReport
+import org.elm.workspace.elmreview.resolveElmReviewCompiler
 import java.nio.file.Path
-import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.io.path.exists
 
 private val log = logger<ElmReviewService>()
