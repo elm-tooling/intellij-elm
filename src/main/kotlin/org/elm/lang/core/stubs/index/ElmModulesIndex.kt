@@ -13,6 +13,9 @@ import org.elm.lang.core.stubs.ElmFileStub
 import org.elm.lang.core.stubs.ElmModuleDeclarationStub
 import org.elm.workspace.ElmProject
 
+private val ELM_MODULES_INDEX_KEY: StubIndexKey<String, ElmModuleDeclaration> =
+    StubIndexKey.createIndexKey("org.elm.lang.core.stubs.index.ElmModulesIndex")
+
 /**
  * Find Elm modules within an Elm project.
  *
@@ -25,12 +28,7 @@ class ElmModulesIndex : StringStubIndexExtension<ElmModuleDeclaration>() {
             ElmFileStub.Type.stubVersion
 
     override fun getKey(): StubIndexKey<String, ElmModuleDeclaration> =
-            KEY
-
-    companion object {
-        val KEY: StubIndexKey<String, ElmModuleDeclaration> =
-                StubIndexKey.createIndexKey("org.elm.lang.core.stubs.index.ElmModulesIndex")
-    }
+            ELM_MODULES_INDEX_KEY
 }
 
 object ElmModules {
@@ -56,7 +54,7 @@ object ElmModules {
 
     fun index(stub: ElmModuleDeclarationStub, indexSink: IndexSink) {
         val key = makeKey(stub.psi)
-        indexSink.occurrence(ElmModulesIndex.KEY, key)
+        indexSink.occurrence(ELM_MODULES_INDEX_KEY, key)
     }
 
     private fun makeKey(moduleDeclaration: ElmModuleDeclaration) =
@@ -70,7 +68,7 @@ object ElmModules {
      */
     private fun rawGet(moduleName: String, project: Project, scope: GlobalSearchScope): List<ElmModuleDeclaration> {
         val key = makeKey(moduleName)
-        return StubIndex.getElements(ElmModulesIndex.KEY, key, project, scope, ElmModuleDeclaration::class.java).toList()
+        return StubIndex.getElements(ELM_MODULES_INDEX_KEY, key, project, scope, ElmModuleDeclaration::class.java).toList()
     }
 
     /**
@@ -81,7 +79,7 @@ object ElmModules {
         val results = mutableListOf<ElmModuleDeclaration>()
 
         for (key in moduleNames) {
-            index.processElements(ElmModulesIndex.KEY, key, project, scope, ElmModuleDeclaration::class.java) {
+            index.processElements(ELM_MODULES_INDEX_KEY, key, project, scope, ElmModuleDeclaration::class.java) {
                 results.add(it)
             }
         }
@@ -92,5 +90,5 @@ object ElmModules {
      * Returns all module declarations within [scope]
      */
     private fun rawGetAll(project: Project, scope: GlobalSearchScope): List<ElmModuleDeclaration> =
-        rawGetAll(StubIndex.getInstance().getAllKeys(ElmModulesIndex.KEY, project), project, scope)
+        rawGetAll(StubIndex.getInstance().getAllKeys(ELM_MODULES_INDEX_KEY, project), project, scope)
 }

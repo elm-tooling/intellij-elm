@@ -19,33 +19,31 @@ class ElmBreadcrumbsProvider : BreadcrumbsProvider {
     override fun getElementInfo(element: PsiElement): String {
         return breadcrumbName(element as ElmPsiElement)!!
     }
+}
 
-    companion object {
-        fun breadcrumbName(e: ElmPsiElement): String? {
-            return when (e) {
-                is ElmLetInExpr -> "let … in"
-                is ElmIfElseExpr -> "if ${e.expressionList.firstOrNull()?.text.truncate()} then"
-                is ElmTypeAliasDeclaration -> e.name
-                is ElmTypeDeclaration -> e.name
-                is ElmTypeAnnotation -> "${e.referenceName} :"
-                is ElmValueDeclaration -> when (val assignee = e.assignee) {
-                    is ElmFunctionDeclarationLeft -> assignee.name
-                    else -> assignee?.text?.truncate()
-                }
-                is ElmAnonymousFunctionExpr -> e.patternList.joinToString(" ", prefix = "\\") { it.text }.truncate() + " ->"
-                is ElmFieldType -> e.name
-                is ElmUnionVariant -> e.name
-                is ElmCaseOfExpr -> "case ${e.expression?.text.truncate()} of"
-                is ElmCaseOfBranch -> "${e.pattern.text.truncate()} ->"
-                is ElmRecordExpr -> e.baseRecordIdentifier?.let { "{${it.text} | …}" }
-                else -> null
-            }
+internal fun breadcrumbName(e: ElmPsiElement): String? {
+    return when (e) {
+        is ElmLetInExpr -> "let … in"
+        is ElmIfElseExpr -> "if ${e.expressionList.firstOrNull()?.text.truncate()} then"
+        is ElmTypeAliasDeclaration -> e.name
+        is ElmTypeDeclaration -> e.name
+        is ElmTypeAnnotation -> "${e.referenceName} :"
+        is ElmValueDeclaration -> when (val assignee = e.assignee) {
+            is ElmFunctionDeclarationLeft -> assignee.name
+            else -> assignee?.text?.truncate()
         }
-
-        private fun String?.truncate(len: Int = 20) = when {
-            this == null -> "…"
-            length > len -> take(len) + "…"
-            else -> this
-        }
+        is ElmAnonymousFunctionExpr -> e.patternList.joinToString(" ", prefix = "\\") { it.text }.truncate() + " ->"
+        is ElmFieldType -> e.name
+        is ElmUnionVariant -> e.name
+        is ElmCaseOfExpr -> "case ${e.expression?.text.truncate()} of"
+        is ElmCaseOfBranch -> "${e.pattern.text.truncate()} ->"
+        is ElmRecordExpr -> e.baseRecordIdentifier?.let { "{${it.text} | …}" }
+        else -> null
     }
+}
+
+private fun String?.truncate(len: Int = 20) = when {
+    this == null -> "…"
+    length > len -> take(len) + "…"
+    else -> this
 }
