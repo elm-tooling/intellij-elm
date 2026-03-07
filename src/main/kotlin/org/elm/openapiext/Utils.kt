@@ -81,7 +81,8 @@ fun VirtualFile.findFileBreadthFirst(maxDepth: Int, predicate: (VirtualFile) -> 
 val VirtualFile.pathAsPath: Path get() = Paths.get(path)
 fun VirtualFile.pathRelative(project: Project): Path {
     val absPath = Paths.get(path)
-    return absPath.relativeTo(Paths.get(project.basePath))
+    val basePath = project.basePath ?: return absPath
+    return absPath.relativeTo(Paths.get(basePath))
 }
 
 fun VirtualFile.toPsiFile(project: Project): PsiFile? =
