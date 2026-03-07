@@ -5,14 +5,12 @@ import com.google.gson.stream.JsonReader
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.CapturingProcessHandler
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.runBackgroundableTask
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.messages.Topic
 import org.elm.ide.statusbar.elmTaskStatus
@@ -55,9 +53,6 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
             try {
                 indicator.text = "reviewing ${elmProject.projectDirPath}"
                 val handler = CapturingProcessHandler(generalCommandLine)
-                val processKiller = Disposable { handler.destroyProcess() }
-
-                Disposer.register(project, processKiller)
                 try {
                     val output = handler.runProcess()
                     val alreadyDisposed = runReadAction { project.isDisposed }
@@ -87,7 +82,7 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
                         }
                     }
                 } finally {
-                    Disposer.dispose(processKiller)
+                    handler.destroyProcess()
                 }
             } finally {
                 project.elmTaskStatus.reviewFinished()
@@ -147,7 +142,7 @@ internal fun buildReviewCommandLine(
 
 internal fun sortElmReviewErrors(errors: List<ElmReviewError>): List<ElmReviewError> {
     return errors.sortedWith(
-        compareBy<ElmReviewError>(
+        compareBy(
             { it.path.orEmpty() },
             { it.region?.start?.line ?: Int.MAX_VALUE },
             { it.region?.start?.column ?: Int.MAX_VALUE }
