@@ -26,7 +26,6 @@ abstract class ElmReferenceBase<T : ElmReferenceElement>(element: T)
         return TextRange(startOffset, startOffset + nameElement.textLength)
     }
 
-    @Suppress("KotlinConstantConditions")
     override fun handleElementRename(newElementName: String): PsiElement {
         val factory = ElmPsiFactory(element.project)
         val identifier = element.referenceNameElement

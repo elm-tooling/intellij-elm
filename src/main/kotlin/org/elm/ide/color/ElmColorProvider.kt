@@ -194,6 +194,7 @@ private data class FuncCall(
     }
 }
 
+@Suppress("UseJBColor")
 fun Color.toAwtColor(): AwtColor = toSRGB().let {
     AwtColor(it.r, it.g, it.b, it.alpha)
 }
