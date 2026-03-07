@@ -43,13 +43,11 @@ class ElmUnusedSymbolInspection : ElmLocalInspection() {
 
         // perform Find Usages, bailing out on the first relevant usage we encounter
         var hasUsages = false
-        ReferencesSearch.search(element).forEach { usage ->
+        for (usage in ReferencesSearch.search(element)) {
             val isIgnoredUsage = usage.element is ElmTypeAnnotation || usage.element is ElmExposedItemTag
-            if (isIgnoredUsage) {
-                true
-            } else {
+            if (!isIgnoredUsage) {
                 hasUsages = true
-                false
+                break
             }
         }
 
