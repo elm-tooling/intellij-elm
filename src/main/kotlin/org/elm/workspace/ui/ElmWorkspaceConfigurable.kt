@@ -10,6 +10,7 @@ import com.intellij.openapi.actionSystem.ActionToolbarPosition
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ex.Settings
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.util.messages.MessageBusConnection
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.vfs.VfsUtilCore
@@ -17,6 +18,7 @@ import com.intellij.ui.HyperlinkLabel
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.JBColor
 import com.intellij.ui.ToolbarDecorator
+import com.intellij.ui.components.JBList
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.update.Activatable
 import com.intellij.util.ui.update.UiNotifyConnector
@@ -54,10 +56,8 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.swing.BoxLayout
 import javax.swing.JButton
 import javax.swing.JCheckBox
-import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.JLabel
-import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JScrollPane
 import javax.swing.JTextField
@@ -109,18 +109,18 @@ class ElmWorkspaceConfigurable(
         override fun toString(): String = label
     }
 
-    private val projectSelector = JComboBox<ProjectChoice>()
+    private val projectSelector = ComboBox<ProjectChoice>()
 
     private val targetListModel = DefaultListModel<String>()
-    private val targetList = JList(targetListModel).apply {
+    private val targetList = JBList(targetListModel).apply {
         selectionMode = ListSelectionModel.SINGLE_SELECTION
     }
 
     private val targetName = JTextField()
     private val targetInputPath = TextFieldWithBrowseButton()
     private val targetOutputPath = TextFieldWithBrowseButton()
-    private val targetMode = JComboBox(ElmBuildMode.entries.toTypedArray())
-    private val targetCompilerKind = JComboBox(ElmCompilerKind.entries.toTypedArray())
+    private val targetMode = ComboBox(ElmBuildMode.entries.toTypedArray())
+    private val targetCompilerKind = ComboBox(ElmCompilerKind.entries.toTypedArray())
     private val targetCompilerPath = TextFieldWithBrowseButton()
     private val targetDetailsLayout = CardLayout()
     private val targetDetailsPanel = JPanel(targetDetailsLayout)
@@ -134,7 +134,7 @@ class ElmWorkspaceConfigurable(
     override fun createComponent(): JComponent {
         elmFormatOnSaveCheckbox.addChangeListener { update(emptySet()) }
         elmFormatShortcutLabel.addHyperlinkListener {
-            showActionShortcut(ElmExternalFormatAction.ID)
+            showActionShortcut()
         }
 
         projectSelector.addActionListener {
@@ -441,12 +441,12 @@ class ElmWorkspaceConfigurable(
         return panel
     }
 
-    private fun showActionShortcut(actionId: String) {
+    private fun showActionShortcut() {
         val dataContext = DataManager.getInstance().getDataContext(elmFormatShortcutLabel)
         val allSettings = Settings.KEY.getData(dataContext) ?: return
         val keymapPanel = allSettings.find(KeymapPanel::class.java) ?: return
         allSettings.select(keymapPanel).doWhenDone {
-            keymapPanel.selectAction(actionId)
+            keymapPanel.selectAction(ElmExternalFormatAction.ID)
         }
     }
 
