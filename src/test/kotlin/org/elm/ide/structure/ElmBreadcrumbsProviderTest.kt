@@ -31,7 +31,7 @@ main _ _ =
 """)
 
         val actual = myFixture.file.descendantsOfType<ElmPsiElement>()
-                .mapNotNull { ElmBreadcrumbsProvider.breadcrumbName(it) }
+                .mapNotNull { breadcrumbName(it) }
                 .joinToString(separator = "\n")
 
         val expected = """
