@@ -24,7 +24,7 @@ class ElmNeedsConfigNotificationProvider(
     private val notifications = EditorNotifications.getInstance(project)
 
     init {
-        project.messageBus.connect(project).apply {
+        project.messageBus.connect(project.elmWorkspace).apply {
             subscribe(ElmWorkspaceService.WORKSPACE_TOPIC,
                 object : ElmWorkspaceService.ElmWorkspaceListener {
                     override fun didUpdate() {

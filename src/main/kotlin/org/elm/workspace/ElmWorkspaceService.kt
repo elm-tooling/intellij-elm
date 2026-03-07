@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.ide.util.PropertiesComponent
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.runWriteAction
@@ -70,21 +71,21 @@ private val log = logger<ElmWorkspaceService>()
  */
 @Service(Service.Level.PROJECT)
 @State(name = "ElmWorkspace", storages = [Storage(StoragePathMacros.WORKSPACE_FILE)])
-class ElmWorkspaceService(private val intellijProject: Project) : PersistentStateComponent<Element> {
+class ElmWorkspaceService(private val intellijProject: Project) : PersistentStateComponent<Element>, Disposable {
 
     private val refreshQueue = MergingUpdateQueue(
         "ElmWorkspaceRefreshQueue",
         300,
         true,
         MergingUpdateQueue.ANY_COMPONENT,
-        intellijProject,
+        this,
         null,
         false
     )
 
     init {
         if (!isUnitTestMode) {
-            with(intellijProject.messageBus.connect()) {
+            with(intellijProject.messageBus.connect(this@ElmWorkspaceService)) {
                 subscribe(VirtualFileManager.VFS_CHANGES, ElmProjectWatcher {
                     refreshQueue.queue(object : Update("refresh-all-projects") {
                         override fun run() {
@@ -567,7 +568,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
 
 
     private val directoryIndex: MyDirectoryIndex<ElmProject> =
-        MyDirectoryIndex(intellijProject, noProjectSentinel) { index ->
+        MyDirectoryIndex(this, noProjectSentinel) { index ->
             fun put(path: Path?, elmProject: ElmProject) {
                 if (path == null) return
                 val file = findFileByPathTestAware(path) ?: return
@@ -615,6 +616,8 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 put(project.testsDirPath, project)
             }
         }
+
+    override fun dispose() = Unit
 
 
     // INTEGRATION TEST SUPPORT

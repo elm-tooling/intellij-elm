@@ -26,6 +26,7 @@ import org.elm.lang.core.psi.ElmFile
 import org.elm.workspace.ElmReviewService
 import org.elm.workspace.elmReviewService
 import org.elm.workspace.elmSettings
+import org.elm.workspace.elmWorkspace
 import org.elm.workspace.elmreview.ElmReviewError
 import java.nio.file.Path
 
@@ -154,19 +155,20 @@ class ElmReviewPassFactory(
     project: Project,
     registrar: TextEditorHighlightingPassRegistrar
 ) : DirtyScopeTrackingHighlightingPassFactory {
+    private val parentDisposable = project.elmWorkspace
     private val passId: Int = registrar.registerTextEditorHighlightingPass(this, null, null, false, -1)
     private val elmReviewQueue = MergingUpdateQueue(
         "ElmReviewQueue",
         300,
         true,
         MergingUpdateQueue.ANY_COMPONENT,
-        project,
+        parentDisposable,
         null,
         false
     )
 
     init {
-        project.messageBus.connect(project).subscribe(
+        project.messageBus.connect(parentDisposable).subscribe(
             ElmReviewService.ELM_REVIEW_WATCH_TOPIC,
             object : ElmReviewService.ElmReviewWatchListener {
                 override fun update(baseDirPath: Path, messages: List<ElmReviewError>) {

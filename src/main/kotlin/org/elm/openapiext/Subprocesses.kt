@@ -31,11 +31,9 @@ import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.CapturingProcessHandler
 import com.intellij.execution.process.ProcessOutput
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.Disposer
 import com.intellij.util.io.systemIndependentPath
 import org.elm.utils.runAsyncTask
 import java.io.OutputStreamWriter
@@ -74,13 +72,10 @@ fun GeneralCommandLine.execute(
             CapturingProcessHandler(this)
         }
 
-    val processKiller = Disposable { handler.destroyProcess() }
     val alreadyDisposed = runReadAction { project.isDisposed }
     if (alreadyDisposed) {
         return ProcessOutput().apply { setCancelled() }
     }
-
-    Disposer.register(project, processKiller)
 
     try {
         fun runProcess(): ProcessOutput {
@@ -100,7 +95,7 @@ fun GeneralCommandLine.execute(
             runProcess()
         }
     } finally {
-        Disposer.dispose(processKiller)
+        handler.destroyProcess()
     }
 }
 
