@@ -17,20 +17,24 @@ import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.ui.TextComponentAccessor
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.DocumentAdapter
-import com.intellij.util.Alarm
+import com.intellij.util.concurrency.AppExecutorUtil
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import javax.swing.event.DocumentEvent
 
 class UiDebouncer(
         parentDisposable: Disposable,
         private val delayMillis: Int = 200
 ) {
-    private val alarm = Alarm(Alarm.ThreadToUse.POOLED_THREAD, parentDisposable)
     private val disposed = AtomicBoolean(false)
+    private val pendingTask = AtomicReference<ScheduledFuture<*>?>()
 
     init {
         Disposer.register(parentDisposable) {
             disposed.set(true)
+            pendingTask.getAndSet(null)?.cancel(false)
         }
     }
 
@@ -40,15 +44,17 @@ class UiDebouncer(
      */
     fun <T> run(onPooledThread: () -> T, onUiThread: (T) -> Unit) {
         if (disposed.get()) return
-        alarm.cancelAllRequests()
-        alarm.addRequest({
+        pendingTask.getAndSet(null)?.cancel(false)
+        val task = AppExecutorUtil.getAppScheduledExecutorService().schedule({
+            if (disposed.get()) return@schedule
             val r = onPooledThread()
             ApplicationManager.getApplication().invokeLater({
                 if (!disposed.get()) {
                     onUiThread(r)
                 }
             }, ModalityState.any())
-        }, delayMillis)
+        }, delayMillis.toLong(), TimeUnit.MILLISECONDS)
+        pendingTask.set(task)
     }
 }
 
