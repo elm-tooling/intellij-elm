@@ -31,19 +31,20 @@ abstract class ElmReferenceBase<T : ElmReferenceElement>(element: T)
         val identifier = element.referenceNameElement
         // IDEA's DFA occasionally treats token-type branches here as unreachable, but rename tests
         // exercise LOWER/UPPER/OPERATOR identifier replacements via this code path.
-        val newId = if (identifier is ElmUpperCaseQID) {
-            factory.createUpperCaseQID(newElementName)
-        } else when (identifier.elementType) {
-            ElmTypes.LOWER_CASE_IDENTIFIER ->
+        val newId = when {
+            identifier is ElmUpperCaseQID ->
+                factory.createUpperCaseQID(newElementName)
+
+            identifier.elementType == ElmTypes.LOWER_CASE_IDENTIFIER ->
                 factory.createLowerCaseIdentifier(newElementName)
 
-            ElmTypes.UPPER_CASE_IDENTIFIER ->
+            identifier.elementType == ElmTypes.UPPER_CASE_IDENTIFIER ->
                 factory.createUpperCaseIdentifier(newElementName)
 
-            ElmTypes.OPERATOR_IDENTIFIER ->
+            identifier.elementType == ElmTypes.OPERATOR_IDENTIFIER ->
                 factory.createOperatorIdentifier(newElementName)
 
-            else -> error("Unsupported identifier type for `$newElementName` (${identifier.elementType}")
+            else -> error("Unsupported identifier type for `$newElementName` (${identifier.elementType})")
         }
         identifier.replace(newId)
         return element
