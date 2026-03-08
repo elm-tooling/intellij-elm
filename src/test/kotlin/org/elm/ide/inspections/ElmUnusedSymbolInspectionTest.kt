@@ -1,5 +1,11 @@
 package org.elm.ide.inspections
 
+import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.vfs.VfsUtil
+import org.elm.fileTreeFromText
+import org.elm.workspace.ElmToolchain
+import org.elm.workspace.EmptyElmStdlibVariant
+import org.elm.workspace.elmWorkspace
 import org.junit.Test
 
 
@@ -108,6 +114,37 @@ class ElmUnusedSymbolInspectionTest : ElmInspectionsTestBase(ElmUnusedSymbolInsp
         g = Foo.f
     """.trimIndent())
 
+    @Test
+    fun `test exposed package api function is considered used`() = checkPackageByFileTree("""
+        --@ elm.json
+        $PACKAGE_MANIFEST_EXPOSED_MODULE
+
+        --@ src/ExposedModule.elm
+        module ExposedModule exposing (exposed)
+        exposed{-caret-} = 1
+    """.trimIndent())
+
+    @Test
+    fun `test non-exposed declaration in exposed package module is still unused`() = checkPackageByFileTree("""
+        --@ elm.json
+        $PACKAGE_MANIFEST_EXPOSED_MODULE
+
+        --@ src/ExposedModule.elm
+        module ExposedModule exposing (exposed)
+        exposed = 1
+        <warning descr="'notExposed' is never used">notExposed{-caret-}</warning> = 2
+    """.trimIndent())
+
+    @Test
+    fun `test declaration in non-public package module is still unused`() = checkPackageByFileTree("""
+        --@ elm.json
+        $PACKAGE_MANIFEST_OTHER_MODULE
+
+        --@ src/InternalModule.elm
+        module InternalModule exposing (internal)
+        <warning descr="'internal' is never used">internal{-caret-}</warning> = 1
+    """.trimIndent())
+
 
     // PARAMETERS
 
@@ -191,4 +228,58 @@ class ElmUnusedSymbolInspectionTest : ElmInspectionsTestBase(ElmUnusedSymbolInsp
         module FooBar exposing (..)
         """.trimIndent())
 
+    private fun checkPackageByFileTree(
+        text: String,
+        checkWarn: Boolean = true,
+        checkInfo: Boolean = false,
+        checkWeakWarn: Boolean = false
+    ) {
+        fileTreeFromText(text).createAndOpenFileWithCaretMarker()
+        val toolchain = ElmToolchain.suggest(project)
+        val elmJson = myFixture.findFileInTempDir("elm.json")
+        project.elmWorkspace.setupForTests(toolchain, elmJson)
+        enableInspection()
+        try {
+            myFixture.checkHighlighting(checkWarn, checkInfo, checkWeakWarn)
+        } finally {
+            runWriteAction {
+                VfsUtil.saveText(elmJson, EmptyElmStdlibVariant.jsonManifest)
+            }
+            project.elmWorkspace.setupForTests(toolchain, elmJson)
+        }
+    }
+
+    companion object {
+        private const val PACKAGE_MANIFEST_EXPOSED_MODULE = """
+        {
+          "type": "package",
+          "name": "foo/bar",
+          "summary": "Example package",
+          "license": "MIT",
+          "version": "1.2.3",
+          "exposed-modules": ["ExposedModule"],
+          "elm-version": "0.19.0 <= v < 0.20.0",
+          "dependencies": {
+            "elm/core": "1.0.0 <= v < 2.0.0"
+          },
+          "test-dependencies": {}
+        }
+        """
+
+        private const val PACKAGE_MANIFEST_OTHER_MODULE = """
+        {
+          "type": "package",
+          "name": "foo/bar",
+          "summary": "Example package",
+          "license": "MIT",
+          "version": "1.2.3",
+          "exposed-modules": ["SomeOtherModule"],
+          "elm-version": "0.19.0 <= v < 0.20.0",
+          "dependencies": {
+            "elm/core": "1.0.0 <= v < 2.0.0"
+          },
+          "test-dependencies": {}
+        }
+        """
+    }
 }

@@ -10,6 +10,7 @@ import com.intellij.psi.search.PsiSearchHelper.SearchCostResult.TOO_MANY_OCCURRE
 import com.intellij.psi.search.searches.ReferencesSearch
 import org.elm.lang.core.psi.*
 import org.elm.lang.core.psi.elements.*
+import org.elm.workspace.ElmPackageProject
 
 /**
  * Find unused functions, parameters, etc.
@@ -34,6 +35,7 @@ class ElmUnusedSymbolInspection : ElmLocalInspection() {
         }
 
         if (isProgramEntryPoint(element)) return
+        if (isPackagePublicApi(element)) return
 
         if (scope is GlobalSearchScope) {
             // to keep inspection/analysis time brief, bail out if 'Find Usages' will be slow
@@ -77,6 +79,15 @@ class ElmUnusedSymbolInspection : ElmLocalInspection() {
                 *fixes
         )
     }
+}
+
+private fun isPackagePublicApi(element: ElmNameIdentifierOwner): Boolean {
+    val decl = element as? ElmExposableTag ?: return false
+    val elmProject = decl.elmProject as? ElmPackageProject ?: return false
+    val moduleDecl = decl.elmFile.getModuleDecl() ?: return false
+    if (moduleDecl.name !in elmProject.exposedModules) return false
+    val exposingList = moduleDecl.exposingList ?: return false
+    return exposingList.exposes(decl)
 }
 
 private class RenameToWildcardFix : NamedQuickFix("Rename to _") {
