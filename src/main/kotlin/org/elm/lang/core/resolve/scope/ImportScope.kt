@@ -4,7 +4,6 @@ import com.intellij.openapi.util.Key
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.ParameterizedCachedValue
-import org.elm.workspace.ElmProject
 import org.elm.lang.core.psi.ElmFile
 import org.elm.lang.core.psi.ElmNamedElement
 import org.elm.lang.core.psi.elements.ElmImportClause
@@ -33,7 +32,7 @@ class ExposedNames(val elements: Array<ElmNamedElement>) {
  * @param qualifierPrefix The name of a module or an alias
  * @param clientFile The Elm file from which the search should be performed
  * @param importsOnly If true, include only modules reachable via imports (implicit and explicit).
- *                    Otherwise, include all modules which could be reached by the file's [ElmProject]
+ *                    Otherwise, include all modules which could be reached by the file's [org.elm.workspace.ElmProject]
  */
 class QualifiedImportScope(
         private val qualifierPrefix: String,
