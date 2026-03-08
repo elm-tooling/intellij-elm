@@ -26,7 +26,9 @@ SOFTWARE.
 
 package org.elm.ide.search
 
+import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.psi.PsiElement
+import org.elm.fileTreeFromText
 import org.elm.lang.ElmTestBase
 import org.elm.lang.core.psi.ElmNamedElement
 import org.intellij.lang.annotations.Language
@@ -64,6 +66,36 @@ bar = (**) 2 -- : foobar
 """
     )
 
+    @Test
+    fun `test module declaration usages from second segment`() {
+        fileTreeFromText(
+            """
+--@ Data/User.elm
+module Data.User exposing (..)
+            --^
+
+--@ Main.elm
+module Main exposing (..)
+import Data.User -- : Main.elm:1
+import Data.User as X -- : Main.elm:2
+import Data.User exposing (..) -- : Main.elm:3
+"""
+        ).create()
+        myFixture.configureFromTempProjectFile("Data/User.elm")
+        val (_, _, offset) = findElementWithDataAndOffsetInEditor<PsiElement>()
+        val source = TargetElementUtil.getInstance()
+            .findTargetElement(myFixture.editor, TargetElementUtil.getInstance().allAccepted, offset)
+            as? ElmNamedElement
+            ?: error("No ElmNamedElement at module declaration caret")
+
+        val actual = myFixture.findUsages(source)
+            .mapNotNull { it.element }
+            .map { "${it.containingFile.name}:${it.line}" }
+            .sorted()
+        val expected = listOf("Main.elm:1", "Main.elm:2", "Main.elm:3")
+        assertEquals(expected, actual)
+    }
+
 
     private fun doTestByText(@Language("Elm") code: String) {
         addFileToFixture(code)
@@ -91,4 +123,3 @@ bar = (**) 2 -- : foobar
     val PsiElement.line: Int? get() = containingFile.viewProvider.document?.getLineNumber(textRange.startOffset)
 
 }
-

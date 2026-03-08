@@ -66,6 +66,7 @@
                                       implementationClass="org.elm.ide.structure.ElmStructureViewFactory"/>
         <lang.refactoringSupport language="Elm"
                                  implementationClass="org.elm.ide.refactoring.ElmRefactoringSupportProvider"/>
+        <targetElementEvaluator language="Elm" implementationClass="org.elm.ide.refactoring.ElmTargetElementEvaluator"/>
         <renamePsiElementProcessor implementation="org.elm.ide.refactoring.ElmRenamePsiFileProcessor"/>
         <renamePsiElementProcessor implementation="org.elm.ide.refactoring.ElmRenamePsiElementProcessor"/>
         <lang.syntaxHighlighterFactory language="Elm"
