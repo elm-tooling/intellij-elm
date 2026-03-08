@@ -320,19 +320,6 @@
             <add-to-group group-id="ToolsMenu"/>
         </group>
 
-        <action id="Elm.Build"
-                class="org.elm.workspace.compiler.ElmBuildAction"
-                text="Build Elm Project"
-                icon="AllIcons.Toolwindows.ToolWindowBuild"
-                keymap="$default">
-            <keyboard-shortcut first-keystroke="alt shift P" keymap="$default"/>
-        </action>
-
-        <group id="Elm.CompilerToolsGroup" text="Elm Compiler" popup="true">
-            <reference ref="Elm.Build"/>
-            <reference ref="Elm.RunExternalElmReview"/>
-            <add-to-group group-id="Elm.WorkspaceToolsGroup"/>
-        </group>
     </actions>
 
 </idea-plugin>
