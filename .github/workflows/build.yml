@@ -91,11 +91,12 @@ jobs:
 
       # Store plugin ZIP for release draft asset upload
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.artifact.outputs.filename }}
           path: ${{ steps.artifact.outputs.path }}
           if-no-files-found: error
+          archive: false
 
 
   # Run tests and upload a code coverage report
