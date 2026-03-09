@@ -442,18 +442,86 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         val reader = JsonReader(json.byteInputStream().bufferedReader())
         reader.strictness = Strictness.LENIENT
         val report = reader.readErrorReport()
-        assertEquals(
-            listOf(
-                ElmReviewError(
-                    path = "/home/jw/LamderaProjects/test/review/src/ReviewConfig.elm",
-                    rule = "UNFINISHED IMPORT",
-                    message = null,
-                    region = null,
-                    formattedText = null
-                )
-            ),
-            report
-        )
+        TestCase.assertEquals(1, report.size)
+        TestCase.assertEquals("/home/jw/LamderaProjects/test/review/src/ReviewConfig.elm", report[0].path)
+        TestCase.assertEquals("UNFINISHED IMPORT", report[0].rule)
+        TestCase.assertEquals(Region(Location(23, 9), Location(23, 9)), report[0].region)
+        TestCase.assertTrue(report[0].message?.contains("I am partway through parsing an import") == true)
+        TestCase.assertTrue(report[0].formattedText?.contains("I am partway through parsing an import") == true)
+        TestCase.assertTrue(report[0].formattedChunks?.isNotEmpty() == true)
+    }
+
+    @Test
+    fun `parses compile-errors when message chunk has null color`() {
+        @Language("JSON")
+        val json = """
+{
+  "type": "compile-errors",
+  "errors": [
+    {
+      "path": "/tmp/ReviewConfig.elm",
+      "name": "ReviewConfig",
+      "problems": [
+        {
+          "title": "NAMING ERROR",
+          "region": {
+            "start": { "line": 1, "column": 1 },
+            "end": { "line": 1, "column": 5 }
+          },
+          "message": [
+            "Prefix ",
+            { "string": "Hint", "underline": true, "color": null },
+            ": suffix"
+          ]
+        }
+      ]
+    }
+  ]
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.strictness = Strictness.LENIENT
+        val report = reader.readErrorReport()
+
+        TestCase.assertEquals(1, report.size)
+        TestCase.assertEquals("NAMING ERROR", report[0].rule)
+        TestCase.assertEquals("/tmp/ReviewConfig.elm", report[0].path)
+        TestCase.assertEquals(Region(Location(1, 1), Location(1, 5)), report[0].region)
+        TestCase.assertEquals("Prefix Hint: suffix", report[0].message)
+    }
+
+    @Test
+    fun `sets compiler origin for compile-errors`() {
+        @Language("JSON")
+        val json = """
+{
+  "type": "compile-errors",
+  "errors": [
+    {
+      "path": "src/Main.elm",
+      "name": "Main",
+      "problems": [
+        {
+          "title": "NAMING ERROR",
+          "region": {
+            "start": { "line": 1, "column": 1 },
+            "end": { "line": 1, "column": 2 }
+          },
+          "message": "Oops"
+        }
+      ]
+    }
+  ]
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.strictness = Strictness.LENIENT
+        val report = reader.readErrorReport()
+
+        TestCase.assertEquals(1, report.size)
+        TestCase.assertEquals(ElmReviewErrorOrigin.COMPILER, report[0].origin)
     }
 
     @Test
@@ -491,6 +559,7 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         TestCase.assertEquals("src/Main.elm", report[0].path)
         TestCase.assertEquals("NoUnused.Variables", report[0].rule)
         TestCase.assertEquals("Unused variable `x`", report[0].message)
+        TestCase.assertEquals(ElmReviewErrorOrigin.REVIEW, report[0].origin)
     }
 
     @Test
@@ -521,6 +590,7 @@ class ElmReviewJsonReportTest : ElmTestBase() {
             ),
             report
         )
+        TestCase.assertEquals(ElmReviewErrorOrigin.GENERIC, report[0].origin)
     }
 
     @Test

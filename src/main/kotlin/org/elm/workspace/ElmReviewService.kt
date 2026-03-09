@@ -131,7 +131,7 @@ class ElmReviewService(private val project: Project) {
                         log.warn("elm-review run failed for $projectBasePath: $details")
                         if (!project.isDisposed) {
                             val firstLine = details.lineSequence().firstOrNull().orEmpty()
-                            showError("elm-review failed: $firstLine\n$commandText")
+                            showError("elm-review reported an error: $firstLine\n$commandText")
                         }
                     }
                     emptyList()
@@ -163,7 +163,7 @@ class ElmReviewService(private val project: Project) {
                         compilerPathForReview?.let { add("--compiler=$it") }
                     }
                     val commandText = buildCommandText(elmReviewExecutablePath, projectBasePath, args)
-                    showError("elm-review failed: ${t.message}\n$commandText")
+                    showError("elm-review reported an error: ${t.message}\n$commandText")
                 }
                 if (project.isDisposed) {
                     log.debug("elm-review task finished after project disposal")
@@ -255,4 +255,5 @@ private fun ElmReviewError.deepContentEquals(other: ElmReviewError): Boolean =
         formattedChunks == other.formattedChunks &&
         ruleLink == other.ruleLink &&
         details == other.details &&
-        fix == other.fix
+        fix == other.fix &&
+        origin == other.origin

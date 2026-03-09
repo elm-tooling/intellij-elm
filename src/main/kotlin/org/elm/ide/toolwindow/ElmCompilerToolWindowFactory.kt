@@ -8,8 +8,6 @@ import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.CustomShortcutSet
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.editor.markup.EffectType
-import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
@@ -34,7 +32,6 @@ import org.elm.workspace.compiler.*
 import org.elm.workspace.elmWorkspace
 import java.awt.BorderLayout
 import java.awt.CardLayout
-import java.awt.Color
 import java.awt.Font
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -338,47 +335,13 @@ private class ElmCompilerOutputPanel(project: Project) : JPanel(BorderLayout()) 
     }
 
     private fun contentTypeFor(chunk: Chunk.Styled): ConsoleViewContentType {
-        val fg = parseElmColor(chunk.color)
-        val key = listOf(fg.rgb, chunk.bold, chunk.underline).joinToString("|")
-        return colorTypeCache.computeIfAbsent(key) {
-            val effectType = if (chunk.underline) EffectType.LINE_UNDERSCORE else null
-            val attrs = TextAttributes(
-                fg,
-                null,
-                if (effectType != null) fg else null,
-                effectType,
-                if (chunk.bold) Font.BOLD else Font.PLAIN
-            )
-            ConsoleViewContentType("ELM_COMPILER_$key", attrs)
-        }
-    }
-
-    private fun parseElmColor(raw: String?): Color {
-        if (raw.isNullOrBlank()) return UIUtil.getLabelForeground()
-        val normalized = raw.trim()
-        if (normalized.startsWith("#")) {
-            return runCatching {
-                val c = Color.decode(normalized)
-                JBColor(c, c)
-            }.getOrElse { UIUtil.getLabelForeground() }
-        }
-        return when (normalized.uppercase()) {
-            "RED" -> fixedColor(0xFF, 0x59, 0x59)
-            "YELLOW" -> fixedColor(0xFA, 0xCF, 0x5A)
-            "GREEN" -> fixedColor(0x5A, 0xD6, 0x7D)
-            "BLUE" -> fixedColor(0x6C, 0xA0, 0xFF)
-            "MAGENTA", "PURPLE" -> fixedColor(0xC5, 0x7B, 0xFF)
-            "CYAN" -> fixedColor(0x4F, 0x9D, 0xA6)
-            "BLACK" -> JBColor.BLACK
-            "WHITE" -> JBColor.WHITE
-            "GRAY", "GREY" -> JBColor.GRAY
-            else -> UIUtil.getLabelForeground()
-        }
-    }
-
-    private fun fixedColor(r: Int, g: Int, b: Int): JBColor {
-        val rgb = (r shl 16) or (g shl 8) or b
-        return JBColor(rgb, rgb)
+        return ElmConsoleChunkStyling.contentTypeFor(
+            prefix = "ELM_COMPILER",
+            cache = colorTypeCache,
+            color = chunk.color,
+            bold = chunk.bold,
+            underline = chunk.underline
+        )
     }
 
     private fun extractJsonPayload(text: String): String? {

@@ -17,6 +17,13 @@ data class ElmReviewError(
     var ruleLink: String? = null
     var details: List<String>? = null
     var fix: List<Fix>? = null
+    var origin: ElmReviewErrorOrigin = ElmReviewErrorOrigin.GENERIC
+}
+
+enum class ElmReviewErrorOrigin {
+    REVIEW,
+    COMPILER,
+    GENERIC
 }
 
 data class Region(
@@ -106,7 +113,9 @@ fun JsonReader.readErrorReport(): List<ElmReviewError> {
                                     "errors" -> {
                                         beginArray()
                                         while (hasNext()) {
-                                            val elmReviewError = ElmReviewError(path = currentPath)
+                                            val elmReviewError = ElmReviewError(path = currentPath).apply {
+                                                origin = ElmReviewErrorOrigin.REVIEW
+                                            }
                                             readProperties { innerProperty ->
                                                 when (innerProperty) {
                                                     "suppressed" -> elmReviewError.suppressed = nextBoolean()
@@ -142,7 +151,6 @@ fun JsonReader.readErrorReport(): List<ElmReviewError> {
                         beginArray()
                         while (hasNext()) {
                             var currentPath: String? = null
-                            // TODO type 'compile-errors' with property errors ARRAY !?
                             readProperties { outerProperty ->
                                 when (outerProperty) {
                                     "path" -> currentPath = nextString()
@@ -150,10 +158,30 @@ fun JsonReader.readErrorReport(): List<ElmReviewError> {
                                     "problems" -> {
                                         beginArray()
                                         while (hasNext()) {
-                                            val elmReviewError = ElmReviewError(path = currentPath)
+                                            val elmReviewError = ElmReviewError(path = currentPath).apply {
+                                                origin = ElmReviewErrorOrigin.COMPILER
+                                            }
                                             readProperties { innerProperty ->
                                                 when (innerProperty) {
                                                     "title" -> elmReviewError.rule = nextString()
+                                                    "region" -> elmReviewError.region = readRegion()
+                                                    "message" -> {
+                                                        when (peek()) {
+                                                            JsonToken.BEGIN_ARRAY -> {
+                                                                val chunkList = readChunkList()
+                                                                val text = chunksToLines(chunkList).joinToString("\n")
+                                                                elmReviewError.message = text
+                                                                elmReviewError.formattedChunks = chunkList
+                                                                elmReviewError.formattedText = text
+                                                            }
+                                                            JsonToken.STRING -> {
+                                                                val text = nextString()
+                                                                elmReviewError.message = text
+                                                                elmReviewError.formattedText = text
+                                                            }
+                                                            else -> skipValue()
+                                                        }
+                                                    }
                                                     else -> {
                                                         skipValue()
                                                     }
@@ -201,6 +229,11 @@ fun JsonReader.readErrorReport(): List<ElmReviewError> {
         }
     }
     if (hasTopLevelErrorData) {
+        topLevelError.origin = when (type) {
+            ReviewOutputType.REVIEW_ERRORS -> ElmReviewErrorOrigin.REVIEW
+            ReviewOutputType.COMPILE_ERRORS -> ElmReviewErrorOrigin.COMPILER
+            else -> ElmReviewErrorOrigin.GENERIC
+        }
         errors.add(topLevelError)
     }
     return errors
@@ -243,11 +276,11 @@ private fun JsonReader.readChunkList(): List<Chunk> {
             beginObject()
             while (hasNext()) {
                 when (nextName()) {
-                    "string" -> chunkStyled.string = nextString()
-                    "color" -> chunkStyled.color = nextString()
-                    "href" -> chunkStyled.href = nextString()
-                    "bold" -> chunkStyled.bold = nextBoolean()
-                    "underline" -> chunkStyled.underline = nextBoolean()
+                    "string" -> chunkStyled.string = readNullableString()
+                    "color" -> chunkStyled.color = readNullableString()
+                    "href" -> chunkStyled.href = readNullableString()
+                    "bold" -> chunkStyled.bold = readNullableBoolean()
+                    "underline" -> chunkStyled.underline = readNullableBoolean()
                 }
             }
             endObject()
@@ -259,6 +292,22 @@ private fun JsonReader.readChunkList(): List<Chunk> {
     endArray()
     return chunkList
 }
+
+private fun JsonReader.readNullableString(): String? =
+    if (peek() == JsonToken.NULL) {
+        nextNull()
+        null
+    } else {
+        nextString()
+    }
+
+private fun JsonReader.readNullableBoolean(): Boolean? =
+    if (peek() == JsonToken.NULL) {
+        nextNull()
+        null
+    } else {
+        nextBoolean()
+    }
 
 fun JsonReader.readRegion(): Region {
     val region = Region()

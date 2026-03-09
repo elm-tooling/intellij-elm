@@ -13,8 +13,6 @@ import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Document
-import com.intellij.openapi.editor.markup.EffectType
-import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.DumbAwareAction
@@ -40,11 +38,11 @@ import org.elm.workspace.elmReviewService
 import org.elm.workspace.elmWorkspace
 import org.elm.workspace.elmreview.Chunk
 import org.elm.workspace.elmreview.ElmReviewError
+import org.elm.workspace.elmreview.ElmReviewErrorOrigin
 import org.elm.workspace.elmreview.Region
 import com.intellij.notification.NotificationType
 import java.awt.BorderLayout
 import java.awt.CardLayout
-import java.awt.Color
 import java.awt.Font
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
@@ -191,33 +189,13 @@ private class ElmReviewDetailsPanel(project: Project) : JPanel(BorderLayout()) {
     }
 
     private fun contentTypeFor(chunk: Chunk.Styled): ConsoleViewContentType {
-        val key = listOf(
-            chunk.color.orEmpty(),
-            chunk.bold == true,
-            chunk.underline == true
-        ).joinToString("|")
-
-        return colorTypeCache.computeIfAbsent(key) {
-            val fg = parseHexColor(chunk.color)
-            val effectType = if (chunk.underline == true) EffectType.LINE_UNDERSCORE else null
-            val attrs = TextAttributes(
-                fg,
-                null,
-                if (effectType != null) fg else null,
-                effectType,
-                if (chunk.bold == true) Font.BOLD else Font.PLAIN
-            )
-            ConsoleViewContentType("ELM_REVIEW_$key", attrs)
-        }
-    }
-
-    private fun parseHexColor(value: String?): Color {
-        if (value.isNullOrBlank()) return UIUtil.getLabelForeground()
-        return try {
-            Color.decode(value)
-        } catch (_: NumberFormatException) {
-            UIUtil.getLabelForeground()
-        }
+        return ElmConsoleChunkStyling.contentTypeFor(
+            prefix = "ELM_REVIEW",
+            cache = colorTypeCache,
+            color = chunk.color,
+            bold = chunk.bold == true,
+            underline = chunk.underline == true
+        )
     }
 }
 
@@ -234,6 +212,15 @@ private data class ElmReviewIssue(
 internal fun elmReviewLocation(error: ElmReviewError): Pair<Int, Int>? {
     val start = error.region?.start ?: return null
     return (start.line - 1) to (start.column - 1)
+}
+
+internal fun elmReviewTreeMessage(error: ElmReviewError): String {
+    val message = error.message.orEmpty()
+    return if (error.origin == ElmReviewErrorOrigin.COMPILER) {
+        message.substringBefore('\n')
+    } else {
+        message
+    }
 }
 
 private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPanel(project, "elm-review", false, true) {
@@ -265,11 +252,12 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
             val encodedIndex = "\u200B".repeat(index + 1)
             val elmReviewError = issue.error
             val ruleText = (elmReviewError.rule ?: "") + if (issue.isFixable) " (auto-fix)" else ""
+            val treeMessage = elmReviewTreeMessage(elmReviewError)
             val location = elmReviewLocation(elmReviewError)
             if (location == null) {
                 addErrorMessage(
                     MessageCategory.SIMPLE,
-                    arrayOf("$encodedIndex$ruleText:", elmReviewError.message ?: ""),
+                    arrayOf("$encodedIndex$ruleText:", treeMessage),
                     issue.virtualFile,
                     0,
                     0
@@ -277,7 +265,7 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
             } else {
                 addErrorMessage(
                     MessageCategory.SIMPLE,
-                    arrayOf("$encodedIndex$ruleText:", "${elmReviewError.message}"),
+                    arrayOf("$encodedIndex$ruleText:", treeMessage),
                     issue.virtualFile,
                     location.first,
                     location.second

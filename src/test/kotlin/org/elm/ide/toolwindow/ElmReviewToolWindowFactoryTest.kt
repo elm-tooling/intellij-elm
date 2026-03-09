@@ -1,6 +1,7 @@
 package org.elm.ide.toolwindow
 
 import org.elm.workspace.elmreview.ElmReviewError
+import org.elm.workspace.elmreview.ElmReviewErrorOrigin
 import org.elm.workspace.elmreview.Location
 import org.elm.workspace.elmreview.Region
 import org.junit.Assert.assertEquals
@@ -19,5 +20,21 @@ class ElmReviewToolWindowFactoryTest {
     fun `elmReviewLocation converts location to zero based coordinates`() {
         val error = ElmReviewError(region = Region(start = Location(2, 3), end = Location(2, 4)))
         assertEquals(1 to 2, elmReviewLocation(error))
+    }
+
+    @Test
+    fun `elmReviewTreeMessage truncates compiler error at first newline`() {
+        val error = ElmReviewError(message = "Line one\nLine two").apply {
+            origin = ElmReviewErrorOrigin.COMPILER
+        }
+        assertEquals("Line one", elmReviewTreeMessage(error))
+    }
+
+    @Test
+    fun `elmReviewTreeMessage preserves multiline text for review rule errors`() {
+        val error = ElmReviewError(message = "Line one\nLine two").apply {
+            origin = ElmReviewErrorOrigin.REVIEW
+        }
+        assertEquals("Line one\nLine two", elmReviewTreeMessage(error))
     }
 }
