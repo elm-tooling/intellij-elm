@@ -272,13 +272,6 @@ jobs:
       - name: Fetch Sources
         uses: actions/checkout@v4
 
-      # Download compiled plugin ZIP from the build job
-      - name: Download plugin ZIP artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.build.outputs.artifactName }}
-          path: ./build/distributions
-
       # Remove old release drafts by using the curl request for the available releases with a draft flag
       - name: Remove Old Release Drafts
         env:
@@ -315,7 +308,6 @@ jobs:
           echo "Creating $RELEASE_KIND for $TAG"
 
           gh release create "$TAG" \
-            ./build/distributions/*.zip \
             $RELEASE_FLAG \
             --title "$TAG" \
             --notes "$RELEASE_NOTES"

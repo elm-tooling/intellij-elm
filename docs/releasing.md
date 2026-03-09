@@ -49,6 +49,8 @@ Publishing is handled by [`.github/workflows/release.yml`](../.github/workflows/
 2. Sign plugin ZIP.
 3. Verify plugin signature.
 4. Publish plugin to Marketplace.
-5. Upload release ZIP to GitHub release assets.
+
+The workflow intentionally does not upload plugin ZIP files as GitHub release assets.
+This avoids the current zip-in-zip artifact issue in release attachments.
 
 Do not commit signing keys/certificates to the repository. Keep them only in CI secrets.
