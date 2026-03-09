@@ -292,6 +292,7 @@ jobs:
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_NOTES: ${{ needs.build.outputs.changelog }}
         run: |
           VERSION="${{ needs.build.outputs.version }}"
           TAG="v$VERSION"
@@ -317,7 +318,4 @@ jobs:
             ./build/distributions/*.zip \
             $RELEASE_FLAG \
             --title "$TAG" \
-            --notes "$(cat << 'EOM'
-            ${{ needs.build.outputs.changelog }}
-            EOM
-            )"
+            --notes "$RELEASE_NOTES"
