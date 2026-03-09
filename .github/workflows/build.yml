@@ -255,10 +255,12 @@ jobs:
           name: pluginVerifier-result
           path: ${{ github.workspace }}/build/reports/pluginVerifier
 
-  # Prepare a draft release for GitHub Releases page for the manual verification
-  # If accepted and published, release workflow would be triggered
+  # Prepare and/or publish GitHub releases based on version label:
+  # - beta => draft only
+  # - rc => prerelease (published)
+  # - plain semver => full release (published)
   releaseDraft:
-    name: Release draft
+    name: Create/Publish Release
     if: github.event_name != 'pull_request'
     needs: [ build, test, inspectCode, verify ]
     runs-on: ubuntu-latest
@@ -286,16 +288,36 @@ jobs:
             --jq '.[] | select(.draft == true) | .id' \
             | xargs -I '{}' gh api -X DELETE repos/{owner}/{repo}/releases/{}
 
-      # Create a new release draft which is not publicly visible and requires manual acceptance
-      - name: Create Release Draft
+      # Create GitHub release with mode inferred from plugin version
+      - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "v${{ needs.build.outputs.version }}" \
+          VERSION="${{ needs.build.outputs.version }}"
+          TAG="v$VERSION"
+
+          if [[ "$VERSION" == *"-beta"* ]]; then
+            RELEASE_FLAG="--draft"
+            RELEASE_KIND="draft (beta)"
+          elif [[ "$VERSION" == *"-rc"* ]]; then
+            RELEASE_FLAG="--prerelease"
+            RELEASE_KIND="pre-release (rc)"
+          elif [[ "$VERSION" == *"-"* ]]; then
+            echo "Unsupported prerelease label in version: $VERSION"
+            echo "Only beta and rc labels are supported by this workflow."
+            exit 1
+          else
+            RELEASE_FLAG=""
+            RELEASE_KIND="full release"
+          fi
+
+          echo "Creating $RELEASE_KIND for $TAG"
+
+          gh release create "$TAG" \
             ./build/distributions/*.zip \
-            --draft \
-            --title "v${{ needs.build.outputs.version }}" \
+            $RELEASE_FLAG \
+            --title "$TAG" \
             --notes "$(cat << 'EOM'
-          ${{ needs.build.outputs.changelog }}
-          EOM
-          )"
+            ${{ needs.build.outputs.changelog }}
+            EOM
+            )"

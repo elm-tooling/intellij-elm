@@ -1,14 +1,54 @@
-Releasing the Elm Plugin to the JetBrains Marketplace
+Releasing The Elm Plugin To The JetBrains Marketplace
 =====================================================
 
-To build the `.zip` file for distribution run:
+This project publishes to JetBrains Marketplace with Gradle and uses plugin code signing.
+
+The Gradle setup is already configured in [`build.gradle.kts`](../build.gradle.kts):
+
+- `signPlugin` reads:
+  - `CERTIFICATE_CHAIN`
+  - `PRIVATE_KEY`
+  - `PRIVATE_KEY_PASSWORD`
+- `publishPlugin` reads:
+  - `PUBLISH_TOKEN`
+
+## One-time setup
+
+1. Create a Marketplace publishing token (`PUBLISH_TOKEN`).
+2. Create a signing certificate/key pair for JetBrains plugin signing.
+3. Store all four values in GitHub repository secrets for CI:
+   - `PUBLISH_TOKEN`
+   - `CERTIFICATE_CHAIN`
+   - `PRIVATE_KEY`
+   - `PRIVATE_KEY_PASSWORD`
+
+Reference:
+- https://plugins.jetbrains.com/docs/intellij/plugin-signing.html
+- https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html
+
+## Local release verification
+
+You can validate signing locally before creating a release:
 
 ```bash
-./gradlew buildPlugin
+./gradlew buildPlugin --no-daemon
+./gradlew signPlugin --no-daemon
+./gradlew verifyPluginSignature --no-daemon
 ```
 
-If all went well the `.zip` file can be found in `build/distributions/`
+Artifacts are generated under:
 
-The `.zip` file may be uploaded to the JetBrains Marketplace using the `Update` button by someone with sufficient rights. 
+- `build/distributions/` (plugin ZIP)
+- `build/distributions/*-signed.zip` (signed ZIP, after `signPlugin`)
 
-Automatic releases with GitHub's CI/CD are being worked on.
+## CI release flow
+
+Publishing is handled by [`.github/workflows/release.yml`](../.github/workflows/release.yml):
+
+1. Build plugin ZIP.
+2. Sign plugin ZIP.
+3. Verify plugin signature.
+4. Publish plugin to Marketplace.
+5. Upload release ZIP to GitHub release assets.
+
+Do not commit signing keys/certificates to the repository. Keep them only in CI secrets.

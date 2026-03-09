@@ -3,14 +3,20 @@
 # Changelog for et-intellij-elm
 
 ## [Unreleased]
-*   Reworked the elm-review panel
-*   Rebuilt the elm compiler panel
+*   Fixed: Reworked the elm-review panel (#19)
+*   Fixed: Rebuilt the elm compiler panel (#17)
 *   Restructured how the elm compiler is defined
-*   Permit multiple compilers, and multiple entry points
+*   Permit multiple compilers, and multiple entry points simultaneously
 *   Added support for elm-test-rs (in addition to elm-test)
 *   Added support for elm-wrap
 *   Optimized unused symbol lookups
 *   Fixed deprecated APIs and review warnings
+*   Fixed: remove "friendly messages" panel. Individual tools now show dedicated consoles instead of sharing this one (#25)
+*   Fixed: clicking on a module, including sub-parts of the module name, will show where it is used (#49)
+*   Fixed: functions listed in the exposure list in a package will not show as unused (#50)
+*   Fixed: parsing of custom type values (#47)
+*   Fixed: more robust detection of `node` for elm-review and elm-test (#48)
+*   Fixed: remove untilBuild for good (#43)
 
 ## [5.2.0] - 2025-10-21
 *   Major code review and clean-up (@ahankinson)
