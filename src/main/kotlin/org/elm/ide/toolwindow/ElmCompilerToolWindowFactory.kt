@@ -4,9 +4,13 @@ import com.google.gson.Gson
 import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
+import com.intellij.icons.AllIcons
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CustomShortcutSet
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.DumbAwareAction
@@ -42,16 +46,16 @@ import javax.swing.*
 
 class ElmCompilerToolWindowFactory : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val errorTreeViewPanel = ElmErrorTreeViewPanel(project, "Elm Compiler", false, true)
+        val errorTreeViewPanel = ElmCompilerErrorTreeViewPanel(project)
         val outputPanel = ElmCompilerOutputPanel(project)
-        val splitPane = OnePixelSplitter(false, 0.58f).apply {
+        val messagesAndOutputSplit = OnePixelSplitter(false, 0.56f).apply {
             firstComponent = errorTreeViewPanel
             secondComponent = outputPanel
         }
         val buildTargetsPanel = ElmBuildTargetsPanel(project)
-        val root = JPanel(BorderLayout()).apply {
-            add(buildTargetsPanel, BorderLayout.NORTH)
-            add(splitPane, BorderLayout.CENTER)
+        val root = OnePixelSplitter(false, 0.24f).apply {
+            firstComponent = buildTargetsPanel
+            secondComponent = messagesAndOutputSplit
         }
         toolWindow.contentManager.addContent(ContentImpl(root, "Compilation Result", true))
 
@@ -107,19 +111,20 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
     private val targetListModel = DefaultListModel<BuildTargetItem>()
     private val targetList = JBList(targetListModel).apply {
         selectionMode = ListSelectionModel.SINGLE_SELECTION
-        visibleRowCount = 4
+        visibleRowCount = 10
         emptyText.text = "No build targets configured"
     }
-    private val buildButton = JButton("Build Selected").apply {
-        isEnabled = false
-        addActionListener {
-            buildSelectedTarget()
-        }
-    }
+    private val buildSelectedAction = BuildSelectedAction()
+    private val editBuildTargetAction = EditBuildTargetAction()
+    private val actionToolbar = ActionManager.getInstance().createActionToolbar(
+        "Elm Compiler Build Targets",
+        DefaultActionGroup(buildSelectedAction, editBuildTargetAction),
+        false
+    )
 
     init {
         border = JBUI.Borders.compound(
-            JBUI.Borders.customLine(JBColor.border(), 0, 0, 1, 0),
+            JBUI.Borders.customLine(JBColor.border(), 0, 0, 0, 1),
             JBUI.Borders.empty(6, 8)
         )
         add(JBLabel("Build Targets").apply {
@@ -127,14 +132,14 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
             foreground = UIUtil.getLabelForeground()
             border = JBUI.Borders.emptyBottom(4)
         }, BorderLayout.NORTH)
-        add(JScrollPane(targetList), BorderLayout.CENTER)
+        actionToolbar.targetComponent = targetList
         add(JPanel(BorderLayout()).apply {
-            border = JBUI.Borders.emptyTop(4)
-            add(buildButton, BorderLayout.WEST)
-        }, BorderLayout.SOUTH)
+            add(actionToolbar.component, BorderLayout.WEST)
+            add(JScrollPane(targetList), BorderLayout.CENTER)
+        }, BorderLayout.CENTER)
 
         targetList.addListSelectionListener {
-            buildButton.isEnabled = targetList.selectedIndex >= 0
+            // Action update is driven by IntelliJ toolbar refresh cycle.
         }
         targetList.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
@@ -166,7 +171,6 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
                 targetListModel.addElement(BuildTargetItem(elmProject, target, index + 1))
             }
         }
-        buildButton.isEnabled = targetList.selectedIndex >= 0
     }
 
     private fun buildSelectedTarget() {
@@ -184,6 +188,43 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
                 return@executeOnPooledThread
             }
             makeProject(item.elmProject, project, listOf(item.target), currentFileInEditor)
+        }
+    }
+
+    private fun editSelectedTarget() {
+        val item = targetList.selectedValue ?: return
+        project.elmWorkspace.showConfigureBuildTargetUI(item.elmProject.manifestPath, item.target)
+    }
+
+    private inner class BuildSelectedAction : DumbAwareAction(
+        "Build selected",
+        "Build the selected target",
+        AllIcons.Actions.Execute
+    ) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            e.presentation.isEnabled = targetList.selectedIndex >= 0
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            buildSelectedTarget()
+        }
+    }
+
+    private inner class EditBuildTargetAction : DumbAwareAction(
+        "Edit build target",
+        "Open settings for the selected build target",
+        AllIcons.Actions.Edit
+    ) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            e.presentation.isEnabled = targetList.selectedIndex >= 0
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            editSelectedTarget()
         }
     }
 }
@@ -205,6 +246,44 @@ private fun displayTargetName(target: ResolvedBuildTarget, index: Int): String =
             "Target $index"
         }
     }
+
+private class ElmCompilerErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPanel(project, "Elm Compiler", false, true) {
+    override fun fillRightToolbarGroup(group: DefaultActionGroup) {
+        super.fillRightToolbarGroup(group)
+        group.add(ExpandAllAction())
+        group.add(CollapseAllAction())
+    }
+
+    private inner class ExpandAllAction : DumbAwareAction(
+        { "Expand all" },
+        AllIcons.Actions.Expandall
+    ) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            e.presentation.description = "Expand all compiler messages"
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            expandAll()
+        }
+    }
+
+    private inner class CollapseAllAction : DumbAwareAction(
+        { "Collapse all" },
+        AllIcons.Actions.Collapseall
+    ) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            e.presentation.description = "Collapse all compiler messages"
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            collapseAll()
+        }
+    }
+}
 
 private class ElmCompilerOutputPanel(project: Project) : JPanel(BorderLayout()) {
     private val console: ConsoleView = TextConsoleBuilderFactory.getInstance().createBuilder(project).console

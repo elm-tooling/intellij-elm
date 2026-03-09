@@ -580,8 +580,26 @@ class ElmWorkspaceConfigurable(
         }
 
         reloadProjectChoices(preserveSelection = false)
+        applyPendingBuildTargetSelection()
 
         update(null)
+    }
+
+    private fun applyPendingBuildTargetSelection() {
+        val pending = project.elmWorkspace.consumePendingBuildTargetSelection() ?: return
+        val projectIndex = (0 until projectSelector.itemCount).firstOrNull { idx ->
+            projectSelector.getItemAt(idx).manifestPath == pending.manifestPath
+        } ?: return
+
+        projectSelector.selectedIndex = projectIndex
+        val targets = currentTargets()
+        val targetIndex = targets.indexOfFirst { target ->
+            target.inputPath.trim() == pending.targetInputPath ||
+                (pending.targetName.isNotBlank() && target.name.trim() == pending.targetName)
+        }
+        if (targetIndex >= 0) {
+            targetList.selectedIndex = targetIndex
+        }
     }
 
     private fun reloadProjectChoices(preserveSelection: Boolean) {

@@ -127,6 +127,12 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         val buildTargetsByManifest: List<ElmProjectBuildTargetConfig> = emptyList()
     )
 
+    data class BuildTargetSelectionRequest(
+        val manifestPath: String,
+        val targetName: String,
+        val targetInputPath: String
+    )
+
 
     val settings: Settings
         get() {
@@ -149,6 +155,8 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
 
 
     private val rawSettingsRef = AtomicReference(RawSettings())
+    @Volatile
+    private var pendingBuildTargetSelection: BuildTargetSelectionRequest? = null
 
     fun buildTargetConfigsFor(elmProject: ElmProject): List<ElmBuildTargetConfig> {
         val manifestPath = elmProject.manifestPath.systemIndependentPath
@@ -283,6 +291,21 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     fun showConfigureToolchainUI() {
         ShowSettingsUtil.getInstance()
             .showSettingsDialog(intellijProject, ElmWorkspaceConfigurable::class.java)
+    }
+
+    fun showConfigureBuildTargetUI(manifestPath: Path, target: ResolvedBuildTarget) {
+        pendingBuildTargetSelection = BuildTargetSelectionRequest(
+            manifestPath = manifestPath.systemIndependentPath,
+            targetName = target.name,
+            targetInputPath = target.inputPathForCompiler
+        )
+        showConfigureToolchainUI()
+    }
+
+    fun consumePendingBuildTargetSelection(): BuildTargetSelectionRequest? {
+        val pending = pendingBuildTargetSelection
+        pendingBuildTargetSelection = null
+        return pending
     }
 
 
