@@ -1,6 +1,5 @@
 package org.elm.ide.hints
 
-import junit.framework.TestCase
 import org.elm.lang.ElmTestBase
 import org.elm.lang.core.psi.ElmPsiElement
 import org.intellij.lang.annotations.Language

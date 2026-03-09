@@ -30,7 +30,6 @@ import com.intellij.psi.util.PsiModificationTracker
 import org.elm.lang.core.psi.descendantsOfType
 import org.elm.lang.core.resolve.ElmReferenceElement
 import org.elm.utils.Timings
-import org.junit.Test
 
 class ElmHighlightingPerformanceTest : ElmRealProjectTestBase() {
 

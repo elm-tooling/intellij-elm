@@ -2,7 +2,6 @@ package org.elm.workspace
 
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.testFramework.PlatformTestUtil
-import junit.framework.TestCase
 import org.elm.fileTree
 import org.elm.openapiext.elementFromXmlString
 import org.elm.openapiext.pathAsPath

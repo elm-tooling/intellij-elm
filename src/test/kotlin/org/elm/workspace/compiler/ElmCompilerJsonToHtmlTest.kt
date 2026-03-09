@@ -1,6 +1,5 @@
 package org.elm.workspace.compiler
 
-import junit.framework.TestCase
 import org.elm.lang.ElmTestBase
 import org.intellij.lang.annotations.Language
 import org.junit.Test

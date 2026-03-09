@@ -26,7 +26,6 @@ SOFTWARE.
 
 package org.elm.lang.core.resolve
 
-import com.intellij.openapi.vfs.VirtualFileFilter
 import org.elm.fileTreeFromText
 import org.elm.lang.ElmTestBase
 import org.elm.lang.core.psi.ElmNamedElement

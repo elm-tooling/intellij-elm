@@ -1,6 +1,5 @@
 package org.elm.ide.structure
 
-import com.intellij.testFramework.UsefulTestCase
 import org.elm.lang.ElmTestBase
 import org.elm.lang.core.psi.ElmPsiElement
 import org.elm.lang.core.psi.descendantsOfType

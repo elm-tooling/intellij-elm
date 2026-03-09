@@ -32,7 +32,6 @@ import org.elm.lang.core.ElmFileType
 import org.elm.lang.core.psi.ElmFile
 import org.elm.openapiext.toPsiFile
 import org.junit.ComparisonFailure
-import org.junit.Test
 import java.lang.reflect.Field
 
 /**

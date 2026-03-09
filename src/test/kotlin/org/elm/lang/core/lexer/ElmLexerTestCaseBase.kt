@@ -31,7 +31,6 @@ import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.CharsetToolkit
 import com.intellij.testFramework.LexerTestCase
-import com.intellij.testFramework.UsefulTestCase
 import org.elm.lang.ElmTestCase
 import org.elm.lang.pathToGoldTestFile
 import org.elm.lang.pathToSourceTestFile
