@@ -149,7 +149,7 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
             }
         })
         val buildSelectedShortcutAction = object : DumbAwareAction() {
-            override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
+            override fun actionPerformed(e: AnActionEvent) {
                 buildSelectedTarget()
             }
         }
