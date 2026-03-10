@@ -297,10 +297,12 @@ jobs:
         run: |
           VERSION="${{ needs.build.outputs.version }}"
           TAG="v$VERSION"
-          ZIP_PATH="$(find ./build/distributions -maxdepth 1 -type f -name '*.zip' | head -n 1)"
+          ls -la ./build/distributions || true
+          ZIP_PATH="$(find ./build/distributions -type f -name '*.zip' | head -n 1)"
 
           if [[ -z "$ZIP_PATH" ]]; then
             echo "No plugin ZIP found in ./build/distributions"
+            find ./build/distributions -maxdepth 3 -print || true
             exit 1
           fi
 
