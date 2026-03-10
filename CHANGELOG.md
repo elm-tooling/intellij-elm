@@ -10,6 +10,7 @@
 *   Added support for elm-test-rs (in addition to elm-test)
 *   Added support for elm-wrap
 *   Optimized unused symbol lookups
+*   Change icons to use SVG instead of PNG; adjust contrast for legibility
 *   Fixed deprecated APIs and review warnings
 *   Fixed: remove "friendly messages" panel. Individual tools now show dedicated consoles instead of sharing this one (#25)
 *   Fixed: clicking on a module, including sub-parts of the module name, will show where it is used (#49)
