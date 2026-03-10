@@ -78,14 +78,14 @@ jobs:
       - name: Build plugin
         run: ./gradlew buildPlugin
 
-      # Resolve plugin ZIP filename for artifact naming and downstream jobs
+      # Resolve plugin ZIP path and artifact name for downstream jobs
       - name: Resolve plugin ZIP filename
         id: artifact
         shell: bash
         run: |
+          VERSION="${{ steps.properties.outputs.version }}"
           ZIP_PATH="$(ls ./build/distributions/*.zip | head -n 1)"
-          ZIP_FILENAME="$(basename "$ZIP_PATH")"
-          ARTIFACT_NAME="${ZIP_FILENAME%.zip}"
+          ARTIFACT_NAME="elm-intellij-plugin-$VERSION.zip"
           echo "path=$ZIP_PATH" >> "$GITHUB_OUTPUT"
           echo "filename=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
 
@@ -239,7 +239,7 @@ jobs:
 
       # Cache Plugin Verifier IDEs
       - name: Setup Plugin Verifier IDEs Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ needs.build.outputs.pluginVerifierHomeDir }}/ides
           key: plugin-verifier-${{ hashFiles('build/listProductsReleases.txt') }}
@@ -251,7 +251,7 @@ jobs:
       # Collect Plugin Verifier Result
       - name: Collect Plugin Verifier Result
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pluginVerifier-result
           path: ${{ github.workspace }}/build/reports/pluginVerifier
@@ -284,7 +284,7 @@ jobs:
 
       # Download plugin ZIP artifact from the build job for release upload
       - name: Download Release Artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: ${{ needs.build.outputs.artifactName }}
           path: ./build/distributions
