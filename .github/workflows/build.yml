@@ -41,18 +41,18 @@ jobs:
 
       # Check out current repository
       - name: Fetch Sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Setup Java 21 environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: 21
 
       # Setup Gradle
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       # Set environment variables
       - name: Export Properties
@@ -108,18 +108,18 @@ jobs:
 
       # Check out current repository
       - name: Fetch Sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Set up Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: 21
 
       # Setup Gradle
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -161,7 +161,7 @@ jobs:
 
       - name: Upload Code Coverage Report
         if: steps.coverage.outputs.exists == 'true'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ${{ steps.coverage.outputs.report }}
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -196,7 +196,7 @@ jobs:
 
       # Set up Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: 21
@@ -224,18 +224,18 @@ jobs:
 
       # Check out current repository
       - name: Fetch Sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Set up Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: 21
 
       # Setup Gradle
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       # Cache Plugin Verifier IDEs
       - name: Setup Plugin Verifier IDEs Cache
@@ -271,7 +271,7 @@ jobs:
 
       # Check out current repository
       - name: Fetch Sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Remove old release drafts by using the curl request for the available releases with a draft flag
       - name: Remove Old Release Drafts
@@ -282,6 +282,13 @@ jobs:
             --jq '.[] | select(.draft == true) | .id' \
             | xargs -I '{}' gh api -X DELETE repos/{owner}/{repo}/releases/{}
 
+      # Download plugin ZIP artifact from the build job for release upload
+      - name: Download Release Artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ needs.build.outputs.artifactName }}
+          path: ./build/distributions
+
       # Create GitHub release with mode inferred from plugin version
       - name: Create Release
         env:
@@ -290,6 +297,12 @@ jobs:
         run: |
           VERSION="${{ needs.build.outputs.version }}"
           TAG="v$VERSION"
+          ZIP_PATH="$(find ./build/distributions -maxdepth 1 -type f -name '*.zip' | head -n 1)"
+
+          if [[ -z "$ZIP_PATH" ]]; then
+            echo "No plugin ZIP found in ./build/distributions"
+            exit 1
+          fi
 
           if [[ "$VERSION" == *"-beta"* ]]; then
             RELEASE_FLAG="--draft"
@@ -311,4 +324,5 @@ jobs:
           gh release create "$TAG" \
             $RELEASE_FLAG \
             --title "$TAG" \
-            --notes "$RELEASE_NOTES"
+            --notes "$RELEASE_NOTES" \
+            "$ZIP_PATH"
