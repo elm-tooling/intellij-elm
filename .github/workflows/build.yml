@@ -315,9 +315,13 @@ jobs:
           if [[ "$VERSION" == *"-beta"* ]]; then
             RELEASE_FLAG="--draft"
             RELEASE_KIND="draft (beta)"
+            IS_DRAFT=true
+            IS_PRERELEASE=false
           elif [[ "$VERSION" == *"-rc"* ]]; then
             RELEASE_FLAG="--prerelease"
             RELEASE_KIND="pre-release (rc)"
+            IS_DRAFT=false
+            IS_PRERELEASE=true
           elif [[ "$VERSION" == *"-"* ]]; then
             echo "Unsupported prerelease label in version: $VERSION"
             echo "Only beta and rc labels are supported by this workflow."
@@ -325,12 +329,24 @@ jobs:
           else
             RELEASE_FLAG=""
             RELEASE_KIND="full release"
+            IS_DRAFT=false
+            IS_PRERELEASE=false
           fi
 
-          echo "Creating $RELEASE_KIND for $TAG"
-
-          gh release create "$TAG" \
-            $RELEASE_FLAG \
-            --title "$TAG" \
-            --notes "$RELEASE_NOTES" \
-            "$BUILD_ARTIFACT"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Updating existing release for $TAG"
+            RELEASE_ID="$(gh release view "$TAG" --json id --jq '.id')"
+            gh api --method PATCH "repos/{owner}/{repo}/releases/$RELEASE_ID" \
+              -f name="$TAG" \
+              -f body="$RELEASE_NOTES" \
+              -f draft="$IS_DRAFT" \
+              -f prerelease="$IS_PRERELEASE"
+            gh release upload "$TAG" "$BUILD_ARTIFACT" --clobber
+          else
+            echo "Creating $RELEASE_KIND for $TAG"
+            gh release create "$TAG" \
+              $RELEASE_FLAG \
+              --title "$TAG" \
+              --notes "$RELEASE_NOTES" \
+              "$BUILD_ARTIFACT"
+          fi
