@@ -293,6 +293,7 @@ jobs:
         with:
           name: ${{ needs.build.outputs.filename }}
           path: ${{ needs.build.outputs.path }}
+          skip-decompress: false
 
       # Create GitHub release with mode inferred from plugin version
       - name: Create Release
