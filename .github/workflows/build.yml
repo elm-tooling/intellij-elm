@@ -78,6 +78,10 @@ jobs:
       - name: Build plugin
         run: ./gradlew buildPlugin
 
+      # Show generated plugin distribution files
+      - name: List plugin distributions
+        run: ls -alh ./build/distributions
+
       # Resolve plugin ZIP path and artifact name for downstream jobs
       - name: Resolve plugin ZIP filename
         id: artifact
