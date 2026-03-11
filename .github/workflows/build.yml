@@ -36,7 +36,8 @@ jobs:
       version: ${{ steps.properties.outputs.version }}
       changelog: ${{ steps.properties.outputs.changelog }}
       pluginVerifierHomeDir: ${{ steps.properties.outputs.pluginVerifierHomeDir }}
-      artifactName: ${{ steps.artifact.outputs.filename }}
+      filename: ${{ steps.artifact.outputs.filename }}
+      path: ${{ steps.artifact.outputs.path }}
     steps:
 
       # Check out current repository
@@ -88,8 +89,8 @@ jobs:
         shell: bash
         run: |
           VERSION="${{ steps.properties.outputs.version }}"
-          ZIP_PATH="$(ls ./build/distributions/*.zip | head -n 1)"
           ARTIFACT_NAME="elm-intellij-plugin-$VERSION.zip"
+          ZIP_PATH="./build/distributions/"
           echo "path=$ZIP_PATH" >> "$GITHUB_OUTPUT"
           echo "filename=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
 
@@ -277,21 +278,21 @@ jobs:
       - name: Fetch Sources
         uses: actions/checkout@v6
 
-      # Remove old release drafts by using the curl request for the available releases with a draft flag
-      - name: Remove Old Release Drafts
+      # Remove old draft releases and rc prereleases
+      - name: Remove Old Drafts and RC Releases
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh api repos/{owner}/{repo}/releases \
-            --jq '.[] | select(.draft == true) | .id' \
+            --jq '.[] | select(.draft == true or (.prerelease == true and (.tag_name | test("-rc")))) | .id' \
             | xargs -I '{}' gh api -X DELETE repos/{owner}/{repo}/releases/{}
 
       # Download plugin ZIP artifact from the build job for release upload
       - name: Download Release Artifact
         uses: actions/download-artifact@v8
         with:
-          name: ${{ needs.build.outputs.artifactName }}
-          path: ./build/distributions
+          name: ${{ needs.build.outputs.filename }}
+          path: ${{ needs.build.outputs.path }}
 
       # Create GitHub release with mode inferred from plugin version
       - name: Create Release
@@ -301,10 +302,11 @@ jobs:
         run: |
           VERSION="${{ needs.build.outputs.version }}"
           TAG="v$VERSION"
-          ls -la ./build/distributions || true
-          ZIP_PATH="$(find ./build/distributions -type f -name '*.zip' | head -n 1)"
+          ls -la ${{ needs.build.outputs.path }} || true
+          BUILD_ARTIFACT="${{ needs.build.outputs.path }}/${{ needs.build.outputs.filename }}"
+          ls -alh $BUILD_ARTIFACT
 
-          if [[ -z "$ZIP_PATH" ]]; then
+          if [[ -z "$BUILD_ARTIFACT" ]]; then
             echo "No plugin ZIP found in ./build/distributions"
             find ./build/distributions -maxdepth 3 -print || true
             exit 1
@@ -331,4 +333,4 @@ jobs:
             $RELEASE_FLAG \
             --title "$TAG" \
             --notes "$RELEASE_NOTES" \
-            "$ZIP_PATH"
+            "$BUILD_ARTIFACT"
