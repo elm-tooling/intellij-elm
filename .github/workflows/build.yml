@@ -267,7 +267,7 @@ jobs:
   # - plain semver => full release (published)
   releaseDraft:
     name: Create/Publish Release
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && (github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip release]'))
     needs: [ build, test, inspectCode, verify ]
     runs-on: ubuntu-latest
     permissions:
