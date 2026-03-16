@@ -115,10 +115,11 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
         emptyText.text = "No build targets configured"
     }
     private val buildSelectedAction = BuildSelectedAction()
+    private val addBuildTargetAction = AddBuildTargetAction()
     private val editBuildTargetAction = EditBuildTargetAction()
     private val actionToolbar = ActionManager.getInstance().createActionToolbar(
         "Elm Compiler Build Targets",
-        DefaultActionGroup(buildSelectedAction, editBuildTargetAction),
+        DefaultActionGroup(buildSelectedAction, addBuildTargetAction, editBuildTargetAction),
         false
     )
 
@@ -225,6 +226,18 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
 
         override fun actionPerformed(e: AnActionEvent) {
             editSelectedTarget()
+        }
+    }
+
+    private inner class AddBuildTargetAction : DumbAwareAction(
+        "Add build target",
+        "Open settings to add a build target",
+        AllIcons.General.Add
+    ) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun actionPerformed(e: AnActionEvent) {
+            project.elmWorkspace.showConfigureToolchainUI()
         }
     }
 }
