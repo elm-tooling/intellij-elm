@@ -8,6 +8,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiSearchHelper
 import com.intellij.psi.search.PsiSearchHelper.SearchCostResult.TOO_MANY_OCCURRENCES
 import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.util.Processor
 import org.elm.lang.core.psi.*
 import org.elm.lang.core.psi.elements.*
 import org.elm.workspace.ElmPackageProject
@@ -45,13 +46,14 @@ class ElmUnusedSymbolInspection : ElmLocalInspection() {
 
         // perform Find Usages, bailing out on the first relevant usage we encounter
         var hasUsages = false
-        for (usage in ReferencesSearch.search(element)) {
+        ReferencesSearch.search(element).forEach(Processor { usage ->
             val isIgnoredUsage = usage.element is ElmTypeAnnotation || usage.element is ElmExposedItemTag
             if (!isIgnoredUsage) {
                 hasUsages = true
-                break
+                return@Processor false
             }
-        }
+            true
+        })
 
         if (!hasUsages) {
             markAsUnused(holder, element, name)
