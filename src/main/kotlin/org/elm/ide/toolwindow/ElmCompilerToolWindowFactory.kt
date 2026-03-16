@@ -46,14 +46,35 @@ import javax.swing.*
 
 class ElmCompilerToolWindowFactory : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val errorTreeViewPanel = ElmCompilerErrorTreeViewPanel(project)
+        var buildTargetsVisible = true
+        var lastBuildTargetsProportion = 0.24f
+        lateinit var buildTargetsPanel: ElmBuildTargetsPanel
+        lateinit var root: OnePixelSplitter
+
+        fun setBuildTargetsVisible(visible: Boolean) {
+            if (visible == buildTargetsVisible) return
+            buildTargetsVisible = visible
+            if (visible) {
+                root.firstComponent = buildTargetsPanel
+                root.proportion = lastBuildTargetsProportion
+            } else {
+                lastBuildTargetsProportion = root.proportion
+                root.firstComponent = null
+            }
+        }
+
+        val errorTreeViewPanel = ElmCompilerErrorTreeViewPanel(
+            project,
+            onToggleBuildTargets = { setBuildTargetsVisible(!buildTargetsVisible) },
+            isBuildTargetsVisible = { buildTargetsVisible }
+        )
         val outputPanel = ElmCompilerOutputPanel(project)
         val messagesAndOutputSplit = OnePixelSplitter(false, 0.56f).apply {
             firstComponent = errorTreeViewPanel
             secondComponent = outputPanel
         }
-        val buildTargetsPanel = ElmBuildTargetsPanel(project)
-        val root = OnePixelSplitter(false, 0.24f).apply {
+        buildTargetsPanel = ElmBuildTargetsPanel(project)
+        root = OnePixelSplitter(false, 0.24f).apply {
             firstComponent = buildTargetsPanel
             secondComponent = messagesAndOutputSplit
         }
@@ -260,11 +281,35 @@ private fun displayTargetName(target: ResolvedBuildTarget, index: Int): String =
         }
     }
 
-private class ElmCompilerErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPanel(project, "Elm Compiler", false, true) {
+private class ElmCompilerErrorTreeViewPanel(
+    project: Project,
+    private val onToggleBuildTargets: () -> Unit,
+    private val isBuildTargetsVisible: () -> Boolean
+) : ElmErrorTreeViewPanel(project, "Elm Compiler", false, true) {
     override fun fillRightToolbarGroup(group: DefaultActionGroup) {
         super.fillRightToolbarGroup(group)
+        group.add(ToggleBuildTargetsAction())
+        group.addSeparator()
         group.add(ExpandAllAction())
         group.add(CollapseAllAction())
+    }
+
+    private inner class ToggleBuildTargetsAction : DumbAwareAction(
+        "Hide build targets",
+        "Hide build targets panel",
+        AllIcons.General.LayoutEditorOnly
+    ) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            val visible = isBuildTargetsVisible()
+            e.presentation.text = if (visible) "Hide build targets" else "Show build targets"
+            e.presentation.description = if (visible) "Hide build targets panel" else "Show build targets panel"
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            onToggleBuildTargets()
+        }
     }
 
     private inner class ExpandAllAction : DumbAwareAction(
@@ -299,6 +344,7 @@ private class ElmCompilerErrorTreeViewPanel(project: Project) : ElmErrorTreeView
 }
 
 private class ElmCompilerOutputPanel(project: Project) : JPanel(BorderLayout()) {
+    private val projectRef = project
     private val console: ConsoleView = TextConsoleBuilderFactory.getInstance().createBuilder(project).console
     private val colorTypeCache = ConcurrentHashMap<String, ConsoleViewContentType>()
     private val cardLayout = CardLayout()
@@ -361,19 +407,18 @@ private class ElmCompilerOutputPanel(project: Project) : JPanel(BorderLayout()) 
     }
 
     private fun renderOutputStream(label: String, text: String, defaultType: ConsoleViewContentType) {
-        console.print("$label:\n", ConsoleViewContentType.SYSTEM_OUTPUT)
         val parsed = parseCompilerOutput(text)
-        if (parsed == null) {
-            console.print(text, defaultType)
-            if (!text.endsWith("\n")) {
-                console.print("\n", defaultType)
-            }
+        if (parsed != null) {
+            renderReport(parsed.report)
+            console.print("\n", ConsoleViewContentType.NORMAL_OUTPUT)
             return
         }
 
-        console.print("Formatted compiler report:\n\n", ConsoleViewContentType.SYSTEM_OUTPUT)
-        renderReport(parsed.report)
-        console.print("\n", ConsoleViewContentType.NORMAL_OUTPUT)
+        console.print("$label:\n", ConsoleViewContentType.SYSTEM_OUTPUT)
+        console.print(text, defaultType)
+        if (!text.endsWith("\n")) {
+            console.print("\n", defaultType)
+        }
     }
 
     private fun parseCompilerOutput(text: String): ParsedCompilerOutput? {
@@ -385,8 +430,8 @@ private class ElmCompilerOutputPanel(project: Project) : JPanel(BorderLayout()) 
     private fun renderReport(report: Report) {
         when (report) {
             is Report.General -> {
-                console.print("${report.title}\n", ConsoleViewContentType.NORMAL_OUTPUT)
-                console.print("${report.path ?: "General"}\n", ConsoleViewContentType.SYSTEM_OUTPUT)
+                console.print("${report.title}\n", titleContentType(report.title))
+                console.print("${displayPath(report.path)}\n", ConsoleViewContentType.SYSTEM_OUTPUT)
                 renderChunks(report.message)
             }
 
@@ -396,15 +441,38 @@ private class ElmCompilerOutputPanel(project: Project) : JPanel(BorderLayout()) 
                         if (errorIndex > 0 || problemIndex > 0) {
                             console.print("\n\n", ConsoleViewContentType.NORMAL_OUTPUT)
                         }
-                        console.print("${problem.title}\n", ConsoleViewContentType.NORMAL_OUTPUT)
+                        console.print("${problem.title}\n", titleContentType(problem.title))
                         console.print(
-                            "${badModule.path}:${problem.region.start.line}:${problem.region.start.column}\n",
+                            "${displayPath(badModule.path)}:${problem.region.start.line}:${problem.region.start.column}\n",
                             ConsoleViewContentType.SYSTEM_OUTPUT
                         )
                         renderChunks(problem.message)
                     }
                 }
             }
+        }
+    }
+
+    private fun titleContentType(title: String): ConsoleViewContentType {
+        val color = if (title.contains("ERROR", ignoreCase = true)) "RED" else null
+        return ElmConsoleChunkStyling.contentTypeFor(
+            prefix = "ELM_COMPILER_TITLE",
+            cache = colorTypeCache,
+            color = color,
+            bold = true,
+            underline = false
+        )
+    }
+
+    private fun displayPath(rawPath: String?): String {
+        if (rawPath.isNullOrBlank()) return "General"
+        val path = runCatching { Path.of(rawPath).normalize() }.getOrNull() ?: return rawPath
+        if (!path.isAbsolute) return rawPath
+        val projectBase = projectRef.basePath?.let { runCatching { Path.of(it).normalize() }.getOrNull() } ?: return rawPath
+        return if (path.startsWith(projectBase)) {
+            projectBase.relativize(path).toString()
+        } else {
+            rawPath
         }
     }
 
