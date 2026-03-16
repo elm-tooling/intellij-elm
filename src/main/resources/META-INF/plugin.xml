@@ -308,7 +308,7 @@
 
         <action id="Elm.RunExternalElmReview"
                 class="org.elm.ide.actions.ElmExternalReviewAction"
-                text="Run elm-review on current file">
+                text="Run elm-review">
             <add-to-group group-id="CodeMenu" anchor="last"/>
         </action>
 

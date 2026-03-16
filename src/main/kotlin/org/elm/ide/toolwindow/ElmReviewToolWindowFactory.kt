@@ -60,6 +60,7 @@ class ElmReviewToolWindowFactory : ToolWindowFactory {
             secondComponent = detailsPanel
         }
         toolWindow.contentManager.addContent(ContentImpl(splitPane, "Elm Review Results", true))
+        hydrateFromCachedMessages(project, toolWindow, errorTreeViewPanel)
 
         with(project.messageBus.connect()) {
             subscribe(ElmReviewService.ELM_REVIEW_WATCH_TOPIC, object : ElmReviewService.ElmReviewWatchListener {
@@ -67,23 +68,37 @@ class ElmReviewToolWindowFactory : ToolWindowFactory {
                 override fun update(baseDirPath: Path, messages: List<ElmReviewError>) {
                     invokeLater {
                         detailsPanel.clear()
-
-                        val issues = mutableListOf<ElmReviewIssue>()
-                        messages.forEach { elmReviewError ->
-                            val sourceLocation = elmReviewError.path ?: return@forEach
-                            val virtualFile = baseDirPath.resolve(sourceLocation).let {
-                                LocalFileSystem.getInstance().findFileByPath(it.toString())
-                            }
-                            val issue = ElmReviewIssue(baseDirPath, sourceLocation, virtualFile, elmReviewError)
-                            issues += issue
-                        }
-
-                        errorTreeViewPanel.setIssues(issues, expand = toolWindow.isVisible)
+                        errorTreeViewPanel.setIssues(toIssues(baseDirPath, messages), expand = toolWindow.isVisible)
                     }
                 }
             })
         }
     }
+
+    private fun hydrateFromCachedMessages(
+        project: Project,
+        toolWindow: ToolWindow,
+        errorTreeViewPanel: ElmReviewErrorTreeViewPanel
+    ) {
+        val activeFile = findActiveElmFile(project) ?: return
+        val activeElmProject = project.elmWorkspace.findProjectForFile(activeFile) ?: return
+        val baseDirPath = activeElmProject.projectDirPath
+        val cachedMessages = project.elmReviewService.messagesForCurrentProject(baseDirPath)
+        errorTreeViewPanel.setIssues(toIssues(baseDirPath, cachedMessages), expand = toolWindow.isVisible)
+    }
+}
+
+private fun toIssues(baseDirPath: Path, messages: List<ElmReviewError>): List<ElmReviewIssue> {
+    val issues = mutableListOf<ElmReviewIssue>()
+    messages.forEach { elmReviewError ->
+        val sourceLocation = elmReviewError.path ?: return@forEach
+        val virtualFile = baseDirPath.resolve(sourceLocation).let {
+            LocalFileSystem.getInstance().findFileByPath(it.toString())
+        }
+        val issue = ElmReviewIssue(baseDirPath, sourceLocation, virtualFile, elmReviewError)
+        issues += issue
+    }
+    return issues
 }
 
 private class ElmReviewDetailsPanel(project: Project) : JPanel(BorderLayout()) {
@@ -285,7 +300,7 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
     }
 
     private inner class RunOnProjectAction : DumbAwareAction(
-        "Run on project",
+        "Run elm-review",
         "Run elm-review on the project for the current editor file",
         AllIcons.Actions.RunAll
     ) {
@@ -298,7 +313,7 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
         override fun actionPerformed(e: AnActionEvent) {
             val elmProject = activeEditorElmProject(e) ?: return
             saveAllDocuments()
-            projectRef.elmReviewService.runReview(elmProject.projectDirPath, elmProject)
+            projectRef.elmReviewService.runReviewFromManualAction(elmProject.projectDirPath, elmProject)
         }
     }
 
@@ -330,7 +345,7 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
         }
 
         override fun actionPerformed(e: AnActionEvent) {
-            collapseAll()
+            collapseAllRows()
         }
     }
 
@@ -399,6 +414,12 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
             node = node.parent as? DefaultMutableTreeNode ?: break
         }
         return null
+    }
+
+    private fun collapseAllRows() {
+        for (row in myTree.rowCount - 1 downTo 0) {
+            myTree.collapseRow(row)
+        }
     }
 
     private fun applyFixes(targetIssues: List<ElmReviewIssue>) {

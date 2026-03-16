@@ -28,6 +28,7 @@ class ElmReviewService(private val project: Project) {
 
     private val runningReviews: MutableSet<Path> = ConcurrentHashMap.newKeySet()
     private val pendingReviews: MutableSet<Path> = ConcurrentHashMap.newKeySet()
+    private val pendingForcePublishReviews: MutableSet<Path> = ConcurrentHashMap.newKeySet()
     private val missingExecutableNotified: MutableSet<Path> = ConcurrentHashMap.newKeySet()
     private val messages: MutableMap<Path, List<ElmReviewError>> = ConcurrentHashMap()
     private val lastRequestedStampByFile: MutableMap<Path, Long> = ConcurrentHashMap()
@@ -53,10 +54,18 @@ class ElmReviewService(private val project: Project) {
     }
 
     fun runReview(projectBasePath: Path) {
-        runReview(projectBasePath, elmProjectHint = null)
+        runReview(projectBasePath, elmProjectHint = null, forcePublish = false)
     }
 
     fun runReview(projectBasePath: Path, elmProjectHint: ElmProject?) {
+        runReview(projectBasePath, elmProjectHint = elmProjectHint, forcePublish = false)
+    }
+
+    fun runReviewFromManualAction(projectBasePath: Path, elmProjectHint: ElmProject?) {
+        runReview(projectBasePath, elmProjectHint = elmProjectHint, forcePublish = true)
+    }
+
+    private fun runReview(projectBasePath: Path, elmProjectHint: ElmProject?, forcePublish: Boolean) {
         if (!project.elmSettings.toolchain.isElmReviewOnTheFlyEnabled) return
         if (!projectBasePath.resolve("elm.json").exists()) return
         if (!projectBasePath.resolve("review").exists()) return
@@ -65,6 +74,9 @@ class ElmReviewService(private val project: Project) {
 
         if (!runningReviews.add(projectBasePath)) {
             pendingReviews.add(projectBasePath)
+            if (forcePublish) {
+                pendingForcePublishReviews.add(projectBasePath)
+            }
             return
         }
 
@@ -138,7 +150,8 @@ class ElmReviewService(private val project: Project) {
                 }
 
                 val previous = messages[projectBasePath]
-                if (previous != null && reviewErrors.deepContentEquals(previous)) {
+                val unchanged = previous != null && reviewErrors.deepContentEquals(previous)
+                if (unchanged && !forcePublish) {
                     return@executeOnPooledThread
                 }
                 messages[projectBasePath] = reviewErrors
@@ -177,7 +190,11 @@ class ElmReviewService(private val project: Project) {
                     project.elmTaskStatus.reviewFinished()
                 }
                 if (pendingReviews.remove(projectBasePath) && !project.isDisposed) {
-                    runReview(projectBasePath, elmProjectHint = null)
+                    runReview(
+                        projectBasePath,
+                        elmProjectHint = null,
+                        forcePublish = pendingForcePublishReviews.remove(projectBasePath)
+                    )
                 }
             }
         }
@@ -194,7 +211,7 @@ class ElmReviewService(private val project: Project) {
         if (previousStamp != null && previousStamp >= documentModificationStamp) return
         lastRequestedStampByFile[sourceFilePath] = documentModificationStamp
         markReviewRequested(projectBasePath)
-        runReview(projectBasePath, elmProjectHint = elmProjectHint)
+        runReview(projectBasePath, elmProjectHint = elmProjectHint, forcePublish = false)
     }
 
     private fun markReviewRequested(projectBasePath: Path): Long {

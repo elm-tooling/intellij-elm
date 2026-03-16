@@ -68,7 +68,7 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
                     else {
                         val reader = JsonReader(json.byteInputStream().bufferedReader())
                         reader.strictness = Strictness.LENIENT
-                        val msgs = sortElmReviewErrors(reader.readErrorReport())
+                        val msgs = reader.readErrorReport()
                         if (currentFile != null) {
                             val predicate: (ElmReviewError) -> Boolean = { it.path == currentFile.pathRelative(project).toString() }
                             val sortedMessages = msgs.filter(predicate) + msgs.filterNot(predicate)
@@ -138,16 +138,6 @@ internal fun buildReviewCommandLine(
             )
         }
         .withParameters(arguments)
-}
-
-internal fun sortElmReviewErrors(errors: List<ElmReviewError>): List<ElmReviewError> {
-    return errors.sortedWith(
-        compareBy(
-            { it.path.orEmpty() },
-            { it.region?.start?.line ?: Int.MAX_VALUE },
-            { it.region?.start?.column ?: Int.MAX_VALUE }
-        )
-    )
 }
 
 @Throws(ExecutionException::class)
