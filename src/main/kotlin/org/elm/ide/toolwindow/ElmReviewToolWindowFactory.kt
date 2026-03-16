@@ -235,6 +235,21 @@ internal fun elmReviewTreeMessage(error: ElmReviewError): String {
     }
 }
 
+internal fun elmReviewTreeRuleLabel(error: ElmReviewError, isFixable: Boolean, showSuppressed: Boolean): String {
+    val parts = mutableListOf<String>()
+    val rule = error.rule.orEmpty().trim()
+    if (rule.isNotEmpty()) {
+        parts += rule
+    }
+    if (isFixable) {
+        parts += "(fix)"
+    }
+    if (showSuppressed && error.suppressed != true) {
+        parts += "(unsuppressed)"
+    }
+    return parts.joinToString(" ")
+}
+
 private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPanel(project, "elm-review", false, true) {
     private val projectRef = project
     private var allIssues: List<ElmReviewIssue> = emptyList()
@@ -263,13 +278,13 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
             // Encode 1-based index so the first issue has a marker too.
             val encodedIndex = "\u200B".repeat(index + 1)
             val elmReviewError = issue.error
-            val ruleText = (elmReviewError.rule ?: "") + if (issue.isFixable) " (auto-fix)" else ""
+            val ruleText = elmReviewTreeRuleLabel(elmReviewError, issue.isFixable, showSuppressed)
             val treeMessage = elmReviewTreeMessage(elmReviewError)
             val location = elmReviewLocation(elmReviewError)
             if (location == null) {
                 addErrorMessage(
                     MessageCategory.SIMPLE,
-                    arrayOf("$encodedIndex$ruleText:", treeMessage),
+                    arrayOf("$encodedIndex$ruleText", treeMessage),
                     issue.virtualFile,
                     0,
                     0
@@ -277,7 +292,7 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
             } else {
                 addErrorMessage(
                     MessageCategory.SIMPLE,
-                    arrayOf("$encodedIndex$ruleText:", treeMessage),
+                    arrayOf("$encodedIndex$ruleText", treeMessage),
                     issue.virtualFile,
                     location.first,
                     location.second
@@ -297,6 +312,12 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
         group.add(ShowSuppressedAction())
         group.add(FixSelectedIssueAction())
         group.add(FixAllIssuesAction())
+    }
+
+    override fun addExtraPopupMenuActions(group: DefaultActionGroup) {
+        super.addExtraPopupMenuActions(group)
+        group.addSeparator()
+        group.add(FixSelectedIssueAction())
     }
 
     private inner class RunOnProjectAction : DumbAwareAction(

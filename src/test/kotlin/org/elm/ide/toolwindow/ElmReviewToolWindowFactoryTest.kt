@@ -37,4 +37,17 @@ class ElmReviewToolWindowFactoryTest {
         }
         assertEquals("Line one\nLine two", elmReviewTreeMessage(error))
     }
+
+    @Test
+    fun `elmReviewTreeRuleLabel uses fix marker format`() {
+        val error = ElmReviewError(rule = "NoDebug.Log", suppressed = false)
+        assertEquals("NoDebug.Log (fix)", elmReviewTreeRuleLabel(error, isFixable = true, showSuppressed = false))
+    }
+
+    @Test
+    fun `elmReviewTreeRuleLabel adds unsuppressed marker only in mixed view`() {
+        val error = ElmReviewError(rule = "NoDebug.Log", suppressed = false)
+        assertEquals("NoDebug.Log", elmReviewTreeRuleLabel(error, isFixable = false, showSuppressed = false))
+        assertEquals("NoDebug.Log (unsuppressed)", elmReviewTreeRuleLabel(error, isFixable = false, showSuppressed = true))
+    }
 }
