@@ -16,7 +16,9 @@ internal fun augmentPathForNodeBackedTool(
     suggestedTools: Map<String, Path?>
 ) {
     val pathKey = env.keys.firstOrNull { it.equals("PATH", ignoreCase = true) } ?: "PATH"
-    val existing = env[pathKey].orEmpty()
+    val existing = env[pathKey]
+        .takeUnless { it.isNullOrBlank() }
+        ?: System.getenv(pathKey).orEmpty().ifBlank { System.getenv("PATH").orEmpty() }
     val separator = File.pathSeparator
     val extraDirs = linkedSetOf<String>()
 
