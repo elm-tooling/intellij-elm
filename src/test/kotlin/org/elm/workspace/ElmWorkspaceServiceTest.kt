@@ -294,7 +294,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
               <elmProjects>
                 <project path="$projectPathString" />
               </elmProjects>
-              <settings elmCompilerPath="${toolchain.elmCompilerPath}" compilerType="ELM" elmFormatPath="${toolchain.elmFormatPath}" elmTestPath="${toolchain.elmTestPath}" elmReviewPath="" isElmFormatOnSaveEnabled="true" isElmReviewOnTheFlyEnabled="true" isElmBuildOnSaveEnabled="false" />
+              <settings elmCompilerPath="${toolchain.elmCompilerPath}" compilerType="ELM" elmFormatPath="${toolchain.elmFormatPath}" elmTestPath="${toolchain.elmTestPath}" elmReviewPath="" elmReviewConfigPath="" isElmFormatOnSaveEnabled="true" isElmReviewOnTheFlyEnabled="true" isElmBuildOnSaveEnabled="false" />
             </state>
             """.trimIndent()
 

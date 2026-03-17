@@ -64,7 +64,10 @@ class ElmNeedsConfigNotificationProvider(
             return badToolchainPanel("elm-format on save is enabled, but elm-format is not configured")
         }
 
-        val hasElmReviewConfig = elmProject.projectDirPath.resolve("review").exists()
+        val hasElmReviewConfig = resolveElmReviewConfigDir(
+            elmProject.projectDirPath,
+            workspace.rawSettings?.elmReviewConfigPath.orEmpty()
+        ).exists()
         if (toolchain.isElmReviewOnTheFlyEnabled && hasElmReviewConfig) {
             if (toolchain.elmReviewPath == null) {
                 return badToolchainPanel("elm-review on save is enabled, but elm-review is not configured")

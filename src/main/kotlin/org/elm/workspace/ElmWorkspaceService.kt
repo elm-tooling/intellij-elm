@@ -121,6 +121,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         val elmFormatPath: String = "",
         val elmTestPath: String = "",
         val elmReviewPath: String = "",
+        val elmReviewConfigPath: String = "",
         val isElmFormatOnSaveEnabled: Boolean = DEFAULT_FORMAT_ON_SAVE,
         val isElmReviewOnTheFlyEnabled: Boolean = DEFAULT_REVIEW_ON_THE_FLY,
         val isElmBuildOnSaveEnabled: Boolean = DEFAULT_BUILD_ON_SAVE,
@@ -676,6 +677,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         settingsElement.setAttribute("elmFormatPath", raw.elmFormatPath)
         settingsElement.setAttribute("elmTestPath", raw.elmTestPath)
         settingsElement.setAttribute("elmReviewPath", raw.elmReviewPath)
+        settingsElement.setAttribute("elmReviewConfigPath", raw.elmReviewConfigPath)
         settingsElement.setAttribute("isElmFormatOnSaveEnabled", raw.isElmFormatOnSaveEnabled.toString())
         settingsElement.setAttribute("isElmReviewOnTheFlyEnabled", raw.isElmReviewOnTheFlyEnabled.toString())
         settingsElement.setAttribute("isElmBuildOnSaveEnabled", raw.isElmBuildOnSaveEnabled.toString())
@@ -728,6 +730,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         val elmFormatPath = settingsElement.getAttributeValue("elmFormatPath") ?: ""
         val elmTestPath = settingsElement.getAttributeValue("elmTestPath") ?: ""
         val elmReviewPath = settingsElement.getAttributeValue("elmReviewPath") ?: ""
+        val elmReviewConfigPath = settingsElement.getAttributeValue("elmReviewConfigPath") ?: ""
         val isElmFormatOnSaveEnabled = settingsElement
             .getAttributeValue("isElmFormatOnSaveEnabled")
             .takeIf { it != null && it.isNotBlank() }?.toBoolean()
@@ -781,6 +784,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 elmFormatPath = elmFormatPath,
                 elmTestPath = elmTestPath,
                 elmReviewPath = elmReviewPath,
+                elmReviewConfigPath = elmReviewConfigPath,
                 isElmFormatOnSaveEnabled = isElmFormatOnSaveEnabled,
                 isElmReviewOnTheFlyEnabled = isElmReviewOnTheFlyEnabled,
                 isElmBuildOnSaveEnabled = isElmBuildOnSaveEnabled,
@@ -910,3 +914,12 @@ val Project.elmSettings
 
 val Project.elmToolchain: ElmToolchain
     get() = elmSettings.toolchain
+
+
+fun resolveElmReviewConfigDir(projectBasePath: Path, configuredPath: String): Path {
+    val defaultPath = projectBasePath.resolve("review")
+    val configured = configuredPath.trim()
+    if (configured.isBlank()) return defaultPath.normalize()
+    val configPath = runCatching { Paths.get(configured) }.getOrNull() ?: return defaultPath.normalize()
+    return if (configPath.isAbsolute) configPath.normalize() else projectBasePath.resolve(configPath).normalize()
+}

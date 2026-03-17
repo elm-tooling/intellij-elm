@@ -68,7 +68,11 @@ class ElmReviewService(private val project: Project) {
     private fun runReview(projectBasePath: Path, elmProjectHint: ElmProject?, forcePublish: Boolean) {
         if (!project.elmSettings.toolchain.isElmReviewOnTheFlyEnabled) return
         if (!projectBasePath.resolve("elm.json").exists()) return
-        if (!projectBasePath.resolve("review").exists()) return
+        val elmReviewConfigDir = resolveElmReviewConfigDir(
+            projectBasePath,
+            project.elmWorkspace.rawSettings?.elmReviewConfigPath.orEmpty()
+        )
+        if (!elmReviewConfigDir.exists()) return
 
         val runGeneration = requestedGenerationByProject[projectBasePath] ?: markReviewRequested(projectBasePath)
 
@@ -108,7 +112,7 @@ class ElmReviewService(private val project: Project) {
                 val arguments = buildList {
                     add("--report=json")
                     add("--namespace=intellij-elm")
-                    add("--config=./review")
+                    add("--config=$elmReviewConfigDir")
                     compilerPathForReview?.let { add("--compiler=$it") }
                 }
                 val commandText = buildCommandText(elmReviewExecutablePath, projectBasePath, arguments)
@@ -172,7 +176,7 @@ class ElmReviewService(private val project: Project) {
                     val args = buildList {
                         add("--report=json")
                         add("--namespace=intellij-elm")
-                        add("--config=./review")
+                        add("--config=$elmReviewConfigDir")
                         compilerPathForReview?.let { add("--compiler=$it") }
                     }
                     val commandText = buildCommandText(elmReviewExecutablePath, projectBasePath, args)

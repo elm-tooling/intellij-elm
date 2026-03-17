@@ -86,6 +86,12 @@ class ElmWorkspaceConfigurable(
     private val elmFormatPathField = toolPathTextField(elmFormatTool)
     private val elmTestPathField = toolPathTextField(elmTestTool)
     private val elmReviewPathField = toolPathTextField(elmReviewTool)
+    private val elmReviewConfigPathField = fileSystemPathTextField(
+        this,
+        "Select elm-review config folder",
+        FileChooserDescriptorFactory.createSingleFolderDescriptor()
+            .also { it.isForcedToUseIdeaFileChooser = true }
+    )
     private val toolchainCompilerPathField = fileSystemPathTextField(
         this,
         "Select '$elmCompilerTool'",
@@ -203,6 +209,8 @@ class ElmWorkspaceConfigurable(
             }
             block(elmReviewTool) {
                 row("Location:", pathFieldPlusAutoDiscoverButton(elmReviewPathField, elmReviewTool))
+                row("Config folder:", elmReviewConfigPathField)
+                noteRow("Blank uses ./review (project-relative). Relative and absolute paths are supported.")
                 row("Version:", elmReviewVersionLabel)
                 row("Compiler used:", elmReviewCompilerStatusLabel)
                 row("Run when file saved?", elmReviewOnTheFlyCheckbox)
@@ -566,12 +574,14 @@ class ElmWorkspaceConfigurable(
         val isElmReviewOnTheFlyEnabled = settings?.isElmReviewOnTheFlyEnabled
         val elmTestPath = settings?.elmTestPath
         val elmReviewPath = settings?.elmReviewPath
+        val elmReviewConfigPath = settings?.elmReviewConfigPath
 
         if (elmCompilerPath != null) toolchainCompilerPathField.text = elmCompilerPath
         if (elmFormatPath != null) elmFormatPathField.text = elmFormatPath
         elmFormatOnSaveCheckbox.isSelected = isElmFormatOnSaveEnabled == true
         if (elmTestPath != null) elmTestPathField.text = elmTestPath
         if (elmReviewPath != null) elmReviewPathField.text = elmReviewPath
+        elmReviewConfigPathField.text = elmReviewConfigPath ?: ""
         elmReviewOnTheFlyCheckbox.isSelected = isElmReviewOnTheFlyEnabled != false
 
         buildTargetsByManifest.clear()
@@ -645,6 +655,7 @@ class ElmWorkspaceConfigurable(
                 elmFormatPath = elmFormatPathField.text,
                 elmTestPath = elmTestPathField.text,
                 elmReviewPath = elmReviewPathField.text,
+                elmReviewConfigPath = elmReviewConfigPathField.text,
                 isElmFormatOnSaveEnabled = isOnSaveHookEnabledAndSelected(),
                 isElmReviewOnTheFlyEnabled = elmReviewOnTheFlyCheckbox.isSelected,
                 buildTargetsByManifest = buildTargets
@@ -667,6 +678,7 @@ class ElmWorkspaceConfigurable(
             || elmFormatPathField.text != settings.elmFormatPath
             || elmTestPathField.text != settings.elmTestPath
             || elmReviewPathField.text != settings.elmReviewPath
+            || elmReviewConfigPathField.text != settings.elmReviewConfigPath
             || elmReviewOnTheFlyCheckbox.isSelected != settings.isElmReviewOnTheFlyEnabled
             || isOnSaveHookEnabledAndSelected() != settings.isElmFormatOnSaveEnabled
             || currentTargets != settings.buildTargetsByManifest
