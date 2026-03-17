@@ -18,6 +18,12 @@
 *   Fixed: parsing of custom type values (#47)
 *   Fixed: more robust detection of `node` for elm-review and elm-test (#48)
 *   Fixed: remove untilBuild for good (#43)
+*   Fixed: elm-review message formatting (#58)
+*   Fixed: elm-review messages were not consistently ordered (#57)
+*   Fixed: elm-review "Code" menu option re-worded, and execution path was made consistent (#56)
+*   Fixed: Simplified elm compiler output console (#55)
+*   Fixed: Build targets panel can be hidden (#53)
+*   Fixed: Add a "New" build target button to elm compiler panel (#52)
 
 ## [5.2.0] - 2025-10-21
 *   Major code review and clean-up (@ahankinson)
