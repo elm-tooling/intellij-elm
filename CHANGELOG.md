@@ -3,6 +3,8 @@
 # Changelog for et-intellij-elm
 
 ## [Unreleased]
+
+## [6.0.0] - 2026-04-13
 *   Fixed: Reworked the elm-review panel (#19)
 *   Fixed: Rebuilt the elm compiler panel (#17)
 *   Restructured how the elm compiler is defined
