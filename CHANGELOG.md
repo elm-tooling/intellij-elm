@@ -4,6 +4,29 @@
 
 ## [Unreleased]
 
+## [6.0.0] - 2026-04-13
+*   Fixed: Reworked the elm-review panel (#19)
+*   Fixed: Rebuilt the elm compiler panel (#17)
+*   Restructured how the elm compiler is defined
+*   Permit multiple compilers, and multiple entry points simultaneously
+*   Added support for elm-test-rs (in addition to elm-test)
+*   Added support for elm-wrap
+*   Optimized unused symbol lookups
+*   Change icons to use SVG instead of PNG; adjust contrast for legibility
+*   Fixed deprecated APIs and review warnings
+*   Fixed: remove "friendly messages" panel. Individual tools now show dedicated consoles instead of sharing this one (#25)
+*   Fixed: clicking on a module, including sub-parts of the module name, will show where it is used (#49)
+*   Fixed: functions listed in the exposure list in a package will not show as unused (#50)
+*   Fixed: parsing of custom type values (#47)
+*   Fixed: more robust detection of `node` for elm-review and elm-test (#48)
+*   Fixed: remove untilBuild for good (#43)
+*   Fixed: elm-review message formatting (#58)
+*   Fixed: elm-review messages were not consistently ordered (#57)
+*   Fixed: elm-review "Code" menu option re-worded, and execution path was made consistent (#56)
+*   Fixed: Simplified elm compiler output console (#55)
+*   Fixed: Build targets panel can be hidden (#53)
+*   Fixed: Add a "New" build target button to elm compiler panel (#52)
+
 ## [5.2.0] - 2025-10-21
 *   Major code review and clean-up (@ahankinson)
 *   Fixes a plugin crash when using the expose function (@ahankinson)

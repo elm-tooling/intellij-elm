@@ -1,6 +1,5 @@
 package org.elm.workspace.compiler
 
-import junit.framework.TestCase
 import org.elm.lang.ElmTestBase
 import org.intellij.lang.annotations.Language
 import org.junit.Test
@@ -48,7 +47,7 @@ class ElmCompilerJsonToHtmlTest : ElmTestBase() {
         val expectedHtml =
             """<html><body style="font-family: monospace; font-weight: bold"><span style="color: #4F9DA6">This&nbsp;value&nbsp;is&nbsp;not&nbsp;a&nbsp;function,&nbsp;but&nbsp;it&nbsp;was&nbsp;given&nbsp;1&nbsp;argument.<br><br>1|&nbsp;blah&nbsp;=&nbsp;"blah"&nbsp;32<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span style="color: #FF5959;">^^^^^^</span><span style="color: #4F9DA6"><br>Are&nbsp;there&nbsp;any&nbsp;missing&nbsp;commas?&nbsp;Or&nbsp;missing&nbsp;parentheses?</span></body></html>"""
 
-        TestCase.assertEquals(
+        assertEquals(
             listOf(
                 ElmError(
                     title = "TOO MANY ARGS",
@@ -87,7 +86,7 @@ class ElmCompilerJsonToHtmlTest : ElmTestBase() {
         val expectedHtml =
             """<html><body style="font-family: monospace; font-weight: bold"><span style="color: #4F9DA6">Your&nbsp;module&nbsp;imports&nbsp;form&nbsp;a&nbsp;cycle:<br><br>&nbsp;&nbsp;&nbsp;&nbsp;┌─────┐<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;</span><span style="color: #FACF5A;">Main</span><span style="color: #4F9DA6"><br>&nbsp;&nbsp;&nbsp;&nbsp;└─────┘<br><br>Learn&nbsp;more&nbsp;about&nbsp;why&nbsp;this&nbsp;is&nbsp;disallowed&nbsp;and&nbsp;how&nbsp;to&nbsp;break&nbsp;cycles<br>here:<a href="https://elm-lang.org/0.19.0/import-cycles">https://elm-lang.org/0.19.0/import-cycles</a></span></body></html>"""
 
-        TestCase.assertEquals(
+        assertEquals(
             listOf(
                 ElmError(
                     title = "IMPORT CYCLE",
@@ -141,7 +140,7 @@ class ElmCompilerJsonToHtmlTest : ElmTestBase() {
             )
         )
 
-        TestCase.assertEquals(expectedValue, elmJsonToCompilerMessages(json))
+        assertEquals(expectedValue, elmJsonToCompilerMessages(json))
     }
 
     @Test
@@ -187,7 +186,7 @@ class ElmCompilerJsonToHtmlTest : ElmTestBase() {
         val expectedHtml =
             """<html><body style="font-family: monospace; font-weight: bold"><span style="color: #4F9DA6">The&nbsp;`foo`&nbsp;value&nbsp;is&nbsp;defined&nbsp;directly&nbsp;in&nbsp;terms&nbsp;of&nbsp;itself,&nbsp;causing&nbsp;an&nbsp;infinite&nbsp;loop.</span><span style="text-decoration: underline;color: white;">Hint</span><span style="color: #4F9DA6">:&nbsp;The&nbsp;root&nbsp;problem&nbsp;is&nbsp;often&nbsp;a&nbsp;typo&nbsp;in&nbsp;some&nbsp;variable&nbsp;name,&nbsp;but&nbsp;I&nbsp;recommend<br>reading&nbsp;<a href="https://elm-lang.org/0.19.0/bad-recursion">https://elm-lang.org/0.19.0/bad-recursion</a>&nbsp;for&nbsp;more&nbsp;detailed&nbsp;advice,<br>especially&nbsp;if&nbsp;you&nbsp;actually&nbsp;do&nbsp;need&nbsp;a&nbsp;recursive&nbsp;value.</span></body></html>"""
 
-        TestCase.assertEquals(
+        assertEquals(
             listOf(
                 ElmError(
                     title = "CYCLIC DEFINITION",

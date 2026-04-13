@@ -31,7 +31,6 @@ import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.CharsetToolkit
 import com.intellij.testFramework.LexerTestCase
-import com.intellij.testFramework.UsefulTestCase
 import org.elm.lang.ElmTestCase
 import org.elm.lang.pathToGoldTestFile
 import org.elm.lang.pathToSourceTestFile
@@ -59,9 +58,9 @@ abstract class ElmLexerTestCaseBase : LexerTestCase(), ElmTestCase {
     override fun doTest(@NonNls text: String, expected: String?, lexer: Lexer) {
         val result = printTokens(text, 0, lexer)
         if (expected != null) {
-            UsefulTestCase.assertSameLines(expected, result)
+            assertSameLines(expected, result)
         } else {
-            UsefulTestCase.assertSameLinesWithFile(pathToGoldTestFile(getTestName(false)).toFile().canonicalPath, result)
+            assertSameLinesWithFile(pathToGoldTestFile(getTestName(false)).toFile().canonicalPath, result)
         }
     }
 }

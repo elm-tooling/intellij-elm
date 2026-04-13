@@ -1,6 +1,5 @@
 package org.elm.ide.refactoring
 
-import junit.framework.TestCase
 import org.elm.lang.ElmTestBase
 import org.elm.lang.core.psi.ElmExpressionTag
 import org.elm.lang.core.psi.indentStyle
@@ -561,7 +560,7 @@ f =
         withMockTargetExpressionChooser(object : ExtractExpressionUi {
             override fun chooseTarget(exprs: List<ElmExpressionTag>): ElmExpressionTag {
                 shownTargetChooser = true
-                TestCase.assertEquals(exprs.map { it.text }, expressions)
+                assertEquals(exprs.map { it.text }, expressions)
                 return exprs[target]
             }
         }) {

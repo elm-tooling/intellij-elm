@@ -10,7 +10,7 @@ import org.elm.lang.core.psi.elements.ElmImportClause
 import org.elm.lang.core.psi.elements.ElmTypeAliasDeclaration
 import org.elm.lang.core.psi.elements.ElmTypeDeclaration
 import org.elm.lang.core.psi.globalModificationTracker
-import org.elm.lang.core.stubs.index.ElmModulesIndex
+import org.elm.lang.core.stubs.index.ElmModules
 
 private val EXPOSED_VALUES_KEY: Key<ParameterizedCachedValue<ExposedNames, ElmFile>> = Key.create("EXPOSED_VALUES_KEY")
 private val EXPOSED_TYPES_KEY: Key<ParameterizedCachedValue<ExposedNames, ElmFile>> = Key.create("EXPOSED_TYPES_KEY")
@@ -32,7 +32,7 @@ class ExposedNames(val elements: Array<ElmNamedElement>) {
  * @param qualifierPrefix The name of a module or an alias
  * @param clientFile The Elm file from which the search should be performed
  * @param importsOnly If true, include only modules reachable via imports (implicit and explicit).
- *                    Otherwise, include all modules which could be reached by the file's [ElmProject]
+ *                    Otherwise, include all modules which could be reached by the file's [org.elm.workspace.ElmProject]
  */
 class QualifiedImportScope(
         private val qualifierPrefix: String,
@@ -40,7 +40,7 @@ class QualifiedImportScope(
         private val importsOnly: Boolean = true
 ) {
     fun getExposedValue(name: String): ElmNamedElement? {
-        return scopes().mapNotNull { it.getExposedValues()[name] }.firstOrNull()
+        return scopes().firstNotNullOfOrNull { it.getExposedValues()[name] }
     }
 
     fun getExposedValues(): Sequence<ElmNamedElement> {
@@ -48,7 +48,7 @@ class QualifiedImportScope(
     }
 
     fun getExposedType(name: String): ElmNamedElement? {
-        return scopes().mapNotNull { it.getExposedTypes()[name] }.firstOrNull()
+        return scopes().firstNotNullOfOrNull { it.getExposedTypes()[name] }
     }
 
     fun getExposedTypes(): Sequence<ElmNamedElement> {
@@ -56,7 +56,7 @@ class QualifiedImportScope(
     }
 
     fun getExposedConstructor(name: String): ElmNamedElement? {
-        return scopes().mapNotNull { it.getExposedConstructors()[name] }.firstOrNull()
+        return scopes().firstNotNullOfOrNull { it.getExposedConstructors()[name] }
     }
 
     fun getExposedConstructors(): Sequence<ElmNamedElement> {
@@ -69,7 +69,7 @@ class QualifiedImportScope(
             yieldAll(explicitScopes())
             yieldAll(implicitScopes())
         } else {
-            val projectWideScopes = ElmModulesIndex.getAll(listOf(qualifierPrefix), clientFile)
+            val projectWideScopes = ElmModules.getAll(listOf(qualifierPrefix), clientFile)
                     .asSequence().map { ImportScope(it.elmFile) }
             val allScopes = explicitScopes() + implicitScopes() + projectWideScopes
             yieldAll(allScopes.distinctBy { it.elmFile.virtualFile.path })
@@ -97,7 +97,7 @@ class ImportScope(val elmFile: ElmFile) {
          */
         fun fromImportDecl(importDecl: ElmImportClause): ImportScope? {
             val moduleName = importDecl.referenceName
-            return ElmModulesIndex.get(moduleName, importDecl.elmFile)
+            return ElmModules.get(moduleName, importDecl.elmFile)
                     ?.let { ImportScope(it.elmFile) }
         }
     }

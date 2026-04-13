@@ -1,27 +1,23 @@
 package org.elm.ide.docs
 
-import com.intellij.codeInsight.documentation.DocumentationManager
+import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.psi.PsiElement
-import com.intellij.testFramework.UsefulTestCase.assertSameLines
 import org.elm.lang.ElmTestBase
 import org.intellij.lang.annotations.Language
-import org.junit.Test
-
-import org.junit.Assert.*
 
 abstract class ElmDocumentationProviderTest : ElmTestBase() {
-    protected inline fun doTest(
+    protected fun doTest(
             @Language("Elm") code: String,
-            @Language("Html") expected: String,
-            block: ElmDocumentationProvider.(PsiElement, PsiElement?) -> String?
+            @Language("Html") expected: String
     ) {
         addFileToFixture(code)
 
         val (originalElement, _, offset) = findElementWithDataAndOffsetInEditor<PsiElement>()
-        val element = DocumentationManager.getInstance(project)
-                .findTargetElement(myFixture.editor, offset, myFixture.file, originalElement)!!
+        val element = TargetElementUtil.getInstance()
+            .findTargetElement(myFixture.editor, TargetElementUtil.getInstance().allAccepted, offset)
+            ?: originalElement
 
-        val actual = ElmDocumentationProvider().block(element, originalElement)?.trim()!!
+        val actual = ElmDocumentationProvider().generateDoc(element, originalElement)?.trim()!!
         assertSameLines(expected.trimIndent(), actual)
     }
 }

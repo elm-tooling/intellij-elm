@@ -8,10 +8,6 @@
 package org.elm.ide.notifications
 
 import com.intellij.notification.*
-import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.DataContext
-import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.project.Project
 
 private val pluginNotifications: NotificationGroup
@@ -40,9 +36,4 @@ fun Project.showBalloon(
         )
     }
     Notifications.Bus.notify(notification, this)
-}
-
-fun executeAction(action: AnAction, place: String, dataContext: DataContext) {
-    val event = AnActionEvent.createFromAnAction(action, null, place, dataContext)
-    ActionUtil.performActionDumbAwareWithCallbacks(action, event)
 }

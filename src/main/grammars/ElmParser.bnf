@@ -301,6 +301,7 @@ private Atom ::=
     | UnitExpr
     | FieldAccessExpr
     | TupleOrParenExpr
+    | TupleExpr
     | ValueExpr
     | FieldAccessorFunctionExpr
     | ListExpr
@@ -494,7 +495,7 @@ private ParenthesizedPattern ::=
     LEFT_PARENTHESIS Pattern RIGHT_PARENTHESIS
 
 private SingularUnionPattern ::=
-    Pattern
+    NullaryConstructorArgumentPattern
 
 
 

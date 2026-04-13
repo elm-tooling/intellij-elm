@@ -8,6 +8,7 @@
 package org.elm.lang.core.psi
 
 import com.intellij.injected.editor.VirtualFileWindow
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.SimpleModificationTracker
@@ -19,7 +20,7 @@ import org.elm.lang.core.ElmFileType
 import org.elm.lang.core.psi.elements.ElmFunctionDeclarationLeft
 
 @Service(Service.Level.PROJECT)
-class ElmPsiManager(val project: Project) {
+class ElmPsiManager(val project: Project) : Disposable {
     /**
      * A modification tracker that is incremented on PSI changes that can affect non-local references or inference.
      *
@@ -29,7 +30,7 @@ class ElmPsiManager(val project: Project) {
     val modificationTracker = SimpleModificationTracker()
 
     init {
-        PsiManager.getInstance(project).addPsiTreeChangeListener(CacheInvalidator(), project)
+        PsiManager.getInstance(project).addPsiTreeChangeListener(CacheInvalidator(), this)
     }
 
     inner class CacheInvalidator : PsiTreeChangeAdapter() {
@@ -81,6 +82,8 @@ class ElmPsiManager(val project: Project) {
             }
         }
     }
+
+    override fun dispose() = Unit
 }
 
 private val Project.elmPsiManager: ElmPsiManager

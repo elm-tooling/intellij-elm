@@ -39,7 +39,7 @@ import org.elm.lang.core.ElmLanguage
 import org.jetbrains.annotations.NonNls
 
 
-val relativeFixtures = "org/elm/lang/core/parser/fixtures/"
+const val relativeFixtures = "org/elm/lang/core/parser/fixtures/"
 
 abstract class ElmParsingTestCaseBase(@NonNls dataPath: String)
     : ParsingTestCase(relativeFixtures + dataPath, ElmFileType.EXTENSION, false, ElmParserDefinition())

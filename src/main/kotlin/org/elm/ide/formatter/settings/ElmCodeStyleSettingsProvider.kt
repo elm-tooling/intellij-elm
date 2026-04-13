@@ -9,6 +9,8 @@ import org.elm.lang.core.ElmLanguage
 
 
 class ElmCodeStyleSettingsProvider : CodeStyleSettingsProvider() {
+    override fun getLanguage() = ElmLanguage
+
     override fun getConfigurableDisplayName() = ElmLanguage.displayName
 
     override fun createConfigurable(settings: CodeStyleSettings, modelSettings: CodeStyleSettings): CodeStyleConfigurable {

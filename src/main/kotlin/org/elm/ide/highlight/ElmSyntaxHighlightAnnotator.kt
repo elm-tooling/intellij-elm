@@ -4,10 +4,17 @@ package org.elm.ide.highlight
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.openapi.util.Key
 import com.intellij.psi.PsiElement
+import com.intellij.psi.util.CachedValue
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
 import org.elm.ide.color.ElmColor
+import org.elm.lang.core.psi.ElmFile
 import org.elm.lang.core.psi.ancestors
+import org.elm.lang.core.psi.globalModificationTracker
+import org.elm.lang.core.psi.stubDirectChildrenOfType
 import org.elm.lang.core.psi.elements.*
 import org.elm.lang.core.psi.isTopLevel
 
@@ -116,16 +123,13 @@ class ElmSyntaxHighlightAnnotator : Annotator {
             return
         }
 
-        val functionDeclaration =
-            element.elmFile.children.any { it is ElmValueDeclaration && it.functionDeclarationLeft?.name == element.text }
-        if (functionDeclaration) {
+        val topLevelNames = element.elmFile.topLevelNameLookup()
+        if (element.text in topLevelNames.functionDeclarationNames) {
             applyColor(element, ElmColor.DEFINITION_NAME)
             return
         }
 
-        val isPortAnnotation =
-            element.elmFile.children.any { it is ElmPortAnnotation && it.lowerCaseIdentifier.text == element.text }
-        if (isPortAnnotation) {
+        if (element.text in topLevelNames.portNames) {
             applyColor(element, ElmColor.PORT)
             return
         }
@@ -238,5 +242,26 @@ class ElmSyntaxHighlightAnnotator : Annotator {
             .textAttributes(color.textAttributesKey)
             .range(element.textRange)
             .create()
+    }
+}
+
+private data class TopLevelNameLookup(
+    val functionDeclarationNames: Set<String>,
+    val portNames: Set<String>
+)
+
+private val TOP_LEVEL_NAME_LOOKUP_KEY: Key<CachedValue<TopLevelNameLookup>> =
+    Key.create("org.elm.ide.highlight.TOP_LEVEL_NAME_LOOKUP")
+
+private fun ElmFile.topLevelNameLookup(): TopLevelNameLookup {
+    return CachedValuesManager.getCachedValue(this, TOP_LEVEL_NAME_LOOKUP_KEY) {
+        val functionDeclarationNames = stubDirectChildrenOfType<ElmValueDeclaration>()
+            .mapNotNullTo(mutableSetOf()) { it.functionDeclarationLeft?.name }
+        val portNames = stubDirectChildrenOfType<ElmPortAnnotation>()
+            .mapTo(mutableSetOf()) { it.lowerCaseIdentifier.text }
+        CachedValueProvider.Result.create(
+            TopLevelNameLookup(functionDeclarationNames, portNames),
+            globalModificationTracker
+        )
     }
 }

@@ -68,7 +68,7 @@ class ElmUpperCaseQID : ElmStubbedElement<ElmUpperCaseQIDStub>, ElmQID {
      * record constructors) or the module exists in a hierarchy (in the case of a pure
      * module name in a module decl or import decl).
      *
-     * TODO [kl] this double-duty is a bit strange. Maybe make a separate Psi element?
+     * TODO (kl): this double-duty is a bit strange. Maybe make a separate Psi element?
      */
     override val isQualified: Boolean
         get() = stub?.let { it.qualifierPrefix != "" } ?: (findChildByType<PsiElement>(ElmTypes.DOT) != null)

@@ -123,7 +123,7 @@ object ElmPluginHelper {
 
     private fun stringConstant(op: ElmOperandTag): String {
         return if (op is ElmStringConstantExpr) {
-            PsiTreeUtil.findSiblingForward(op.getFirstChild(), ElmTypes.REGULAR_STRING_PART, null)!!.text
+            PsiTreeUtil.findSiblingForward(op.firstChild, ElmTypes.REGULAR_STRING_PART, null)!!.text
         } else {
             PsiTreeUtil.findChildOfType(op, ElmStringConstantExpr::class.java)!!.text
         }

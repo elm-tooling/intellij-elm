@@ -50,17 +50,31 @@ class RecordConstructorToLiteralIntention :
         //      ElmFunctionCallExpr  (this is the record constructor function)
         //          ElmValueExpr
         //          PsiWhiteSpace    (the current element, sibling of the ElmValueExpr above)
-        val functionCall = when {
-            element is LeafPsiElement &&
+        val functionCall = when (element) {
+            is LeafPsiElement ->
+                if (
                     element.elementType == UPPER_CASE_IDENTIFIER &&
                     element.parent is ElmUpperCaseQID &&
                     element.parent.parent is ElmValueExpr &&
-                    element.parent.parent.parent is ElmFunctionCallExpr -> element.parent.parent.parent as ElmFunctionCallExpr
-            element is PsiWhiteSpace &&
+                    element.parent.parent.parent is ElmFunctionCallExpr
+                ) {
+                    element.parent.parent.parent as ElmFunctionCallExpr
+                } else {
+                    null
+                }
+
+            is PsiWhiteSpace ->
+                if (
                     element.prevSibling is ElmValueExpr &&
-                    element.parent is ElmFunctionCallExpr -> element.parent as ElmFunctionCallExpr
-            else -> return null
-        }
+                    element.parent is ElmFunctionCallExpr
+                ) {
+                    element.parent as ElmFunctionCallExpr
+                } else {
+                    null
+                }
+
+            else -> null
+        } ?: return null
 
         // If we get here, we are in a function call. Check if that function resolves to a record type alias.
         val recordArgNames = ((functionCall.target.reference?.resolve() as? ElmTypeAliasDeclaration)

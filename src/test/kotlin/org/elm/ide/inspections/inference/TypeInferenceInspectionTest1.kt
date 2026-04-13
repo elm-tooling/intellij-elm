@@ -701,6 +701,19 @@ main (Foo foo) = foo
 """)
 
     @Test
+    fun `test matched unparenthesized nullary union pattern in parameter`() = checkByText("""
+type Msg
+    = MySingleMessage
+
+type alias Model =
+    Int
+
+update : Msg -> Model -> Model
+update MySingleMessage model =
+    model + 1
+""")
+
+    @Test
     fun `test mismatched union pattern in parameter`() = checkByText("""
 type Foo = Foo ()
 main : Foo -> Foo

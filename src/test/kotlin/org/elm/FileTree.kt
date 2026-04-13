@@ -33,7 +33,6 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
 import com.intellij.testFramework.IndexingTestUtil
-import groovy.lang.MetaClassImpl
 import org.elm.lang.core.psi.parentOfType
 import org.elm.lang.core.resolve.ElmReferenceElement
 import org.elm.openapiext.fullyRefreshDirectory

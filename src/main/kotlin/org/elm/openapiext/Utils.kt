@@ -23,7 +23,6 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.codeInsight.intention.preview.IntentionPreviewUtils
 import org.jdom.Element
-import org.jdom.input.SAXBuilder
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
@@ -63,6 +62,7 @@ fun fullyRefreshDirectory(directory: VirtualFile) {
     VfsUtil.markDirtyAndRefresh(/* async = */ false, /* recursive = */ true, /* reloadChildren = */ true, directory)
 }
 
+@Suppress("unused")
 fun VirtualFile.findFileBreadthFirst(maxDepth: Int, predicate: (VirtualFile) -> Boolean): VirtualFile? {
     val queue = LinkedList<Pair<VirtualFile, Int>>()
         .also { it.push(this to 0) }
@@ -81,7 +81,8 @@ fun VirtualFile.findFileBreadthFirst(maxDepth: Int, predicate: (VirtualFile) -> 
 val VirtualFile.pathAsPath: Path get() = Paths.get(path)
 fun VirtualFile.pathRelative(project: Project): Path {
     val absPath = Paths.get(path)
-    return absPath.relativeTo(Paths.get(project.basePath))
+    val basePath = project.basePath ?: return absPath
+    return absPath.relativeTo(Paths.get(basePath))
 }
 
 fun VirtualFile.toPsiFile(project: Project): PsiFile? =
@@ -92,8 +93,7 @@ fun Element.toXmlString() =
     JDOMUtil.writeElement(this)
 
 fun elementFromXmlString(xml: String): Element =
-    // TODO(cies) Use JDOMUtil or JDK API (StAX) or XmlDomReader.readXmlAsModel instead (first decide which)
-    SAXBuilder().build(xml.byteInputStream()).rootElement
+    JDOMUtil.load(xml)
 
 
 /**

@@ -2,6 +2,7 @@
 *.ipr
 *.hprof
 .gradle
+.env
 
 build/
 out/
@@ -11,3 +12,5 @@ todos/
 src/main/gen
 .intellijPlatform/
 .DS_Store
+.kotlin
+credentials/

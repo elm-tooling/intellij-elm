@@ -10,7 +10,7 @@ import org.elm.lang.core.resolve.scope.ExpressionScope
 import org.elm.lang.core.resolve.scope.GlobalScope
 import org.elm.lang.core.resolve.scope.ModuleScope
 import org.elm.lang.core.resolve.scope.QualifiedImportScope
-import org.elm.lang.core.stubs.index.ElmModulesIndex
+import org.elm.lang.core.stubs.index.ElmModules
 
 
 /**
@@ -87,7 +87,7 @@ object ElmQualifiableRefSuggestor : Suggestor {
         // assume that the Elm project has a dependency on elm/json which provides Json.Decode and Json.Encode modules
         // if the input text is "Jso" then we would suggest "Json"
         // and if the input text is "Json." then we might suggest "Decode" and "Encode"
-        ElmModulesIndex.getAll(file).asSequence()
+        ElmModules.getAll(file).asSequence()
                 .filter { it.name.startsWith(qualifierPrefix) && it.name != qualifierPrefix }
                 .map { it.name.removePrefix("$qualifierPrefix.").substringBefore('.') }
                 .forEach { result.add(it) }

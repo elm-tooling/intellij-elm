@@ -14,7 +14,6 @@ import org.elm.lang.core.psi.elements.ElmParenthesizedExpr
 import org.elm.lang.core.psi.elements.Pipeline.RightPipeline
 import org.elm.lang.core.withoutExtraParens
 import org.elm.lang.core.withoutParens
-import org.elm.openapiext.runWriteCommandAction
 
 /**
  * An intention action that transforms a series of function applications into a pipeline.
@@ -53,7 +52,7 @@ class PipelineIntention : ElmAtCaretIntentionActionBase<PipelineIntention.Contex
     }
 
     override fun invoke(project: Project, editor: Editor, context: Context) {
-        project.runWriteCommandAction {
+        runPreviewSafeWrite(project) {
             val psiFactory = ElmPsiFactory(project)
             when (context) {
                 is Context.NoPipes -> {

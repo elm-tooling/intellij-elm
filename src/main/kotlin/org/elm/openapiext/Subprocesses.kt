@@ -30,11 +30,10 @@ import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.CapturingProcessHandler
 import com.intellij.execution.process.ProcessOutput
-import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.Disposer
 import com.intellij.util.io.systemIndependentPath
 import org.elm.utils.runAsyncTask
 import java.io.OutputStreamWriter
@@ -73,26 +72,30 @@ fun GeneralCommandLine.execute(
             CapturingProcessHandler(this)
         }
 
-    val processKiller = Disposable { handler.destroyProcess() }
     val alreadyDisposed = runReadAction { project.isDisposed }
     if (alreadyDisposed) {
         return ProcessOutput().apply { setCancelled() }
     }
 
-    Disposer.register(project, processKiller)
-
     try {
-        // see javadoc at OSProcessHandler.checkEdtAndReadAction()
-        val future = runAsyncTask(project, toolName) {
+        fun runProcess(): ProcessOutput {
             val output = handler.runProcess(timeoutInMilliseconds)
             if (output.exitCode != 0) {
                 log.warn("Command $toolName exited with code ${output.exitCode}")
             }
-            output
+            return output
         }
-        return future.join()
+
+        // Keep subprocess work off the EDT; when already off-EDT, avoid nested background tasks.
+        return if (ApplicationManager.getApplication().isDispatchThread) {
+            // see javadoc at OSProcessHandler.checkEdtAndReadAction()
+            val future = runAsyncTask(project, toolName) { runProcess() }
+            future.join()
+        } else {
+            runProcess()
+        }
     } finally {
-        Disposer.dispose(processKiller)
+        handler.destroyProcess()
     }
 }
 

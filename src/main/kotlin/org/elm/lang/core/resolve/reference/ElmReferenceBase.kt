@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElementResolveResult
 import com.intellij.psi.PsiPolyVariantReferenceBase
 import com.intellij.psi.ResolveResult
 import org.elm.lang.core.psi.*
+import org.elm.lang.core.psi.elements.ElmUpperCaseQID
 import org.elm.lang.core.resolve.ElmReferenceElement
 
 
@@ -28,20 +29,22 @@ abstract class ElmReferenceBase<T : ElmReferenceElement>(element: T)
     override fun handleElementRename(newElementName: String): PsiElement {
         val factory = ElmPsiFactory(element.project)
         val identifier = element.referenceNameElement
-        val newId = when (identifier.elementType) {
-            ElmTypes.LOWER_CASE_IDENTIFIER ->
-                factory.createLowerCaseIdentifier(newElementName)
-
-            ElmTypes.UPPER_CASE_IDENTIFIER ->
-                factory.createUpperCaseIdentifier(newElementName)
-
-            ElmTypes.UPPER_CASE_QID ->
+        // IDEA's DFA occasionally treats token-type branches here as unreachable, but rename tests
+        // exercise LOWER/UPPER/OPERATOR identifier replacements via this code path.
+        val newId = when {
+            identifier is ElmUpperCaseQID ->
                 factory.createUpperCaseQID(newElementName)
 
-            ElmTypes.OPERATOR_IDENTIFIER ->
+            identifier.elementType == ElmTypes.LOWER_CASE_IDENTIFIER ->
+                factory.createLowerCaseIdentifier(newElementName)
+
+            identifier.elementType == ElmTypes.UPPER_CASE_IDENTIFIER ->
+                factory.createUpperCaseIdentifier(newElementName)
+
+            identifier.elementType == ElmTypes.OPERATOR_IDENTIFIER ->
                 factory.createOperatorIdentifier(newElementName)
 
-            else -> error("Unsupported identifier type for `$newElementName` (${identifier.elementType}")
+            else -> error("Unsupported identifier type for `$newElementName` (${identifier.elementType})")
         }
         identifier.replace(newId)
         return element

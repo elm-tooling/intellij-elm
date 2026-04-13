@@ -149,9 +149,11 @@ private fun buildSearchScope(includeTests: Boolean, p: ElmProject, intellijProje
  * Return the [VirtualFile] for each Elm module which is exposed by this package.
  */
 private fun ElmPackageProject.exposedFiles(): Sequence<VirtualFile> =
-        exposedModules.mapNotNull { moduleName ->
-            val elmModuleRelativePath = moduleName.replace('.', '/') + ".elm"
-            absoluteSourceDirectories.mapNotNull { srcDirPath ->
-                findFileByPathTestAware(srcDirPath.resolve(elmModuleRelativePath))
-            }.firstOrNull()
-        }.asSequence()
+        sequence {
+            for (moduleName in exposedModules) {
+                val elmModuleRelativePath = moduleName.replace('.', '/') + ".elm"
+                absoluteSourceDirectories.firstNotNullOfOrNull { srcDirPath ->
+                    findFileByPathTestAware(srcDirPath.resolve(elmModuleRelativePath))
+                }?.let { yield(it) }
+            }
+        }

@@ -27,7 +27,7 @@ interface ElmQID : ElmPsiElement {
     val qualifierPrefix: String
 
     /** Returns true if the qualified ID refers to Elm's "Kernel" modules,
-     * which are defined in Javascript. This is useful since we don't (currently)
+     * which are defined in JavaScript. This is useful since we don't (currently)
      * support PsiReferences between JS and Elm
      */
     val isKernelModule: Boolean

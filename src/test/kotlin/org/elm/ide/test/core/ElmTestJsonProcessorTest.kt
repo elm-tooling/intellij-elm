@@ -253,6 +253,19 @@ class ElmTestJsonProcessorTest {
                 "]", (list[1] as TestFailedEvent).localizedFailureMessage)
     }
 
+    @Test
+    fun failFallbackOnEmptyFailuresArray() {
+        val text = "{\"event\":\"testCompleted\",\"status\":\"fail\",\"labels\":[\"Module\",\"Fails\"],\"failures\":[],\"duration\":\"1\"}\n"
+        val obj = getObject(text)
+        val path = ElmTestJsonProcessor.toPath(obj)
+
+        val list = processor.testEvents(path, obj).toList()
+
+        assertEquals(2, list.size.toLong())
+        assertTrue(list[1] is TestFailedEvent)
+        assertEquals("[]", (list[1] as TestFailedEvent).localizedFailureMessage)
+    }
+
     private fun getObject(text: String): JsonObject {
         return Gson().fromJson(text, JsonObject::class.java)
     }
@@ -416,5 +429,30 @@ class ElmTestJsonProcessorTest {
     fun acceptCompileErrorWithoutJson() {
         val list = processor.accept("Compilation failed BLA")
         assertNull(list)
+    }
+
+    @Test
+    fun acceptCompileErrorsWithMissingFieldsFallsBackSafely() {
+        val json = """
+            {
+              "type": "compile-errors",
+              "errors": [
+                {
+                  "problems": [
+                    {
+                      "message": null
+                    }
+                  ]
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val list = processor.accept(json)?.toList()
+        assertEquals(2, list!!.size)
+        assertEquals("Compilation error", list[0].name)
+        assertEquals("Compilation error", list[1].name)
+        assertEquals("elmTestError://::0::0", (list[0] as TestStartedEvent).locationUrl)
+        assertEquals("", (list[1] as TestFailedEvent).localizedFailureMessage)
     }
 }

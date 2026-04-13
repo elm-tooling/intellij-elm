@@ -395,13 +395,21 @@ type Msg = Bar | Baz
             @Language("Elm") after: String) {
         // We use the --EOL marker to avoid editors trimming trailing whitespace, which is
         // significant for this test.
-        super.checkFixByText(fixName, before, after.replace("--EOL", ""), true, false, false)
+        super.checkFixByText(fixName, before, after.replace("--EOL", ""),
+            checkWarn = true,
+            checkInfo = false,
+            checkWeakWarn = false
+        )
     }
 
     private fun checkFixByFileTree(
             fixName: String,
             @Language("Elm") before: String,
             @Language("Elm") after: String) {
-        super.checkFixByFileTree(fixName, before, after.replace("--EOL", ""), true, false, false)
+        super.checkFixByFileTree(fixName, before, after.replace("--EOL", ""),
+            checkWarn = true,
+            checkInfo = false,
+            checkWeakWarn = false
+        )
     }
 }

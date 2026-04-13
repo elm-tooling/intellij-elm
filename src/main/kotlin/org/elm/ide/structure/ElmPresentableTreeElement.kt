@@ -3,7 +3,6 @@ package org.elm.ide.structure
 import com.intellij.ide.structureView.StructureViewTreeElement
 import com.intellij.ide.util.treeView.smartTree.TreeElement
 import com.intellij.pom.Navigatable
-import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiElement
 import org.elm.ide.presentation.getPresentationForStructure
 import org.elm.lang.core.psi.ElmPsiElement
@@ -12,8 +11,9 @@ import org.elm.lang.core.psi.elements.ElmValueDeclaration
 
 
 class ElmPresentableTreeElement(val element: ElmPsiElement)
-    : StructureViewTreeElement,
-    Navigatable by (element as NavigatablePsiElement) {
+    : StructureViewTreeElement {
+
+    private val navigatable: Navigatable? = element as? Navigatable
 
 
     override fun getChildren(): Array<TreeElement> =
@@ -33,12 +33,12 @@ class ElmPresentableTreeElement(val element: ElmPsiElement)
         getPresentationForStructure(element)
 
     override fun navigate(requestFocus: Boolean) {
-        (element as? Navigatable)?.navigate(requestFocus)
+        navigatable?.navigate(requestFocus)
     }
 
-    override fun canNavigate(): Boolean = true
+    override fun canNavigate(): Boolean = navigatable?.canNavigate() == true
 
-    override fun canNavigateToSource(): Boolean = true
+    override fun canNavigateToSource(): Boolean = navigatable?.canNavigateToSource() == true
 
 }
 

@@ -31,7 +31,7 @@ sealed class ElmProject(
     val projectDirPath: Path = manifestPath.parent
 
     /**
-     * The path to the directory containing unit tests, relative to the [projectDirPath]. Typically this will be "tests":
+     * The path to the directory containing unit tests, relative to the [projectDirPath]. Typically, this will be "tests":
      * see [testsDirPath] for more info.
      *
      * Note that this path is normalized (see [Path.normalize]) so can safely be compared to [DEFAULT_TESTS_DIR_NAME].
@@ -43,7 +43,7 @@ sealed class ElmProject(
      * The path to the directory containing unit tests.
      *
      * For packages this will be a directory called "tests", as elm-test requires packages to have tests in a top-level
-     * "tests" directory. For applications the default behaviour is the same as for packages, but optionally tests can
+     * "tests" directory. For applications the default behavior is the same as for packages, but optionally tests can
      * be put in some other directory, as long as when elm-test is called, the path to those tests is specified as a
      * cmd-line argument.
      */
@@ -104,13 +104,21 @@ sealed class ElmProject(
      * This is a looser form of a version check that allows for Elm compiler versions that include
      * alpha/beta/rc suffixes. e.g. "0.19.1-alpha-4"
      */
+    @Suppress("unused")
     fun isCompatibleWith(version: Version) =
-            when (this) {
-                is ElmApplicationProject -> elmVersion.xyz == version.xyz
-                is LamderaApplicationProject -> elmVersion.xyz == version.xyz
-                is ElmPackageProject -> elmVersion.contains(version.xyz)
-                is ElmReviewProject -> elmVersion.xyz == version.xyz
+            if (this is ElmPackageProject) {
+                elmVersion.contains(version.xyz)
+            } else {
+                compilerVersionForAppLikeProject().xyz == version.xyz
             }
+
+    private fun compilerVersionForAppLikeProject(): Version =
+        when (this) {
+            is ElmApplicationProject -> elmVersion
+            is LamderaApplicationProject -> elmVersion
+            is ElmReviewProject -> elmVersion
+            is ElmPackageProject -> error("ElmPackageProject does not have a single compiler version target")
+        }
 
     /**
      * Return `true` iff this package is the core package for the current version of Elm.

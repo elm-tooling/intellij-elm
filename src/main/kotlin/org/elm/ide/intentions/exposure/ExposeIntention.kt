@@ -12,6 +12,9 @@ import com.intellij.codeInsight.intention.preview.IntentionPreviewUtils
  * An intention action that adds a function to a module's `exposing` list.
  */
 open class ExposeIntention : ExposureIntentionBase<ExposeIntention.Context>() {
+    companion object {
+        private const val COMMAND_NAME = "Update Exposing List"
+    }
 
     data class Context(val nameToExpose: String, val exposingList: ElmExposingList)
 
@@ -53,7 +56,7 @@ open class ExposeIntention : ExposureIntentionBase<ExposeIntention.Context>() {
         } else {
             // Real run: perform under a write command so it’s undoable.
             WriteCommandAction.writeCommandAction(project)
-                .withName(text)
+                .withName(COMMAND_NAME)
                 .run<RuntimeException> { applyEdits() }
         }
     }

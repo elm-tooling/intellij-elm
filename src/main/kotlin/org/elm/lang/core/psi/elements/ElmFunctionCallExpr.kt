@@ -35,13 +35,11 @@ class ElmFunctionCallExpr(node: ASTNode) : ElmPsiElementImpl(node), ElmExpressio
     /** The arguments to the function, but with parenthesized expressions unwrapped */
     val argumentsWithoutParens: Sequence<ElmExpressionTag>
         get() =
-            arguments
-                    .map {
-                        if (it is ElmParenthesizedExpr) {
-                            it.expression
-                        } else {
-                            it
-                        }
-                    }
-                    .filterNotNull()
+            arguments.mapNotNull {
+                if (it is ElmParenthesizedExpr) {
+                    it.expression
+                } else {
+                    it
+                }
+            }
 }

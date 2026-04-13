@@ -46,7 +46,7 @@ class ElmStubAccessTest : ElmTestBase() {
 
     override fun setUp() {
         super.setUp()
-        myFixture.copyDirectoryToProject(".", "src")
+        myFixture.copyDirectoryToProject(".", ".")
     }
 
     @Test
@@ -109,10 +109,14 @@ class ElmStubAccessTest : ElmTestBase() {
 
         val work = ArrayDeque<StubElement<*>>()
 
-        VfsUtilCore.visitChildrenRecursively(myFixture.findFileInTempDir("src"), object : VirtualFileVisitor<Void>() {
+        VfsUtilCore.visitChildrenRecursively(myFixture.findFileInTempDir("."), object : VirtualFileVisitor<Void>() {
             override fun visitFileEx(file: VirtualFile): Result {
                 if (!file.isDirectory) {
-                    work.push((psiManager.findFile(file) as PsiFileImpl).stub!!)
+                    val psiFile = psiManager.findFile(file) as? PsiFileImpl
+                    val stub = psiFile?.stub
+                    if (stub != null) {
+                        work.push(stub)
+                    }
                 }
 
                 return CONTINUE

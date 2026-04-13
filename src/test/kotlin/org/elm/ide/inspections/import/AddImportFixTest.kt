@@ -1,6 +1,5 @@
 package org.elm.ide.inspections.import
 
-import com.intellij.openapi.vfs.VirtualFileFilter
 import org.elm.fileTreeFromText
 import org.elm.ide.inspections.ElmInspectionsTestBase
 import org.elm.ide.inspections.ElmUnresolvedReferenceInspection
@@ -501,9 +500,9 @@ main = 2 |. 3
         enableInspection()
         applyQuickFix("Import")
         // auto-adding an import must be done using stubs only
-        checkAstNotLoaded(VirtualFileFilter { file ->
+        checkAstNotLoaded { file ->
             !file.path.endsWith(testProject.fileWithCaret)
-        })
+        }
 
         myFixture.checkResult(replaceCaretMarker(after).trim())
     }

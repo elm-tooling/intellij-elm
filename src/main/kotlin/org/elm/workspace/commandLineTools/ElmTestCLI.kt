@@ -10,6 +10,7 @@ import com.intellij.openapi.project.Project
 import org.elm.openapiext.GeneralCommandLine
 import org.elm.openapiext.Result
 import org.elm.openapiext.execute
+import org.elm.workspace.ElmSuggest
 import org.elm.workspace.ElmProject
 import org.elm.workspace.ParseException
 import org.elm.workspace.Version
@@ -28,15 +29,27 @@ class ElmTestCLI(private val executablePath: Path) {
      * actually invoking the process). The test results will be reported using elm-test's
      * JSON format on stdout.
      *
-     * @param elmCompilerPath The path to the Elm compiler.
+     * @param elmCompilerPath The path to the Elm compiler. If null, elm-test resolves
+     * the compiler from the environment/PATH.
      * @param elmProject The [ElmProject] containing the tests to be run.
      */
-    fun runTestsProcessHandler(elmCompilerPath: Path, elmProject: ElmProject): ProcessHandler {
+    fun runTestsProcessHandler(project: Project, elmCompilerPath: Path?, elmProject: ElmProject): ProcessHandler {
+        val suggestedTools = ElmSuggest.suggestTools(project)
         val commandLine = GeneralCommandLine(executablePath.toString(), "--report=json")
                 .withWorkDirectory(elmProject.projectDirPath.toString())
-                .withParameters("--compiler", elmCompilerPath.toString())
                 .withRedirectErrorStream(true)
                 .withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
+                .apply {
+                    augmentPathForNodeBackedTool(
+                        env = environment,
+                        executablePath = executablePath,
+                        compilerPath = elmCompilerPath,
+                        suggestedTools = suggestedTools
+                    )
+                }
+        if (elmCompilerPath != null) {
+            commandLine.withParameters("--compiler", elmCompilerPath.toString())
+        }
 
         // By default elm-test will process tests in a folder called "tests", under the current working directory
         // (in this case elmProject.projectDirPath). If the project has a custom location for tests we need to supply a
@@ -53,10 +66,20 @@ class ElmTestCLI(private val executablePath: Path) {
 
 
     fun queryVersion(project: Project): Result<Version> {
-        // Output of `elm-test --version` is a single line containing the version number,
-        // e.g. `0.19.0-beta9\n`, trimming off the "-betaN" suffix, if present.
+        // Output of `elm-test --version` can be a plain version or include a binary prefix
+        // (for example: `elm-test-rs 3.0.1`).
         val firstLine = try {
-            GeneralCommandLine(executablePath).withParameters("--version")
+            GeneralCommandLine(executablePath)
+                    .withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
+                    .apply {
+                        augmentPathForNodeBackedTool(
+                            env = environment,
+                            executablePath = executablePath,
+                            compilerPath = null,
+                            suggestedTools = ElmSuggest.suggestTools(project)
+                        )
+                    }
+                    .withParameters("--version")
                     .execute(elmTestTool, project)
                     .stdoutLines
                     .firstOrNull()
@@ -68,12 +91,19 @@ class ElmTestCLI(private val executablePath: Path) {
             return Result.Err("no output from elm-test")
         }
 
-        val trimmedFirstLine = firstLine.takeWhile { it != '-' }
+        return parseVersionLine(firstLine)
+    }
 
-        return try {
-            Result.Ok(Version.parse(trimmedFirstLine))
-        } catch (e: ParseException) {
-            Result.Err("could not parse elm-test version: ${e.message}")
+    companion object {
+        private val VERSION_TOKEN_REGEX = Regex("""\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?""")
+
+        internal fun parseVersionLine(line: String): Result<Version> {
+            val versionText = VERSION_TOKEN_REGEX.find(line)?.value ?: line.trim()
+            return try {
+                Result.Ok(Version.parse(versionText))
+            } catch (e: ParseException) {
+                Result.Err("could not parse elm-test version: ${e.message}")
+            }
         }
     }
 }

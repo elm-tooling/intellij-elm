@@ -1,6 +1,5 @@
 package org.elm.ide.structure
 
-import com.intellij.testFramework.UsefulTestCase
 import org.elm.lang.ElmTestBase
 import org.elm.lang.core.psi.ElmPsiElement
 import org.elm.lang.core.psi.descendantsOfType
@@ -31,7 +30,7 @@ main _ _ =
 """)
 
         val actual = myFixture.file.descendantsOfType<ElmPsiElement>()
-                .mapNotNull { ElmBreadcrumbsProvider.breadcrumbName(it) }
+                .mapNotNull { breadcrumbName(it) }
                 .joinToString(separator = "\n")
 
         val expected = """
@@ -51,6 +50,6 @@ main _ _ =
             if 1 + 2 == 3 then
         """.trimIndent()
 
-        UsefulTestCase.assertSameLines(expected, actual)
+        assertSameLines(expected, actual)
     }
 }

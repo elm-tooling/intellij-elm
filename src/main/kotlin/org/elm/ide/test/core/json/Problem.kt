@@ -18,7 +18,7 @@ class Problem {
                     element.asJsonObject.get("string").asString
             }
 
-            return message!!
+            return message.orEmpty()
                     .filter(hasText).joinToString("", transform = toText)
         }
 

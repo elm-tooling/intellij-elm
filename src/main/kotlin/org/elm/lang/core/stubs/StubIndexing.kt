@@ -1,13 +1,13 @@
 package org.elm.lang.core.stubs
 
 import com.intellij.psi.stubs.IndexSink
-import org.elm.lang.core.stubs.index.ElmModulesIndex
+import org.elm.lang.core.stubs.index.ElmModules
 import org.elm.lang.core.stubs.index.KEY
 
 
 fun IndexSink.indexModuleDecl(stub: ElmModuleDeclarationStub) {
     indexNamedStub(stub)
-    ElmModulesIndex.index(stub, this)
+    ElmModules.index(stub, this)
 }
 
 fun IndexSink.indexFuncDecl(stub: ElmFunctionDeclarationLeftStub) {

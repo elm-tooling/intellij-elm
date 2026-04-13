@@ -11,15 +11,15 @@ class VersionTest {
     fun `version compare`() {
         assertTrue(v(1, 0, 0) < v(2, 0, 0))
         assertTrue(v(2, 0, 0) > v(1, 0, 0))
-        assertTrue(v(1, 0, 0) == v(1, 0, 0))
+        assertEquals(v(1, 0, 0), v(1, 0, 0))
 
         assertTrue(v(0, 1, 0) < v(0, 2, 0))
         assertTrue(v(0, 2, 0) > v(0, 1, 0))
-        assertTrue(v(0, 1, 0) == v(0, 1, 0))
+        assertEquals(v(0, 1, 0), v(0, 1, 0))
 
         assertTrue(v(0, 0, 1) < v(0, 0, 2))
         assertTrue(v(0, 0, 2) > v(0, 0, 1))
-        assertTrue(v(0, 0, 1) == v(0, 0, 1))
+        assertEquals(v(0, 0, 1), v(0, 0, 1))
     }
 
     @Test
@@ -44,7 +44,7 @@ class VersionTest {
 
     @Test
     fun `version compare ignores build metadata`() {
-        assertTrue(Version.parse("1.0.0+foo").compareTo(Version.parse("1.0.0+bar")) == 0)
+        assertEquals(Version.parse("1.0.0+foo").compareTo(Version.parse("1.0.0+bar")), 0)
     }
 
     @Test

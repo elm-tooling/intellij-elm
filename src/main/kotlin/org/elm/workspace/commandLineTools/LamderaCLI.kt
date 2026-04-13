@@ -4,12 +4,14 @@ import com.intellij.execution.ExecutionException
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.wm.ToolWindowManager
 import org.elm.openapiext.*
 import org.elm.workspace.*
 import org.elm.workspace.compiler.ERRORS_TOPIC
 import org.elm.workspace.compiler.ElmError
+import org.elm.workspace.compiler.COMPILER_OUTPUT_TOPIC
+import org.elm.workspace.compiler.ResolvedBuildTarget
 import org.elm.workspace.compiler.elmJsonToCompilerMessages
+import org.elm.ide.statusbar.elmTaskStatus
 import java.nio.file.Path
 
 private val log = logger<LamderaCLI>()
@@ -19,54 +21,82 @@ private val log = logger<LamderaCLI>()
  */
 class LamderaCLI(private val lamderaExecutablePath: Path) {
 
-    fun make(project: Project, workDir: Path, elmProject: ElmProject?, entryPoints: List<Triple<Path, String?, Int>?>, jsonReport: Boolean = false, currentFile: VirtualFile? = null): Boolean {
+    fun make(
+        project: Project,
+        workDir: Path,
+        elmProject: ElmProject?,
+        entryPoints: List<ResolvedBuildTarget>,
+        jsonReport: Boolean = false,
+        currentFile: VirtualFile? = null
+    ): Boolean {
 
         if (entryPoints.isEmpty()) return true
 
-        val entries = entryPoints.filterNotNull()
-        val filePathsToCompile = entries.map { it.second.toString() }
-        val targetPath = entries.first().second
-        val offset = entries.first().third
-        val params = (listOf("make") + filePathsToCompile + listOf("--output=/dev/null")).toTypedArray()
-        val output = GeneralCommandLine(lamderaExecutablePath)
-            .withWorkDirectory(workDir)
-            .withParameters(*params)
-            .apply { if (jsonReport) addParameter("--report=json") }
-            .execute(elmCompilerTool, project)
-        val json = output.stderr
-        val regex = "\\{.*}".toRegex()
-        val cleansedJson = regex.find(json)?.value
-        val messages = if (cleansedJson.isNullOrEmpty()) emptyList() else {
-            val msgs = elmJsonToCompilerMessages(cleansedJson).sortedWith(
+        project.elmTaskStatus.compilerStarted()
+        try {
+            val allMessages = mutableListOf<ElmError>()
+            var allSucceeded = true
+            for (entry in entryPoints) {
+                val modeFlag = entry.mode.asFlag()
+                val params = mutableListOf("make")
+                if (entry.inputPathForCompiler.isNotBlank()) {
+                    params += entry.inputPathForCompiler
+                }
+                params += "--output=${entry.outputPathForCompiler}"
+                if (modeFlag != null) params += modeFlag
+                val commandLine = GeneralCommandLine(lamderaExecutablePath)
+                    .withWorkDirectory(workDir)
+                    .withParameters(*params.toTypedArray())
+                    .apply { if (jsonReport) addParameter("--report=json") }
+                val output = commandLine.execute(elmCompilerTool, project)
+                project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(
+                    lamderaCompilerTool,
+                    commandLine.commandLineString,
+                    output.stdout,
+                    output.stderr,
+                    output.exitCode
+                )
+                if (!output.isSuccess) {
+                    allSucceeded = false
+                }
+                val json = output.stderr
+                val regex = "\\{.*}".toRegex()
+                val cleansedJson = regex.find(json)?.value
+                if (!cleansedJson.isNullOrEmpty()) {
+                    allMessages += elmJsonToCompilerMessages(cleansedJson)
+                }
+            }
+            val sortedMessages = allMessages.sortedWith(
                 compareBy(
                     { it.location?.moduleName },
                     { it.location?.region?.start?.line },
                     { it.location?.region?.start?.column }
-                ))
-            if (currentFile != null) {
+                )
+            )
+            val messages = if (currentFile != null) {
                 val predicate: (ElmError) -> Boolean = { it.location?.path == currentFile.path }
-                val sortedMessages = msgs.filter(predicate) + msgs.filterNot(predicate)
-                sortedMessages
-            } else msgs
-        }
-        if (elmProject == null) {
-            // from ElmWorkSpaceService
-            if (!output.isSuccess) {
-                log.error("Failed to install dependencies: Lamdera compiler failed: ${output.stderr}")
-                return false
-            }
-            return true
-        } else {
-            fun postErrors() = project.messageBus.syncPublisher(ERRORS_TOPIC).update(elmProject.projectDirPath, messages, targetPath!!, offset)
-            when {
-                isUnitTestMode -> postErrors()
-                else -> {
-                    val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Elm Compiler")!!
-                    toolWindow.show { postErrors() }
+                sortedMessages.filter(predicate) + sortedMessages.filterNot(predicate)
+            } else sortedMessages
+            if (elmProject == null) {
+                // from ElmWorkSpaceService
+                if (!allSucceeded) {
+                    log.error("Failed to install dependencies: Lamdera compiler failed")
+                    return false
+                }
+                return true
+            } else {
+                val first = entryPoints.first()
+                fun postErrors() = project.messageBus.syncPublisher(ERRORS_TOPIC)
+                    .update(elmProject.projectDirPath, messages, first.inputPathForCompiler, first.offset)
+                when {
+                    isUnitTestMode -> postErrors()
+                    else -> postErrors()
                 }
             }
+            return messages.isEmpty() && allSucceeded
+        } finally {
+            project.elmTaskStatus.compilerFinished()
         }
-        return messages.isEmpty()
     }
 
     fun queryVersion(project: Project): Result<Version> {

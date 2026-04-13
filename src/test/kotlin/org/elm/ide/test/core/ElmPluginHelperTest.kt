@@ -119,7 +119,7 @@ class ElmPluginHelperTest : ParsingTestCase("elmPluginHelper", "elm", ElmParserD
     }
 
     private fun firstLine(text: String): String {
-        return text.substringBefore("\n");
+        return text.substringBefore("\n")
     }
 
 }

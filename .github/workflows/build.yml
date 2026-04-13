@@ -3,7 +3,7 @@
 # - run 'test' and 'verifyPlugin' tasks,
 # - run Qodana inspections,
 # - run 'buildPlugin' task and prepare artifact for the further tests,
-# - run 'runPluginVerifier' task,
+# - run plugin verification tasks,
 # - create a draft release.
 #
 # Workflow is triggered on push and pull_request events.
@@ -35,26 +35,25 @@ jobs:
     outputs:
       version: ${{ steps.properties.outputs.version }}
       changelog: ${{ steps.properties.outputs.changelog }}
+      pluginVerifierHomeDir: ${{ steps.properties.outputs.pluginVerifierHomeDir }}
+      filename: ${{ steps.artifact.outputs.filename }}
+      path: ${{ steps.artifact.outputs.path }}
     steps:
 
       # Check out current repository
       - name: Fetch Sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      # Validate wrapper
-      - name: Gradle Wrapper Validation
-        uses: gradle/wrapper-validation-action@v2
-
-      # Setup Java 17 environment for the next steps
+      # Setup Java 21 environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: 21
 
       # Setup Gradle
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       # Set environment variables
       - name: Export Properties
@@ -80,23 +79,29 @@ jobs:
       - name: Build plugin
         run: ./gradlew buildPlugin
 
-      # Prepare plugin archive content for creating artifact
-      - name: Prepare Plugin Artifact
+      # Show generated plugin distribution files
+      - name: List plugin distributions
+        run: ls -alh ./build/distributions
+
+      # Resolve plugin ZIP path and artifact name for downstream jobs
+      - name: Resolve plugin ZIP filename
         id: artifact
         shell: bash
         run: |
-          cd ${{ github.workspace }}/build/distributions
-          FILENAME=`ls *.zip`
-          unzip "$FILENAME" -d content
+          VERSION="${{ steps.properties.outputs.version }}"
+          ARTIFACT_NAME="elm-intellij-plugin-$VERSION.zip"
+          ZIP_PATH="./build/distributions/"
+          echo "path=$ZIP_PATH" >> "$GITHUB_OUTPUT"
+          echo "filename=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
 
-          echo "filename=${FILENAME:0:-4}" >> $GITHUB_OUTPUT
-
-      # Store already-built plugin as an artifact for downloading
+      # Store plugin ZIP for release draft asset upload
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.artifact.outputs.filename }}
-          path: ./build/distributions/content/*/*
+          path: ${{ steps.artifact.outputs.path }}
+          if-no-files-found: error
+          archive: false
 
 
   # Run tests and upload a code coverage report
@@ -108,18 +113,18 @@ jobs:
 
       # Check out current repository
       - name: Fetch Sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Set up Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: 21
 
       # Setup Gradle
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -131,7 +136,7 @@ jobs:
 
       # Run tests
       - name: Run Tests
-        run: ./gradlew check
+        run: ./gradlew check koverXmlReportJvm
 
       # Collect Tests Result of failed tests
       - name: Collect Tests Result
@@ -142,10 +147,35 @@ jobs:
           path: ${{ github.workspace }}/build/reports/tests
 
       # Upload the Kover report to CodeCov
+      - name: Check Coverage Report
+        id: coverage
+        shell: bash
+        run: |
+          REPORT_MAIN="${{ github.workspace }}/build/reports/kover/report.xml"
+          REPORT_JVM="${{ github.workspace }}/build/reports/kover/reportJvm.xml"
+          if [[ -f "$REPORT_MAIN" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "report=$REPORT_MAIN" >> "$GITHUB_OUTPUT"
+          elif [[ -f "$REPORT_JVM" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "report=$REPORT_JVM" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Coverage report not found at $REPORT_MAIN or $REPORT_JVM"
+          fi
+
       - name: Upload Code Coverage Report
-        uses: codecov/codecov-action@v4
+        if: steps.coverage.outputs.exists == 'true'
+        uses: codecov/codecov-action@v5
         with:
-          files: ${{ github.workspace }}/build/reports/kover/report.xml
+          files: ${{ steps.coverage.outputs.report }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: Skip Codecov Upload (No Coverage File)
+        if: steps.coverage.outputs.exists != 'true'
+        run: echo "Skipping Codecov upload because coverage XML was not generated."
 
   # Run Qodana inspections and provide report
   inspectCode:
@@ -171,7 +201,7 @@ jobs:
 
       # Set up Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: 21
@@ -184,7 +214,7 @@ jobs:
 
   # Run plugin structure verification along with IntelliJ Plugin Verifier
   verify:
-    if: false # Temporarily disable (re-enable also in `needs` of `releaseDraft`)
+#    if: false # Temporarily disable (re-enable also in `needs` of `releaseDraft`)
     name: Verify plugin
     needs: [ build ]
     runs-on: ubuntu-latest
@@ -199,44 +229,46 @@ jobs:
 
       # Check out current repository
       - name: Fetch Sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Set up Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: 21
 
       # Setup Gradle
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       # Cache Plugin Verifier IDEs
       - name: Setup Plugin Verifier IDEs Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ needs.build.outputs.pluginVerifierHomeDir }}/ides
           key: plugin-verifier-${{ hashFiles('build/listProductsReleases.txt') }}
 
-      # Run Verify Plugin task and IntelliJ Plugin Verifier tool
+      # Run plugin verification tasks (configuration, structure, and IntelliJ Plugin Verifier)
       - name: Run Plugin Verification tasks
-        run: ./gradlew runPluginVerifier -Dplugin.verifier.home.dir=${{ needs.build.outputs.pluginVerifierHomeDir }}
+        run: ./gradlew verifyPluginProjectConfiguration verifyPluginStructure verifyPlugin -Dplugin.verifier.home.dir=${{ needs.build.outputs.pluginVerifierHomeDir }}
 
       # Collect Plugin Verifier Result
       - name: Collect Plugin Verifier Result
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pluginVerifier-result
           path: ${{ github.workspace }}/build/reports/pluginVerifier
 
-  # Prepare a draft release for GitHub Releases page for the manual verification
-  # If accepted and published, release workflow would be triggered
+  # Prepare and/or publish GitHub releases based on version label:
+  # - beta => draft only
+  # - rc => prerelease (published)
+  # - plain semver => full release (published)
   releaseDraft:
-    name: Release draft
-    if: github.event_name != 'pull_request'
-    needs: [ build, test, inspectCode ] # , verify ]  disabled for now
+    name: Create/Publish Release
+    if: github.event_name != 'pull_request' && (github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip release]'))
+    needs: [ build, test, inspectCode, verify ]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -244,26 +276,78 @@ jobs:
 
       # Check out current repository
       - name: Fetch Sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      # Remove old release drafts by using the curl request for the available releases with a draft flag
-      - name: Remove Old Release Drafts
+      # Remove old draft releases and rc prereleases
+      - name: Remove Old Drafts and RC Releases
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh api repos/{owner}/{repo}/releases \
-            --jq '.[] | select(.draft == true) | .id' \
+            --jq '.[] | select(.draft == true or (.prerelease == true and (.tag_name | test("-rc")))) | .id' \
             | xargs -I '{}' gh api -X DELETE repos/{owner}/{repo}/releases/{}
 
-      # Create a new release draft which is not publicly visible and requires manual acceptance
-      - name: Create Release Draft
+      # Download plugin ZIP artifact from the build job for release upload
+      - name: Download Release Artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.build.outputs.filename }}
+          path: ${{ needs.build.outputs.path }}
+          skip-decompress: true
+
+      # Create GitHub release with mode inferred from plugin version
+      - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_NOTES: ${{ needs.build.outputs.changelog }}
         run: |
-          gh release create "v${{ needs.build.outputs.version }}" \
-            --draft \
-            --title "v${{ needs.build.outputs.version }}" \
-            --notes "$(cat << 'EOM'
-          ${{ needs.build.outputs.changelog }}
-          EOM
-          )"
+          VERSION="${{ needs.build.outputs.version }}"
+          TAG="v$VERSION"
+          ls -la ${{ needs.build.outputs.path }} || true
+          BUILD_ARTIFACT="${{ needs.build.outputs.path }}${{ needs.build.outputs.filename }}"
+          ls -alh $BUILD_ARTIFACT
+
+          if [[ -z "$BUILD_ARTIFACT" ]]; then
+            echo "No plugin ZIP found in ./build/distributions"
+            find ./build/distributions -maxdepth 3 -print || true
+            exit 1
+          fi
+
+          if [[ "$VERSION" == *"-beta"* ]]; then
+            RELEASE_FLAG="--draft"
+            RELEASE_KIND="draft (beta)"
+            IS_DRAFT=true
+            IS_PRERELEASE=false
+          elif [[ "$VERSION" == *"-rc"* ]]; then
+            RELEASE_FLAG="--prerelease"
+            RELEASE_KIND="pre-release (rc)"
+            IS_DRAFT=false
+            IS_PRERELEASE=true
+          elif [[ "$VERSION" == *"-"* ]]; then
+            echo "Unsupported prerelease label in version: $VERSION"
+            echo "Only beta and rc labels are supported by this workflow."
+            exit 1
+          else
+            RELEASE_FLAG=""
+            RELEASE_KIND="full release"
+            IS_DRAFT=false
+            IS_PRERELEASE=false
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Updating existing release for $TAG"
+            RELEASE_ID="$(gh release view "$TAG" --json id --jq '.id')"
+            gh api --method PATCH "repos/{owner}/{repo}/releases/$RELEASE_ID" \
+              -f name="$TAG" \
+              -f body="$RELEASE_NOTES" \
+              -f draft="$IS_DRAFT" \
+              -f prerelease="$IS_PRERELEASE"
+            gh release upload "$TAG" "$BUILD_ARTIFACT" --clobber
+          else
+            echo "Creating $RELEASE_KIND for $TAG"
+            gh release create "$TAG" \
+              $RELEASE_FLAG \
+              --title "$TAG" \
+              --notes "$RELEASE_NOTES" \
+              "$BUILD_ARTIFACT"
+          fi

@@ -131,7 +131,7 @@ main = () "foo"{-caret-}
             val updateContext = MockUpdateParameterInfoContext(myFixture.editor, myFixture.file)
             val element = handler.findElementForUpdatingParameterInfo(updateContext)
                     ?: throw AssertionFailedError("Parameter not found")
-            TestCase.assertNotNull(element)
+            assertNotNull(element)
         } else if (elt != null) {
             throw AssertionFailedError("Unexpected hint found")
         }

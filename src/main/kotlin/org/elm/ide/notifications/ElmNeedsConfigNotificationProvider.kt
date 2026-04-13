@@ -1,26 +1,15 @@
 package org.elm.ide.notifications
 
-import com.intellij.execution.process.ProcessIOExecutorService
-import com.intellij.notification.NotificationType
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.logger
-import com.intellij.openapi.fileEditor.FileEditor
-import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.Key
-import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.EditorNotificationPanel
+import com.intellij.ui.EditorNotificationProvider
 import com.intellij.ui.EditorNotifications
 import org.elm.lang.core.psi.isElmFile
-import org.elm.openapiext.findFileByPath
 import org.elm.workspace.*
-
-sealed class VersionCheck {
-    object NotChecked : VersionCheck()
-    object Checking : VersionCheck()
-    class Checked(val version: Version?) : VersionCheck()
-}
+import kotlin.io.path.exists
+import java.util.function.Function
 
 private val log = logger<ElmNeedsConfigNotificationProvider>()
 
@@ -28,43 +17,35 @@ private val log = logger<ElmNeedsConfigNotificationProvider>()
  * Presents actionable notifications at the top of an Elm file whenever the Elm plugin
  * needs configuration (e.g. the path to the Elm compiler).
  */
-// TODO(cies): Replace deprecated Provider with {@link EditorNotificationProvider}
 class ElmNeedsConfigNotificationProvider(
     private val project: Project
-) : EditorNotifications.Provider<EditorNotificationPanel>() {
+) : EditorNotificationProvider {
 
     private val notifications = EditorNotifications.getInstance(project)
 
-    private val lock = Any()
-    private var versionCheck: VersionCheck = VersionCheck.NotChecked
-
     init {
-        project.messageBus.connect(project).apply {
+        project.messageBus.connect(project.elmWorkspace).apply {
             subscribe(ElmWorkspaceService.WORKSPACE_TOPIC,
                 object : ElmWorkspaceService.ElmWorkspaceListener {
                     override fun didUpdate() {
-                        log.debug("Workspace did change; invalidating cache and refreshing UI")
-                        synchronized(lock) {
-                            versionCheck = VersionCheck.NotChecked // Elm toolchain may have changed
-                        }
+                        log.debug("Workspace did change; refreshing UI")
                         notifications.updateAllNotifications()
                     }
                 })
         }
     }
 
+    override fun collectNotificationData(
+        project: Project,
+        file: VirtualFile
+    ): Function<in com.intellij.openapi.fileEditor.FileEditor, out javax.swing.JComponent?> {
+        val panel = createNotificationPanel(file)
+        return if (panel == null) Function { null } else Function { panel }
+    }
 
-    override fun getKey(): Key<EditorNotificationPanel> = PROVIDER_KEY
-
-
-    override fun createNotificationPanel(file: VirtualFile, fileEditor: FileEditor): EditorNotificationPanel? {
+    private fun createNotificationPanel(file: VirtualFile): EditorNotificationPanel? {
         if (!file.isElmFile)
             return null
-
-        val toolchain = project.elmToolchain
-        if (!toolchain.looksLikeValidToolchain()) {
-            return badToolchainPanel("You must specify a path to the Elm compiler")
-        }
 
         val workspace = project.elmWorkspace
         if (!workspace.hasAtLeastOneValidProject()) {
@@ -74,55 +55,31 @@ class ElmNeedsConfigNotificationProvider(
         val elmProject = project.elmWorkspace.findProjectForFile(file)
             ?: return noElmProjectPanel("Could not find Elm project for this file")
 
-        // Check that the toolchain path to the Elm binary corresponds to a version of the compiler
-        // that is compatible with the Elm project. We have to do this async because this function
-        // was called by IntelliJ while holding a Read Action. And we are forbidden from invoking
-        // an external process while holding a Read Action.
-        synchronized(lock) {
-            when (val vc = versionCheck) {
-                VersionCheck.NotChecked -> {
-                    log.debug("Querying the version")
-                    versionCheck = VersionCheck.Checking
-                    asyncQueryElmCompilerVersion(toolchain)
-                    return null
-                }
+        val toolchain = project.elmToolchain
+        if (!toolchain.looksLikeValidToolchain()) {
+            return badToolchainPanel("Elm toolchain compiler is not configured or executable")
+        }
 
-                VersionCheck.Checking -> {
-                    log.debug("Skipping version check")
-                    return null
-                }
+        if (toolchain.isElmFormatOnSaveEnabled && toolchain.elmFormatCLI == null) {
+            return badToolchainPanel("elm-format on save is enabled, but elm-format is not configured")
+        }
 
-                is VersionCheck.Checked -> {
-                    log.debug("Using cached version ${vc.version}")
-                    val compilerVersion = vc.version
-                        ?: return badToolchainPanel("Could not determine Elm compiler version")
-
-                    if (!elmProject.isCompatibleWith(compilerVersion)) {
-                        return versionConflictPanel(project, elmProject, compilerVersion)
-                    }
-
-                    return null
-                }
+        val hasElmReviewConfig = resolveElmReviewConfigDir(
+            elmProject.projectDirPath,
+            workspace.rawSettings?.elmReviewConfigPath.orEmpty()
+        ).exists()
+        if (toolchain.isElmReviewOnTheFlyEnabled && hasElmReviewConfig) {
+            if (toolchain.elmReviewPath == null) {
+                return badToolchainPanel("elm-review on save is enabled, but elm-review is not configured")
             }
         }
-    }
 
-    private fun asyncQueryElmCompilerVersion(toolchain: ElmToolchain) {
-        ProcessIOExecutorService.INSTANCE.submit {
-            val v = toolchain.elmCLI?.queryVersion(project)?.orNull()
-            synchronized(lock) {
-                versionCheck = VersionCheck.Checked(v)
-            }
-            // refresh the UI
-            ApplicationManager.getApplication().invokeLater {
-                notifications.updateAllNotifications()
-            }
-        }
+        return null
     }
 
     private fun badToolchainPanel(message: String) =
         EditorNotificationPanel().apply {
-            setText(message)
+            text = message
             createActionLabel("Setup toolchain") {
                 project.elmWorkspace.showConfigureToolchainUI()
             }
@@ -131,39 +88,8 @@ class ElmNeedsConfigNotificationProvider(
 
     private fun noElmProjectPanel(message: String) =
         EditorNotificationPanel().apply {
-            setText(message)
+            text = message
             createActionLabel("Attach elm.json", "Elm.AttachElmProject")
         }
 
-
-    private fun versionConflictPanel(
-        project: Project,
-        elmProject: ElmProject,
-        compilerVersion: Version
-    ): EditorNotificationPanel {
-        val expectedVersionText = when (elmProject) {
-            is LamderaApplicationProject -> elmProject.elmVersion.toString()
-            is ElmApplicationProject -> elmProject.elmVersion.toString()
-            is ElmPackageProject -> elmProject.elmVersion.toString()
-            is ElmReviewProject -> elmProject.elmVersion.toString()
-        }
-        val manifestFileName = elmProject.manifestPath.fileName.toString()
-        return EditorNotificationPanel().apply {
-            setText("Your $manifestFileName file requires Elm $expectedVersionText but your Elm compiler is $compilerVersion")
-            createActionLabel("Open $manifestFileName") {
-                val didNavigate = LocalFileSystem.getInstance().findFileByPath(elmProject.manifestPath)
-                    ?.let { OpenFileDescriptor(project, it) }
-                    ?.navigateInEditor(project, true)
-                if (didNavigate != true)
-                    project.showBalloon("Cannot open $manifestFileName", NotificationType.ERROR)
-            }
-            createActionLabel("Setup toolchain") {
-                project.elmWorkspace.showConfigureToolchainUI()
-            }
-        }
-    }
-
-
 }
-
-private val PROVIDER_KEY: Key<EditorNotificationPanel> = Key.create("Setup Elm toolchain")

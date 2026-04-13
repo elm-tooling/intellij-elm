@@ -8,7 +8,9 @@
 package org.elm.ide.intentions
 
 import com.intellij.codeInsight.intention.BaseElementAtCaretIntentionAction
+import com.intellij.codeInsight.intention.preview.IntentionPreviewUtils
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import org.elm.openapiext.checkReadAccessAllowed
@@ -32,6 +34,9 @@ import org.elm.openapiext.checkWriteAccessAllowed
  * [findApplicableContext] is executed under a read action, and [invoke] under a write action.
  */
 abstract class ElmAtCaretIntentionActionBase<Ctx> : BaseElementAtCaretIntentionAction() {
+    companion object {
+        private const val COMMAND_NAME = "Apply Intention"
+    }
 
     /**
      * Return `null` if the intention is not applicable, otherwise collect and return
@@ -40,6 +45,16 @@ abstract class ElmAtCaretIntentionActionBase<Ctx> : BaseElementAtCaretIntentionA
     abstract fun findApplicableContext(project: Project, editor: Editor, element: PsiElement): Ctx?
 
     abstract fun invoke(project: Project, editor: Editor, context: Ctx)
+
+    protected fun runPreviewSafeWrite(project: Project, mutate: () -> Unit) {
+        if (IntentionPreviewUtils.isIntentionPreviewActive()) {
+            mutate()
+            return
+        }
+        WriteCommandAction.writeCommandAction(project)
+            .withName(COMMAND_NAME)
+            .run<RuntimeException> { mutate() }
+    }
 
     override fun startInWriteAction(): Boolean = true
 

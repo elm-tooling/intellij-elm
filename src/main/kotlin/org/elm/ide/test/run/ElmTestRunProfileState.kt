@@ -53,17 +53,11 @@ class ElmTestRunProfileState internal constructor(
         val elmTestCLI = toolchain.elmTestCLI
                 ?: return handleBadConfiguration(project, "Missing path to elm-test")
 
-        val elmCompilerBinary = toolchain.elmCompilerPath
-                ?: return handleBadConfiguration(project, "Missing path to the Elm compiler")
-
         if (elmFolder == null) return handleBadConfiguration(project, "Missing path to elmFolder")
         if (elmProject == null) return handleBadConfiguration(project, "Could not find the Elm project for these tests")
 
-        if (!Files.exists(elmCompilerBinary)) {
-            return handleBadConfiguration(project, "Could not find the Elm compiler ")
-        }
-
-        return elmTestCLI.runTestsProcessHandler(elmCompilerBinary, elmProject)
+        val elmCompilerBinary = toolchain.elmCompilerPath?.takeIf { Files.exists(it) }
+        return elmTestCLI.runTestsProcessHandler(project, elmCompilerBinary, elmProject)
     }
 
     @Throws(ExecutionException::class)

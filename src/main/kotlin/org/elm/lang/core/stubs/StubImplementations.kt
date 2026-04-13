@@ -48,8 +48,8 @@ If you need to add a new stub:
 - is the element a container with no interesting data of its own,
 but which needs to hold stub children? use [ElmPlaceholderStub]
 - is it a simple ElmReferenceElement? use [ElmPlaceholderRefStub]
-- is it an [ElmNamedElement]? create a custom stub class/type below
-and make sure you index it with [ElmNamedElementIndex].
+- is it an [org.elm.lang.core.psi.ElmNamedElement]? create a custom stub class/type below
+and make sure you index it with `ElmNamedElementIndex`.
 - for all other cases, create a custom stub class and type below.
 
 In all cases, you must also:

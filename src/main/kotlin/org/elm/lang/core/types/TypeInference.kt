@@ -28,10 +28,9 @@ fun PsiElement.findInference(): InferenceResult? {
 /** Find the type of a given element, if the element is a value expression or declaration */
 fun ElmPsiElement.findTy(): Ty? {
     return when (this) {
-        is ElmFunctionDeclarationLeft -> {
-            val decl = parentOfType<ElmValueDeclaration>() ?: return null
-            return findInference()?.let { it.expressionTypes[decl] ?: it.ty }
-        }
+        is ElmFunctionDeclarationLeft ->
+            parentOfType<ElmValueDeclaration>()
+                ?.let { decl -> findInference()?.let { it.expressionTypes[decl] ?: it.ty } }
         is ElmValueDeclaration -> {
             findInference()?.let { it.expressionTypes[this] ?: it.ty }
         }
@@ -120,7 +119,7 @@ private class InferenceScope(
 
     private val ancestors: Sequence<InferenceScope> get() = generateSequence(this) { it.parent }
 
-    private fun getBinding(e: ElmNamedElement): Ty? = ancestors.mapNotNull { it.bindings[e] }.firstOrNull()
+    private fun getBinding(e: ElmNamedElement): Ty? = ancestors.firstNotNullOfOrNull { it.bindings[e] }
 
     //<editor-fold desc="entry points">
     /*
@@ -314,9 +313,17 @@ private class InferenceScope(
 
     private fun inferBinOpExpr(expr: ElmBinOpExpr): Ty {
         val parts: List<ElmBinOpPartTag> = expr.parts.toList()
+        fun unknown(): Ty {
+            val ty = TyUnknown()
+            expressionTypes[expr] = ty
+            return ty
+        }
 
-        // Get the operator types and precedences. We don't have to worry about invalid
-        // code like `1 + + 1`, since it won't parse as an expression.
+        // During live editing we can observe incomplete PSI (e.g. operand/op without RHS).
+        // Degrade to TyUnknown instead of throwing in BinaryExprTree.parse.
+        if (parts.isEmpty() || parts.size % 2 == 0) return unknown()
+
+        // Get the operator types and precedences.
         val operatorPrecedences = HashMap<ElmOperator, OperatorPrecedence>(parts.size / 2)
         val operatorTys = HashMap<ElmOperator, TyFunction>(parts.size / 2)
         var lastPrecedence: OperatorPrecedence? = null
@@ -324,12 +331,12 @@ private class InferenceScope(
             if (part is ElmOperator) {
                 val (ty, precedence) = inferOperatorAndPrecedence(part)
                 when {
-                    precedence == null || ty !is TyFunction || ty.parameters.size < 2 -> return TyUnknown()
+                    precedence == null || ty !is TyFunction || ty.parameters.size < 2 -> return unknown()
                     precedence.associativity == NON && lastPrecedence?.associativity == NON -> {
                         // Non-associative operators can't be chained directly with other non-associative
                         // operators.
                         diagnostics += NonAssociativeOperatorError(expr, part)
-                        return TyUnknown()
+                        return unknown()
                     }
                     else -> {
                         operatorPrecedences[part] = precedence
@@ -366,7 +373,12 @@ private class InferenceScope(
             }
         }
 
-        val result = validateTree(BinaryExprTree.parse(parts, operatorPrecedences))
+        val tree = try {
+            BinaryExprTree.parse(parts, operatorPrecedences)
+        } catch (_: IllegalArgumentException) {
+            return unknown()
+        }
+        val result = validateTree(tree)
         expressionTypes[expr] = result.ty
         return result.ty
     }
@@ -702,13 +714,12 @@ private class InferenceScope(
                 // All patterns should now be bound
                 error(expr, "failed to bind pattern")
             }
-            is ElmFieldType -> {
-                return (ref.parentOfType<ElmTypeAliasDeclaration>()
-                        ?.typeExpressionInference()
-                        ?.value as? TyRecord)
-                        ?.fields?.get(ref.name)
-                        ?: TyUnknown()
-            }
+            is ElmFieldType ->
+                (ref.parentOfType<ElmTypeAliasDeclaration>()
+                    ?.typeExpressionInference()
+                    ?.value as? TyRecord)
+                    ?.fields?.get(ref.name)
+                    ?: TyUnknown()
             else -> error(ref, "Unexpected reference type")
         }
     }
@@ -882,6 +893,7 @@ private class InferenceScope(
                 pat.patternAs?.let { bindPattern(it, ty, isParameter) }
             }
             is ElmLowerPattern -> setBinding(pat, ty)
+            is ElmNullaryConstructorArgumentPattern -> bindNullaryConstructorPattern(pat, ty)
             is ElmRecordPattern -> bindRecordPattern(pat, ty, isParameter)
             is ElmTuplePattern -> bindTuplePattern(pat, ty, isParameter)
             is ElmUnionPattern -> bindUnionPattern(pat, ty, isParameter)
@@ -961,6 +973,20 @@ private class InferenceScope(
                 pat.namedParameters.forEach { setBinding(it, TyUnknown()) }
             }
         }
+    }
+
+    private fun bindNullaryConstructorPattern(pat: ElmNullaryConstructorArgumentPattern, type: Ty) {
+        val variant = pat.reference.resolve() as? ElmUnionVariant
+        val variantTy = variant?.typeExpressionInference()?.value
+        if (variantTy == null || !isInferable(variantTy)) return
+
+        if (variantTy is TyFunction) {
+            diagnostics += ArgumentCountError(pat, pat, 0, variantTy.parameters.size, true)
+            return
+        }
+
+        val ty = bindIfVar(pat, type) { variantTy }
+        requireAssignable(pat, ty, variantTy)
     }
 
     private fun bindTuplePattern(pat: ElmTuplePattern, type: Ty, isParameter: Boolean) {
@@ -1124,8 +1150,8 @@ private class InferenceScope(
                     && allAssignable(ty1.parameters, ty2.parameters)
             is TyFunction -> ty2 is TyFunction && funcsAssignable(ty1, ty2)
             is TyUnit -> ty2 is TyUnit
-            is TyUnknown -> true
             TyInProgressBinding -> error("should never try to assign $ty1")
+            else -> false
         }
 
         if (result) trackReplacement(ty1, ty2)
@@ -1214,9 +1240,8 @@ private class InferenceScope(
                         !ty2.rigid && typeclassesConstrainToCompappend(tc1, tc2)
             }
             ty1.rigid && tc1 == null -> !ty2.rigid && tc2 == null
-            ty1.rigid && tc1 != null && ty2.rigid -> tc1 == tc2
-            ty1.rigid && tc1 != null && !ty2.rigid -> typeclassesCompatable(tc1, tc2, unconstrainedAllowed = true)
-            else -> error("impossible")
+            ty2.rigid -> tc1 == tc2
+            else -> typeclassesCompatable(tc1!!, tc2, unconstrainedAllowed = true)
         }
     }
 

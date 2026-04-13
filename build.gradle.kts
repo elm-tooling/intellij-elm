@@ -1,6 +1,7 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -12,8 +13,10 @@ plugins {
     id("java")
     // Kotlin support
     id("org.jetbrains.kotlin.jvm") version "2.2.0"
+    // Kotlin code coverage
+    id("org.jetbrains.kotlinx.kover") version "0.9.1"
     // Gradle IntelliJ Plugin
-    id("org.jetbrains.intellij.platform") version "2.6.0"
+    id("org.jetbrains.intellij.platform") version "2.11.0"
     // GrammarKit Plugin
     id("org.jetbrains.grammarkit") version "2022.3.2.2"
     // Gradle Changelog Plugin
@@ -24,6 +27,20 @@ plugins {
 
 group = properties("pluginGroup")
 version = properties("pluginVersion")
+
+kover {
+    currentProject {
+        instrumentation {
+            // Velocity uses strict reflective checks over its own runtime constants.
+            // Instrumenting these classes breaks template initialization in IntelliJ tests.
+            excludedClasses.addAll(
+                "org.apache.velocity.*",
+                "org.apache.velocity.runtime.*",
+                "org.apache.velocity.util.*"
+            )
+        }
+    }
+}
 
 // Configure project's dependencies
 repositories {
@@ -53,6 +70,18 @@ dependencies {
 intellijPlatform {
     pluginConfiguration {
         name = properties("pluginName")
+    }
+
+    pluginVerification {
+        ides {
+            // Earliest and latest stable IC releases from the current compatibility window.
+            create(properties("platformType"), "2024.3.7") {
+                useInstaller = false
+            }
+            create(properties("platformType"), "2025.3.3") {
+                useInstaller = false
+            }
+        }
     }
 }
 
@@ -129,6 +158,7 @@ tasks {
     withType<KotlinCompile>().configureEach {
         compilerOptions {
             jvmTarget.set(JvmTarget.fromTarget(javaVersion))
+            jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
         }
     }
 
@@ -162,7 +192,6 @@ tasks {
         // intellij.updateSinceUntilBuild.set(false)
 
         sinceBuild.set(properties("pluginSinceBuild"))
-        untilBuild.set(properties("pluginUntilBuild"))
 
         // Extract the <!-- Plugin description --> section from README.md and provide for the plugin's manifest
         pluginDescription.set(

@@ -8,8 +8,10 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiSearchHelper
 import com.intellij.psi.search.PsiSearchHelper.SearchCostResult.TOO_MANY_OCCURRENCES
 import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.util.Processor
 import org.elm.lang.core.psi.*
 import org.elm.lang.core.psi.elements.*
+import org.elm.workspace.ElmPackageProject
 
 /**
  * Find unused functions, parameters, etc.
@@ -34,6 +36,7 @@ class ElmUnusedSymbolInspection : ElmLocalInspection() {
         }
 
         if (isProgramEntryPoint(element)) return
+        if (isPackagePublicApi(element)) return
 
         if (scope is GlobalSearchScope) {
             // to keep inspection/analysis time brief, bail out if 'Find Usages' will be slow
@@ -41,11 +44,18 @@ class ElmUnusedSymbolInspection : ElmLocalInspection() {
             if (searchCost == TOO_MANY_OCCURRENCES) return
         }
 
-        // perform Find Usages
-        val usages = ReferencesSearch.search(element).findAll()
-                .filterNot { it.element is ElmTypeAnnotation || it.element is ElmExposedItemTag }
+        // perform Find Usages, bailing out on the first relevant usage we encounter
+        var hasUsages = false
+        ReferencesSearch.search(element).forEach(Processor { usage ->
+            val isIgnoredUsage = usage.element is ElmTypeAnnotation || usage.element is ElmExposedItemTag
+            if (!isIgnoredUsage) {
+                hasUsages = true
+                return@Processor false
+            }
+            true
+        })
 
-        if (usages.isEmpty()) {
+        if (!hasUsages) {
             markAsUnused(holder, element, name)
         }
     }
@@ -71,6 +81,15 @@ class ElmUnusedSymbolInspection : ElmLocalInspection() {
                 *fixes
         )
     }
+}
+
+private fun isPackagePublicApi(element: ElmNameIdentifierOwner): Boolean {
+    val decl = element as? ElmExposableTag ?: return false
+    val elmProject = decl.elmProject as? ElmPackageProject ?: return false
+    val moduleDecl = decl.elmFile.getModuleDecl() ?: return false
+    if (moduleDecl.name !in elmProject.exposedModules) return false
+    val exposingList = moduleDecl.exposingList ?: return false
+    return exposingList.exposes(decl)
 }
 
 private class RenameToWildcardFix : NamedQuickFix("Rename to _") {

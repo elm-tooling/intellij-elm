@@ -3,6 +3,7 @@ package org.elm.lang.core.psi.elements
 import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 import org.elm.lang.core.psi.ElmPsiElementImpl
+import org.elm.lang.core.psi.ElmFunctionParamTag
 import org.elm.lang.core.psi.ElmUnionPatternChildTag
 import org.elm.lang.core.resolve.ElmReferenceElement
 import org.elm.lang.core.resolve.reference.ElmReference
@@ -17,7 +18,7 @@ import org.elm.lang.core.resolve.reference.SimpleUnionConstructorReference
  *
  * e.g. `Nothing` in `Just Nothing` when used as a function parameter or case pattern.
  */
-class ElmNullaryConstructorArgumentPattern(node: ASTNode) : ElmPsiElementImpl(node), ElmReferenceElement, ElmUnionPatternChildTag {
+class ElmNullaryConstructorArgumentPattern(node: ASTNode) : ElmPsiElementImpl(node), ElmReferenceElement, ElmUnionPatternChildTag, ElmFunctionParamTag {
 
     /** The variant constructor */
     val upperCaseQID: ElmUpperCaseQID

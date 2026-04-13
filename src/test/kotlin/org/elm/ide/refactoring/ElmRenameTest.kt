@@ -26,7 +26,6 @@ SOFTWARE.
 
 package org.elm.ide.refactoring
 
-import com.intellij.testFramework.UsefulTestCase
 import com.intellij.util.IncorrectOperationException
 import org.elm.lang.ElmTestBase
 import org.elm.lang.core.psi.descendantsOfType
@@ -215,6 +214,50 @@ g =
         myFixture.renameElement(mod, "Quux")
     }
 
+    @Test
+    fun `test module decl rename from second segment at caret (flaky)`() = checkByDirectory(
+        before = joinElmFiles(
+            "Data/User.elm" to elm(
+                """
+module Data.U{-caret-}ser exposing (..)
+type alias User = { x : String }
+""".trimIndent()
+            ),
+            "main.elm" to elm(
+                """
+import Data.User
+g = Data.User.User "joe"
+""".trimIndent()
+            )
+        ),
+        after = joinElmFiles(
+            "Data/Quux.elm" to elm(
+                """
+module Data.Quux exposing (..)
+
+
+type alias User =
+    { x : String }
+""".trimIndent()
+            ),
+            "main.elm" to elm(
+                """
+module Main exposing (g)
+
+import Data.Quux
+
+
+g =
+    Data.Quux.User "joe"
+
+""" // extra newline is required for test to pass
+            )
+        )
+    ) {
+        myFixture.configureFromTempProjectFile("Data/User.elm")
+        myFixture.renameElementAtCaret("Quux")
+    }
+
 
     @Test
     fun `test import alias rename (flaky)`() = checkByDirectory(
@@ -277,7 +320,7 @@ g =
         try {
             myFixture.renameElementAtCaret(newName)
         } catch (e: RuntimeException) {
-            UsefulTestCase.assertInstanceOf(e.cause, IncorrectOperationException::class.java)
+            assertInstanceOf(e.cause, IncorrectOperationException::class.java)
             myFixture.checkResult(before.replace("{-caret-}", ""))
             return
         }

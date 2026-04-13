@@ -67,6 +67,7 @@ fun layout(block: ElmLayoutUIBuilder.() -> Unit): JPanel {
 interface ElmLayoutUIBuilder {
     fun block(text: String, block: ElmLayoutUIBuilder.() -> Unit)
     fun row(text: String = "", component: JComponent, toolTip: String = "")
+    fun row(component: JComponent)
     fun noteRow(text: String)
 }
 
@@ -93,6 +94,14 @@ private class ElmLayoutUIBuilderImpl(
         }
         labeledComponents += labeledComponent
         panel.add(labeledComponent)
+    }
+
+    override fun row(component: JComponent) {
+        val wrapper = JPanel(BorderLayout()).apply {
+            border = JBUI.Borders.empty(VERTICAL_OFFSET, HORIZONTAL_OFFSET)
+            add(component, BorderLayout.CENTER)
+        }
+        panel.add(wrapper)
     }
 
     private val HREF_PATTERN =

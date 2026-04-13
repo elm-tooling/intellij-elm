@@ -1,6 +1,5 @@
 package org.elm.ide.inspections.inference
 
-import com.intellij.openapi.vfs.VirtualFileFilter
 import org.elm.fileTreeFromText
 import org.elm.lang.ElmTestBase
 import org.elm.lang.core.psi.ElmPsiElement
@@ -251,9 +250,9 @@ foo { name } = name
         val testProject = fileTreeFromText(code)
                 .createAndOpenFileWithCaretMarker()
 
-        checkAstNotLoaded(VirtualFileFilter { file ->
+        checkAstNotLoaded { file ->
             !file.path.endsWith(testProject.fileWithCaret)
-        })
+        }
 
         checkExpectedType<T>()
         checkNoInferenceErrors()

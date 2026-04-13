@@ -202,14 +202,15 @@ class TypeReplacement(
         baseFields.forEach { (k, v) -> newFields[k] = v }
         fields.mapValuesTo(newFields) { (_, it) -> replace(it) }
 
+        val nonEmptyBaseFieldRefs = baseFieldRefs?.takeUnless { it.isEmpty() }
         val newFieldReferences = when {
-            baseFieldRefs == null || baseFieldRefs.isEmpty() -> fieldReferences
-            fieldReferences.frozen -> fieldReferences + baseFieldRefs
+            nonEmptyBaseFieldRefs == null -> fieldReferences
+            fieldReferences.frozen -> fieldReferences + nonEmptyBaseFieldRefs
             else -> {
                 // The new record shares its references table with the old record. That allows us to track
                 // references back to expressions inside nested declarations even when the record has been
                 // freshened or replaced.
-                fieldReferences.apply { addAll(baseFieldRefs) }
+                fieldReferences.apply { addAll(nonEmptyBaseFieldRefs) }
             }
         }
 

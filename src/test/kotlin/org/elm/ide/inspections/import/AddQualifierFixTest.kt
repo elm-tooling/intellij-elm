@@ -1,6 +1,5 @@
 package org.elm.ide.inspections.import
 
-import com.intellij.openapi.vfs.VirtualFileFilter
 import org.elm.fileTreeFromText
 import org.elm.ide.inspections.ElmInspectionsTestBase
 import org.elm.ide.inspections.ElmUnresolvedReferenceInspection
@@ -243,9 +242,9 @@ power a b = List.product (List.repeat b a)
         applyQuickFix("Qualify name")
 
         // adding a qualifier must be done using stubs only
-        checkAstNotLoaded(VirtualFileFilter { file ->
+        checkAstNotLoaded { file ->
             !file.path.endsWith(testProject.fileWithCaret)
-        })
+        }
 
         myFixture.checkResult(replaceCaretMarker(after).trim())
     }

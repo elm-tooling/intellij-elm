@@ -2,6 +2,7 @@ package org.elm.ide.toolwindow
 
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
@@ -65,7 +66,7 @@ class ElmWorkspacePanel(private val project: Project) : SimpleToolWindowPanel(tr
 
 
     init {
-        setToolbar(createToolbar())
+        toolbar = createToolbar()
         setContent(ScrollPaneFactory.createScrollPane(projectListUI, 0))
 
         // populate the initial workspace state
@@ -98,16 +99,12 @@ class ElmWorkspacePanel(private val project: Project) : SimpleToolWindowPanel(tr
         return toolbar.component
     }
 
-    override fun getData(dataId: String): Any? {
-        return when {
-            CommonDataKeys.NAVIGATABLE.`is`(dataId) ->
-                selectedProject?.manifestPath
-                        ?.let { LocalFileSystem.getInstance().findFileByPath(it) }
-                        ?.let { OpenFileDescriptor(project, it) }
-            DATA_KEY.`is`(dataId) ->
-                selectedProject
-            else ->
-                super.getData(dataId)
-        }
+    override fun uiDataSnapshot(sink: DataSink) {
+        super.uiDataSnapshot(sink)
+        val navigatable = selectedProject?.manifestPath
+            ?.let { LocalFileSystem.getInstance().findFileByPath(it) }
+            ?.let { OpenFileDescriptor(project, it) }
+        sink[CommonDataKeys.NAVIGATABLE] = navigatable
+        sink[DATA_KEY] = selectedProject
     }
 }

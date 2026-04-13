@@ -1,6 +1,5 @@
 package org.elm.ide.intentions.exposure
 
-import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
@@ -28,7 +27,7 @@ open class StopExposingIntention : ExposureIntentionBase<StopExposingIntention.C
         Context(decl, exposingList)
 
     override fun invoke(project: Project, editor: Editor, context: Context) {
-        WriteCommandAction.writeCommandAction(project).run<Throwable> {
+        runPreviewSafeWrite(project) {
             context.exposingList.removeItem(context.element)
         }
     }

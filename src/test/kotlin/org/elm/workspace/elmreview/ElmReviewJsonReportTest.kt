@@ -1,14 +1,20 @@
 package org.elm.workspace.elmreview
 
+import com.google.gson.Strictness
 import com.google.gson.stream.JsonReader
 import junit.framework.TestCase
 import org.elm.lang.ElmTestBase
 import org.intellij.lang.annotations.Language
-import org.junit.Ignore
 import org.junit.Test
 
 
 class ElmReviewJsonReportTest : ElmTestBase() {
+
+    companion object {
+        private const val NO_DEBUG_LOG_MESSAGE = "Remove the use of `Debug.log` before shipping to production"
+        private const val NO_DEBUG_LOG_DETAILS = "`Debug.log` is useful when developing, but is not meant to be shipped to production or published in a package. I suggest removing its use before committing and attempting to push to production."
+        private const val NO_DEBUG_LOG_RULE_LINK = "https://package.elm-lang.org/packages/jfmengels/elm-review-debug/1.0.6/NoDebug-Log"
+    }
 
     // $ elm --version
     // 0.19
@@ -134,25 +140,27 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         }""".trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.isLenient = true
+        reader.strictness = Strictness.LENIENT
 
-        TestCase.assertEquals(
+        assertEquals(
             listOf(
                 ElmReviewError(
                     suppressed = false,
                     path = "src/Frontend.elm",
                     rule = "NoDebug.Log",
-                    message = "Remove the use of `Debug.log` before shipping to production",
+                    message = NO_DEBUG_LOG_MESSAGE,
                     region = Region(Location(56, 13), Location(56, 22)),
-                    html = """<html><body style="font-family: monospace; font-weight: bold"><span style="color: #33BBC8;">(fix)&nbsp;</span><span style="color: #FF5959;"><a&nbsp;href="https://package.elm-lang.org/packages/jfmengels/elm-review-debug/1.0.6/NoDebug-Log">NoDebug.Log</a></span><span style="color: #4F9DA6">:&nbsp;Remove&nbsp;the&nbsp;use&nbsp;of&nbsp;`Debug.log`&nbsp;before&nbsp;shipping&nbsp;to&nbsp;production<br><br>55|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NoOpFrontendMsg&nbsp;-><br>56|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Debug.log&nbsp;"BBBB"&nbsp;(&nbsp;model,&nbsp;Cmd.none&nbsp;)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span style="color: #FF5959;">^^^^^^^^^</span><span style="color: #4F9DA6"><br><br>`Debug.log`&nbsp;is&nbsp;useful&nbsp;when&nbsp;developing,&nbsp;but&nbsp;is&nbsp;not&nbsp;meant&nbsp;to&nbsp;be&nbsp;shipped&nbsp;to&nbsp;production&nbsp;or&nbsp;published&nbsp;in&nbsp;a&nbsp;package.&nbsp;I&nbsp;suggest&nbsp;removing&nbsp;its&nbsp;use&nbsp;before&nbsp;committing&nbsp;and&nbsp;attempting&nbsp;to&nbsp;push&nbsp;to&nbsp;production.</span></body></html>"""
+                    formattedText = noDebugLogFormattedTextBbbb(),
+                    formattedChunks = noDebugLogFormattedChunksBbbb()
                 ),
                 ElmReviewError(
                     suppressed = false,
                     path = "src/Frontend.elm",
                     rule = "NoDebug.Log",
-                    message = "Remove the use of `Debug.log` before shipping to production",
+                    message = NO_DEBUG_LOG_MESSAGE,
                     region = Region(Location(53, 17), Location(53, 26)),
-                    html = """<html><body style="font-family: monospace; font-weight: bold"><span style="color: #33BBC8;">(fix)&nbsp;</span><span style="color: #FF5959;"><a&nbsp;href="https://package.elm-lang.org/packages/jfmengels/elm-review-debug/1.0.6/NoDebug-Log">NoDebug.Log</a></span><span style="color: #4F9DA6">:&nbsp;Remove&nbsp;the&nbsp;use&nbsp;of&nbsp;`Debug.log`&nbsp;before&nbsp;shipping&nbsp;to&nbsp;production<br><br>52|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UrlChanged&nbsp;url&nbsp;-><br>53|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Debug.log&nbsp;"AAAA"&nbsp;(&nbsp;model,&nbsp;Cmd.none&nbsp;)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span style="color: #FF5959;">^^^^^^^^^</span><span style="color: #4F9DA6"><br><br>`Debug.log`&nbsp;is&nbsp;useful&nbsp;when&nbsp;developing,&nbsp;but&nbsp;is&nbsp;not&nbsp;meant&nbsp;to&nbsp;be&nbsp;shipped&nbsp;to&nbsp;production&nbsp;or&nbsp;published&nbsp;in&nbsp;a&nbsp;package.&nbsp;I&nbsp;suggest&nbsp;removing&nbsp;its&nbsp;use&nbsp;before&nbsp;committing&nbsp;and&nbsp;attempting&nbsp;to&nbsp;push&nbsp;to&nbsp;production.</span></body></html>"""
+                    formattedText = noDebugLogFormattedTextAaaa(),
+                    formattedChunks = noDebugLogFormattedChunksAaaa()
                 )
             ),
             reader.readErrorReport()
@@ -279,25 +287,27 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         }""".trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.isLenient = true
+        reader.strictness = Strictness.LENIENT
 
-        TestCase.assertEquals(
+        assertEquals(
             listOf(
                 ElmReviewError(
                     suppressed = true,
                     path = "src/Frontend.elm",
                     rule = "NoDebug.Log",
-                    message = "Remove the use of `Debug.log` before shipping to production",
+                    message = NO_DEBUG_LOG_MESSAGE,
                     region = Region(Location(56, 13), Location(56, 22)),
-                    html = """<html><body style="font-family: monospace; font-weight: bold"><span style="color: #33BBC8;">(fix)&nbsp;</span><span style="color: #FF5959;"><a&nbsp;href="https://package.elm-lang.org/packages/jfmengels/elm-review-debug/1.0.6/NoDebug-Log">NoDebug.Log</a></span><span style="color: #4F9DA6">:&nbsp;Remove&nbsp;the&nbsp;use&nbsp;of&nbsp;`Debug.log`&nbsp;before&nbsp;shipping&nbsp;to&nbsp;production<br><br>55|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NoOpFrontendMsg&nbsp;-><br>56|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Debug.log&nbsp;"BBBB"&nbsp;(&nbsp;model,&nbsp;Cmd.none&nbsp;)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span style="color: #FF5959;">^^^^^^^^^</span><span style="color: #4F9DA6"><br><br>`Debug.log`&nbsp;is&nbsp;useful&nbsp;when&nbsp;developing,&nbsp;but&nbsp;is&nbsp;not&nbsp;meant&nbsp;to&nbsp;be&nbsp;shipped&nbsp;to&nbsp;production&nbsp;or&nbsp;published&nbsp;in&nbsp;a&nbsp;package.&nbsp;I&nbsp;suggest&nbsp;removing&nbsp;its&nbsp;use&nbsp;before&nbsp;committing&nbsp;and&nbsp;attempting&nbsp;to&nbsp;push&nbsp;to&nbsp;production.</span></body></html>"""
+                    formattedText = noDebugLogFormattedTextBbbb(),
+                    formattedChunks = noDebugLogFormattedChunksBbbb()
                 ),
                 ElmReviewError(
                     suppressed = false,
                     path = "src/Frontend.elm",
                     rule = "NoDebug.Log",
-                    message = "Remove the use of `Debug.log` before shipping to production",
+                    message = NO_DEBUG_LOG_MESSAGE,
                     region = Region(Location(53, 17), Location(53, 26)),
-                    html = """<html><body style="font-family: monospace; font-weight: bold"><span style="color: #33BBC8;">(fix)&nbsp;</span><span style="color: #FF5959;"><a&nbsp;href="https://package.elm-lang.org/packages/jfmengels/elm-review-debug/1.0.6/NoDebug-Log">NoDebug.Log</a></span><span style="color: #4F9DA6">:&nbsp;Remove&nbsp;the&nbsp;use&nbsp;of&nbsp;`Debug.log`&nbsp;before&nbsp;shipping&nbsp;to&nbsp;production<br><br>52|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UrlChanged&nbsp;url&nbsp;-><br>53|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Debug.log&nbsp;"AAAA"&nbsp;(&nbsp;model,&nbsp;Cmd.none&nbsp;)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span style="color: #FF5959;">^^^^^^^^^</span><span style="color: #4F9DA6"><br><br>`Debug.log`&nbsp;is&nbsp;useful&nbsp;when&nbsp;developing,&nbsp;but&nbsp;is&nbsp;not&nbsp;meant&nbsp;to&nbsp;be&nbsp;shipped&nbsp;to&nbsp;production&nbsp;or&nbsp;published&nbsp;in&nbsp;a&nbsp;package.&nbsp;I&nbsp;suggest&nbsp;removing&nbsp;its&nbsp;use&nbsp;before&nbsp;committing&nbsp;and&nbsp;attempting&nbsp;to&nbsp;push&nbsp;to&nbsp;production.</span></body></html>"""
+                    formattedText = noDebugLogFormattedTextAaaa(),
+                    formattedChunks = noDebugLogFormattedChunksAaaa()
                 )
             ),
             reader.readErrorReport()
@@ -319,16 +329,16 @@ class ElmReviewJsonReportTest : ElmTestBase() {
         """.trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.isLenient = true
+        reader.strictness = Strictness.LENIENT
         val report = reader.readErrorReport()
-        TestCase.assertEquals(
+        assertEquals(
             listOf(
                 ElmReviewError(
                     path = "/home/jw/LamderaProjects/test/elm.json",
                     rule = "INCORRECT CONFIGURATION",
                     message = "I could not find a review configuration. I was expecting to find an elm.json file and a ReviewConfig.elm file in /home/jw/LamderaProjects/test/review/.\n\nI can help set you up with an initial configuration if you run elm-review init.",
                     region = null,
-                    html = null
+                    formattedText = null
                 )
             ),
             report
@@ -430,20 +440,237 @@ class ElmReviewJsonReportTest : ElmTestBase() {
 }""".trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.isLenient = true
+        reader.strictness = Strictness.LENIENT
         val report = reader.readErrorReport()
-        TestCase.assertEquals(
+        TestCase.assertEquals(1, report.size)
+        TestCase.assertEquals("/home/jw/LamderaProjects/test/review/src/ReviewConfig.elm", report[0].path)
+        TestCase.assertEquals("UNFINISHED IMPORT", report[0].rule)
+        TestCase.assertEquals(Region(Location(23, 9), Location(23, 9)), report[0].region)
+        TestCase.assertTrue(report[0].message?.contains("I am partway through parsing an import") == true)
+        TestCase.assertTrue(report[0].formattedText?.contains("I am partway through parsing an import") == true)
+        TestCase.assertTrue(report[0].formattedChunks?.isNotEmpty() == true)
+    }
+
+    @Test
+    fun `parses compile-errors when message chunk has null color`() {
+        @Language("JSON")
+        val json = """
+{
+  "type": "compile-errors",
+  "errors": [
+    {
+      "path": "/tmp/ReviewConfig.elm",
+      "name": "ReviewConfig",
+      "problems": [
+        {
+          "title": "NAMING ERROR",
+          "region": {
+            "start": { "line": 1, "column": 1 },
+            "end": { "line": 1, "column": 5 }
+          },
+          "message": [
+            "Prefix ",
+            { "string": "Hint", "underline": true, "color": null },
+            ": suffix"
+          ]
+        }
+      ]
+    }
+  ]
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.strictness = Strictness.LENIENT
+        val report = reader.readErrorReport()
+
+        TestCase.assertEquals(1, report.size)
+        TestCase.assertEquals("NAMING ERROR", report[0].rule)
+        TestCase.assertEquals("/tmp/ReviewConfig.elm", report[0].path)
+        TestCase.assertEquals(Region(Location(1, 1), Location(1, 5)), report[0].region)
+        TestCase.assertEquals("Prefix Hint: suffix", report[0].message)
+    }
+
+    @Test
+    fun `sets compiler origin for compile-errors`() {
+        @Language("JSON")
+        val json = """
+{
+  "type": "compile-errors",
+  "errors": [
+    {
+      "path": "src/Main.elm",
+      "name": "Main",
+      "problems": [
+        {
+          "title": "NAMING ERROR",
+          "region": {
+            "start": { "line": 1, "column": 1 },
+            "end": { "line": 1, "column": 2 }
+          },
+          "message": "Oops"
+        }
+      ]
+    }
+  ]
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.strictness = Strictness.LENIENT
+        val report = reader.readErrorReport()
+
+        TestCase.assertEquals(1, report.size)
+        TestCase.assertEquals(ElmReviewErrorOrigin.COMPILER, report[0].origin)
+    }
+
+    @Test
+    fun `parses review-errors with cliVersion metadata`() {
+        @Language("JSON")
+        val json = """
+{
+  "type": "review-errors",
+  "cliVersion": "2.13.0",
+  "errors": [
+    {
+      "path": "src/Main.elm",
+      "errors": [
+        {
+          "rule": "NoUnused.Variables",
+          "message": "Unused variable `x`",
+          "region": {
+            "start": { "line": 1, "column": 1 },
+            "end": { "line": 1, "column": 2 }
+          },
+          "formatted": ["Unused variable `x`"],
+          "suppressed": false
+        }
+      ]
+    }
+  ]
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.strictness = Strictness.LENIENT
+        val report = reader.readErrorReport()
+
+        TestCase.assertEquals(1, report.size)
+        TestCase.assertEquals("src/Main.elm", report[0].path)
+        TestCase.assertEquals("NoUnused.Variables", report[0].rule)
+        TestCase.assertEquals("Unused variable `x`", report[0].message)
+        TestCase.assertEquals(ElmReviewErrorOrigin.REVIEW, report[0].origin)
+    }
+
+    @Test
+    fun `parses top-level error object without type`() {
+        @Language("JSON")
+        val json = """
+{
+  "cliVersion": "2.13.0",
+  "title": "INCORRECT CONFIGURATION",
+  "path": "/tmp/elm.json",
+  "message": "Something went wrong"
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.strictness = Strictness.LENIENT
+        val report = reader.readErrorReport()
+
+        assertEquals(
             listOf(
                 ElmReviewError(
-                    path = "/home/jw/LamderaProjects/test/review/src/ReviewConfig.elm",
-                    rule = "UNFINISHED IMPORT",
-                    message = null,
+                    path = "/tmp/elm.json",
+                    rule = "INCORRECT CONFIGURATION",
+                    message = "Something went wrong",
                     region = null,
-                    html = null
+                    formattedText = null
                 )
             ),
             report
         )
+        TestCase.assertEquals(ElmReviewErrorOrigin.GENERIC, report[0].origin)
+    }
+
+    @Test
+    fun `parses top-level error message array without type`() {
+        @Language("JSON")
+        val json = """
+{
+  "cliVersion": "2.13.0",
+  "title": "ERROR",
+  "path": "/tmp/review/ReviewConfig.elm",
+  "message": ["Line one", "Line two"]
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.strictness = Strictness.LENIENT
+        val report = reader.readErrorReport()
+
+        TestCase.assertEquals(1, report.size)
+        TestCase.assertEquals("ERROR", report[0].rule)
+        TestCase.assertEquals("/tmp/review/ReviewConfig.elm", report[0].path)
+        TestCase.assertEquals("Line oneLine two", report[0].message)
+    }
+
+    @Test
+    fun `ignores unknown type with errors payload`() {
+        @Language("JSON")
+        val json = """
+{
+  "type": "future-errors",
+  "errors": [
+    {
+      "path": "src/Main.elm",
+      "errors": [
+        {
+          "rule": "NoUnused.Variables",
+          "message": "Unused variable `x`"
+        }
+      ]
+    }
+  ]
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.strictness = Strictness.LENIENT
+
+        assertEquals(emptyList<ElmReviewError>(), reader.readErrorReport())
+    }
+
+    @Test
+    fun `parses location with extra properties`() {
+        @Language("JSON")
+        val json = """
+{
+  "type": "review-errors",
+  "errors": [
+    {
+      "path": "src/Main.elm",
+      "errors": [
+        {
+          "rule": "NoUnused.Variables",
+          "message": "Unused variable `x`",
+          "region": {
+            "start": { "line": 1, "column": 1, "offset": 0 },
+            "end": { "line": 1, "column": 2 }
+          }
+        }
+      ]
+    }
+  ]
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.strictness = Strictness.LENIENT
+        val report = reader.readErrorReport()
+
+        assertEquals(1, report.size)
+        assertEquals(Region(Location(1, 1), Location(1, 2)), report[0].region)
     }
 
     // TODO: complete this test, then add @Test annotation
@@ -508,11 +735,55 @@ class ElmReviewJsonReportTest : ElmTestBase() {
 ]""".trimIndent()
 
         val reader = JsonReader(json.byteInputStream().bufferedReader())
-        reader.isLenient = true
+        reader.strictness = Strictness.LENIENT
         val report = reader.readErrorReport()
-        TestCase.assertEquals(
+        assertEquals(
             emptyList<ElmReviewError>(),
             report
         )
     }
+
+    private fun noDebugLogFormattedTextBbbb(): String =
+        """
+        (fix) NoDebug.Log: $NO_DEBUG_LOG_MESSAGE
+
+        55|         NoOpFrontendMsg ->
+        56|             Debug.log "BBBB" ( model, Cmd.none )
+                        ^^^^^^^^^
+
+        $NO_DEBUG_LOG_DETAILS
+        """.trimIndent()
+
+    private fun noDebugLogFormattedTextAaaa(): String =
+        """
+        (fix) NoDebug.Log: $NO_DEBUG_LOG_MESSAGE
+
+        52|         UrlChanged url ->
+        53|                 Debug.log "AAAA" ( model, Cmd.none )
+                            ^^^^^^^^^
+
+        $NO_DEBUG_LOG_DETAILS
+        """.trimIndent()
+
+    private fun noDebugLogFormattedChunksBbbb(): List<Chunk> =
+        listOf(
+            Chunk.Styled(string = "(fix) ", color = "#33BBC8"),
+            Chunk.Styled(string = "NoDebug.Log", color = "#FF0000", href = NO_DEBUG_LOG_RULE_LINK),
+            Chunk.Unstyled(
+                str = ": $NO_DEBUG_LOG_MESSAGE\n\n55|         NoOpFrontendMsg ->\n56|             Debug.log \"BBBB\" ( model, Cmd.none )\n                "
+            ),
+            Chunk.Styled(string = "^^^^^^^^^", color = "#FF0000"),
+            Chunk.Unstyled(str = "\n\n$NO_DEBUG_LOG_DETAILS")
+        )
+
+    private fun noDebugLogFormattedChunksAaaa(): List<Chunk> =
+        listOf(
+            Chunk.Styled(string = "(fix) ", color = "#33BBC8"),
+            Chunk.Styled(string = "NoDebug.Log", color = "#FF0000", href = NO_DEBUG_LOG_RULE_LINK),
+            Chunk.Unstyled(
+                str = ": $NO_DEBUG_LOG_MESSAGE\n\n52|         UrlChanged url ->\n53|                 Debug.log \"AAAA\" ( model, Cmd.none )\n                    "
+            ),
+            Chunk.Styled(string = "^^^^^^^^^", color = "#FF0000"),
+            Chunk.Unstyled(str = "\n\n$NO_DEBUG_LOG_DETAILS")
+        )
 }

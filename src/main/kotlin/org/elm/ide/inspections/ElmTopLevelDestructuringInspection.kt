@@ -1,6 +1,7 @@
 package org.elm.ide.inspections
 
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.openapi.project.DumbAware
 import org.elm.lang.core.psi.ElmPsiElement
 import org.elm.lang.core.psi.elements.ElmValueDeclaration
 import org.elm.lang.core.psi.isTopLevel
@@ -8,7 +9,7 @@ import org.elm.lang.core.psi.isTopLevel
 /**
  * Detects top-level value destructuring and marks it as an error.
  **/
-class ElmTopLevelDestructuringInspection : ElmLocalInspection() {
+class ElmTopLevelDestructuringInspection : ElmLocalInspection(), DumbAware {
 
     /*
     Prior to Elm 0.19, top-level destructuring was allowed, and so our parser was

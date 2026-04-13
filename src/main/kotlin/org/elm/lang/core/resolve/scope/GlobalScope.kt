@@ -9,7 +9,7 @@ import org.elm.lang.core.psi.ElmFile
 import org.elm.lang.core.psi.ElmNamedElement
 import org.elm.lang.core.psi.elements.ElmModuleDeclaration
 import org.elm.lang.core.psi.globalModificationTracker
-import org.elm.lang.core.stubs.index.ElmModulesIndex
+import org.elm.lang.core.stubs.index.ElmModules
 
 private val VISIBLE_VALUES_KEY: Key<ParameterizedCachedValue<List<ElmNamedElement>, ElmFile>> = Key.create("VISIBLE_VALUES_KEY")
 private val VISIBLE_TYPES_KEY: Key<ParameterizedCachedValue<List<ElmNamedElement>, ElmFile>> = Key.create("VISIBLE_TYPES_KEY")
@@ -71,14 +71,14 @@ class GlobalScope private constructor(private val clientFile: ElmFile) {
                 else -> null
             } ?: return emptyList()
 
-            return ElmModulesIndex.getAll(listOf(implicitModuleName), clientFile)
+            return ElmModules.getAll(listOf(implicitModuleName), clientFile)
                     .filter { it.elmFile.isCore() }
         }
 
 
         private fun produceVisibleValues(clientFile: ClientLocation): List<ElmNamedElement> {
             fun helper(moduleName: String) =
-                    ElmModulesIndex.get(moduleName, clientFile)
+                    ElmModules.get(moduleName, clientFile)
                             ?.let { ModuleScope.getDeclaredValues(it.elmFile) }
 
             val rest = mutableListOf<ElmNamedElement>()
@@ -92,7 +92,7 @@ class GlobalScope private constructor(private val clientFile: ElmFile) {
         // define it anywhere, so there's no element to return
         private fun produceVisibleTypes(location: ClientLocation): List<ElmNamedElement> {
             fun helper(moduleName: String) =
-                    ElmModulesIndex.get(moduleName, location)
+                    ElmModules.get(moduleName, location)
                             ?.let { ModuleScope.getDeclaredTypes(it.elmFile) }
 
             val rest = mutableListOf<ElmNamedElement>()
@@ -109,7 +109,7 @@ class GlobalScope private constructor(private val clientFile: ElmFile) {
 
         private fun produceVisibleConstructors(location: ClientLocation): List<ElmNamedElement> {
             fun helper(moduleName: String) =
-                    ElmModulesIndex.get(moduleName, location)
+                    ElmModules.get(moduleName, location)
                             ?.let { ModuleScope.getDeclaredConstructors(it.elmFile) }
 
             val rest = mutableListOf<ElmNamedElement>()

@@ -26,7 +26,6 @@ SOFTWARE.
 
 package org.elm.lang.core.resolve
 
-import com.intellij.openapi.vfs.VirtualFileFilter
 import org.elm.fileTreeFromText
 import org.elm.lang.ElmTestBase
 import org.elm.lang.core.psi.ElmNamedElement
@@ -60,9 +59,9 @@ abstract class ElmResolveTestBase : ElmTestBase() {
     protected fun stubOnlyResolve(@Language("Elm") code: String) {
         val testProject = fileTreeFromText(code).createAndOpenFileWithCaretMarker()
 
-        checkAstNotLoaded(VirtualFileFilter { file ->
+        checkAstNotLoaded { file ->
             !file.path.endsWith(testProject.fileWithCaret)
-        })
+        }
 
         val (ref, resolveFile) = findReferenceWithDataInEditor()
 

@@ -5,7 +5,6 @@ import org.elm.TestProject
 import org.elm.fileTree
 import org.elm.ide.test.core.ElmProjectTestsHelper
 import org.elm.openapiext.pathAsPath
-import org.junit.Test
 
 class ElmProjectHelperTest : ElmWorkspaceTestBase() {
 

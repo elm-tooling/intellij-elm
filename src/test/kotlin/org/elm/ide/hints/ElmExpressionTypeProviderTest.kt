@@ -1,6 +1,5 @@
 package org.elm.ide.hints
 
-import junit.framework.TestCase
 import org.elm.lang.ElmTestBase
 import org.elm.lang.core.psi.ElmPsiElement
 import org.intellij.lang.annotations.Language
@@ -83,7 +82,7 @@ f foo = foo.x.y
         addFileToFixture(str)
         val elem = findElementInEditor<ElmPsiElement>()
 
-        TestCase.assertEquals(choices, provider.getExpressionsAt(elem).map { it.text })
+        assertEquals(choices, provider.getExpressionsAt(elem).map { it.text })
     }
 
 }

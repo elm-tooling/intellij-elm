@@ -6,6 +6,7 @@ import org.elm.ide.icons.ElmIcons
 
 
 object ElmLanguage : Language("Elm", "text/elm", "text/x-elm", "application/x-elm") {
+    @Suppress("unused")
     private fun readResolve(): Any = ElmLanguage
 }
 
