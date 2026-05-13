@@ -3,6 +3,7 @@
 # Changelog for et-intellij-elm
 
 ## [Unreleased]
+*   New: Support folding for list expressions
 
 ## [6.0.0] - 2026-04-13
 *   Fixed: Reworked the elm-review panel (#19)
