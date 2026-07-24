@@ -125,7 +125,7 @@ object ModuleScope {
                     ?.let { importDecl ->
                         when {
                             getVisibleImportValues(importDecl).any { it.element.name == name } -> ""
-                            getVisibleImportTypes(importDecl).any { it.name == name } -> ""
+                            getVisibleImportTypes(importDecl).any { it.element.name == name } -> ""
                             getVisibleImportConstructors(importDecl).any { it.name == name } -> ""
                             importDecl.asClause != null -> importDecl.asClause!!.name + "."
                             else -> importDecl.moduleQID.text + "."
@@ -280,21 +280,24 @@ object ModuleScope {
         return CachedValuesManager.getCachedValue(elmFile, VISIBLE_TYPES_KEY) {
             val fromGlobal = GlobalScope.forElmFile(elmFile)?.getVisibleTypes() ?: emptyList()
             val fromTopLevel = getDeclaredTypes(elmFile).list
+            // Explicit imports shadow names from wildcard imports, so we need to sort the names
             val fromImports = elmFile.getImportClauses()
                     .flatMap { getVisibleImportTypes(it) }
+                    .sortedBy { it.fromWildcard }
+                    .map { it.element }
             val names = VisibleNames(global = fromGlobal, topLevel = fromTopLevel, imported = fromImports)
             Result.create(names, elmFile.globalModificationTracker)
         }
     }
 
 
-    private fun getVisibleImportTypes(importClause: ElmImportClause): List<ElmNamedElement> {
+    private fun getVisibleImportTypes(importClause: ElmImportClause): List<ExposedElement> {
         val allExposedTypes = ImportScope.fromImportDecl(importClause)
                 ?.getExposedTypes()?.elements
                 ?: return emptyList()
 
         if (importClause.exposesAll)
-            return allExposedTypes.asList()
+            return allExposedTypes.map { ExposedElement(true, it) }
 
         // intersect the names exposed by the module with the names declared
         // in this import clause's exposing list.
@@ -302,6 +305,7 @@ object ModuleScope {
                 ?.mapTo(mutableSetOf()) { it.referenceName }
                 ?: return emptyList()
         return allExposedTypes.filter { locallyExposedNames.contains(it.name) }
+                .map { ExposedElement(false, it) }
     }
 
 
