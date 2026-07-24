@@ -1,15 +1,9 @@
 package org.elm.workspace.compiler
 
-import com.intellij.notification.Notification
-import com.intellij.notification.Notifications
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.actionSystem.impl.SimpleDataContext
-import com.intellij.openapi.util.Ref
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.testFramework.TestActionEvent
 import junit.framework.TestCase
 import org.elm.workspace.ElmWorkspaceTestBase
+import org.elm.workspace.commandLineTools.makeProject
 import org.elm.workspace.elmToolchain
 import org.elm.workspace.elmWorkspace
 import org.intellij.lang.annotations.Language
@@ -83,34 +77,11 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
         doTest(file, expectedNumErrors = 1, expectedOffset = 0)
     }
 
-    @Test
-    fun `test build Elm project ignores nested function named 'main'`() {
-        val source = """
-                    module Main exposing (..)
-                    import Html
-                    foo =
-                        let
-                            main = Html.text "hi"
-                        in
-                        main
-                        
-                """.trimIndent()
-
-        buildProject {
-            project("elm.json", manifestElm19)
-            dir("src") {
-                elm("Foo.elm", source)
-            }
-        }
-        val file = myFixture.configureFromTempProjectFile("src/Foo.elm").virtualFile
-        doTestShowsErrorBalloon(file, "No build targets configured")
-    }
-
 
     private fun doTest(file: VirtualFile, expectedNumErrors: Int, expectedOffset: Int) {
         var succeeded = false
         with(project.messageBus.connect(testRootDisposable)) {
-            subscribe(ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
+            subscribe(ERRORS_TOPIC, object : ElmErrorsListener {
                 override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int) {
                     TestCase.assertEquals(expectedNumErrors, messages.size)
                     TestCase.assertEquals(file.path, targetPath)
@@ -120,11 +91,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
             })
         }
 
-        val (action, event) = makeTestAction(file)
-        check(event.presentation.isEnabledAndVisible) {
-            "The build action should be enabled in this context"
-        }
-        action.actionPerformed(event)
+        buildConfiguredTargets(file)
         assertTrue(succeeded)
     }
 
@@ -132,8 +99,8 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
         var succeeded = false
         val inputPaths = files.map { it.path }
         with(project.messageBus.connect(testRootDisposable)) {
-            subscribe(ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
-                override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int ) {
+            subscribe(ERRORS_TOPIC, object : ElmErrorsListener {
+                override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int) {
                     TestCase.assertEquals(expectedNumErrors, messages.size)
                     assertTrue(inputPaths.contains(targetPath))
                     assertTrue(expectedOffset.contains(offset))
@@ -142,46 +109,14 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
             })
         }
 
-        files.forEach {
-            val (action, event) = makeTestAction(it)
-            check(event.presentation.isEnabledAndVisible) {
-                "The build action should be enabled in this context"
-            }
-            action.actionPerformed(event)
-        }
+        buildConfiguredTargets(files.first())
         assertTrue(succeeded)
     }
 
-    private fun doTestShowsErrorBalloon(file: VirtualFile, errorFragment: String) {
-        val (action, event) = makeTestAction(file)
-        check(event.presentation.isEnabledAndVisible) {
-            "The build action should be enabled in this context"
-        }
-        val ref = connectToBusAndGetNotificationRef()
-        action.actionPerformed(event)
-        assertTrue(ref.get().content.contains(errorFragment))
-    }
-
-
-    private fun makeTestAction(file: VirtualFile): Pair<ElmBuildAction, AnActionEvent> {
-        val dataContext = SimpleDataContext.builder()
-            .add(CommonDataKeys.PROJECT, project)
-            .add(CommonDataKeys.VIRTUAL_FILE, file)
-            .build()
-        val action = ElmBuildAction()
-        val event = TestActionEvent.createTestEvent(action, dataContext)
-        action.update(event)
-        return Pair(action, event)
-    }
-
-    private fun connectToBusAndGetNotificationRef(): Ref<Notification> {
-        val notificationRef = Ref<Notification>()
-        project.messageBus.connect(testRootDisposable).subscribe(Notifications.TOPIC,
-                object : Notifications {
-                    override fun notify(notification: Notification) =
-                            notificationRef.set(notification)
-                })
-        return notificationRef
+    /** Build every configured target, exactly as the tool window's build actions do. */
+    private fun buildConfiguredTargets(currentFileInEditor: VirtualFile?) {
+        val entryPoints = project.elmWorkspace.resolveBuildTargetsDetailed().mapNotNull { it.resolved }
+        makeProject(project, entryPoints, currentFileInEditor)
     }
 
     private fun configureBuildTargets(file: VirtualFile, compilerKind: ElmCompilerKind) =

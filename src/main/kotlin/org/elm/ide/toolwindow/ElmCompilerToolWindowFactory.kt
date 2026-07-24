@@ -89,7 +89,7 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
         toolWindow.contentManager.addContent(ContentImpl(root, "Compilation Result", true))
 
         with(project.messageBus.connect()) {
-            subscribe(ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
+            subscribe(ERRORS_TOPIC, object : ElmErrorsListener {
                 override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int) {
                     errorTreeViewPanel.onBuildMessagesArrived()
                     errorTreeViewPanel.clearMessages()
@@ -118,7 +118,7 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
                 }
             })
 
-            subscribe(COMPILER_OUTPUT_TOPIC, object : ElmBuildAction.ElmCompilerOutputListener {
+            subscribe(COMPILER_OUTPUT_TOPIC, object : ElmCompilerOutputListener {
                 override fun update(toolName: String, commandLine: String, stdout: String, stderr: String, exitCode: Int) {
                     ToolWindowManager.getInstance(project).invokeLater {
                         outputPanel.showOutput(toolName, commandLine, stdout, stderr, exitCode)
