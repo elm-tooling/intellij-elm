@@ -168,9 +168,11 @@ private class ElmBuildTargetsPanel(
     }
     private val addBuildTargetAction = AddBuildTargetAction()
     private val editBuildTargetAction = EditBuildTargetAction()
+    private val moveUpAction = MoveBuildTargetAction(-1, "Move build target up", AllIcons.Actions.MoveUp)
+    private val moveDownAction = MoveBuildTargetAction(1, "Move build target down", AllIcons.Actions.MoveDown)
     private val actionToolbar = ActionManager.getInstance().createActionToolbar(
         "Elm Compiler Build Targets",
-        DefaultActionGroup(addBuildTargetAction, editBuildTargetAction),
+        DefaultActionGroup(addBuildTargetAction, editBuildTargetAction, moveUpAction, moveDownAction),
         false
     )
 
@@ -256,6 +258,22 @@ private class ElmBuildTargetsPanel(
         buildTarget(project, target)
     }
 
+    /**
+     * Move the selected target by [delta] rows and persist the new order. The JBList mirrors
+     * [ElmWorkspaceService.buildTargets] one-for-one and in order, so the selected row index is
+     * also the index into that list. Persisting fires WORKSPACE_TOPIC, which refreshes this panel
+     * and re-selects the moved target by key.
+     */
+    private fun moveSelectedTarget(delta: Int) {
+        val from = targetList.selectedIndex
+        val targets = project.elmWorkspace.buildTargets
+        val to = from + delta
+        if (from < 0 || to < 0 || to >= targets.size) return
+        val reordered = targets.toMutableList()
+        reordered.add(to, reordered.removeAt(from))
+        project.elmWorkspace.setBuildTargets(reordered)
+    }
+
     private fun editSelectedTarget() {
         val item = targetList.selectedValue ?: return
         // Locate the row by its configured name/input path so invalid targets can be edited (and fixed) too.
@@ -277,6 +295,23 @@ private class ElmBuildTargetsPanel(
 
         override fun actionPerformed(e: AnActionEvent) {
             editSelectedTarget()
+        }
+    }
+
+    private inner class MoveBuildTargetAction(
+        private val delta: Int,
+        text: String,
+        icon: javax.swing.Icon
+    ) : DumbAwareAction(text, text, icon) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            val index = targetList.selectedIndex
+            e.presentation.isEnabled = index >= 0 && index + delta in 0 until targetListModel.size()
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            moveSelectedTarget(delta)
         }
     }
 
