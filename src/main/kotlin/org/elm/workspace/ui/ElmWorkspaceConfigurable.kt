@@ -72,7 +72,7 @@ class ElmWorkspaceConfigurable(
     private val project: Project
 ) : Configurable, Disposable {
     private companion object {
-        const val BUILD_TARGETS_PANEL_PREFERRED_HEIGHT = 240
+        const val BUILD_TARGETS_PANEL_PREFERRED_HEIGHT = 320
     }
 
     private val uiDebouncer = UiDebouncer(this)
@@ -210,9 +210,7 @@ class ElmWorkspaceConfigurable(
                 row("Location:", pathFieldPlusAutoDiscoverButton(toolchainCompilerPathField, elmCompilerTool))
                 noteRow("Path to the compiler used by other tools")
             }
-            block("Build") {
-                noteRow("Build targets:")
-                noteRow("Each target's Elm project (elm.json) is detected from its input file.")
+            block("Build Targets") {
                 row(buildTargetsPanel())
             }
             block(elmFormatTool) {
@@ -301,15 +299,21 @@ class ElmWorkspaceConfigurable(
             add(targetTypePackage)
         }
 
+        // Compiler and Mode share one row (two equal columns) to save vertical space.
+        val compilerAndModeRow = JPanel(java.awt.GridLayout(1, 2, JBUI.scale(8), 0)).apply {
+            minimumSize = Dimension(0, 0)
+            add(labeledField("Compiler", targetCompilerKind))
+            add(labeledField("Mode", targetMode).also { targetModeRow = it })
+        }
+
         val formPanel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             add(labeledField("Name", targetName))
             add(labeledField("Type", typePanel))
-            add(labeledField("Compiler", targetCompilerKind))
+            add(compilerAndModeRow)
             add(labeledField("Compiler Path", targetCompilerPathWithAutoDiscoverButton()))
             add(labeledField(targetInputLabel, targetInputPath))
             add(labeledField("Output", targetOutputPath).also { targetOutputRow = it })
-            add(labeledField("Mode", targetMode).also { targetModeRow = it })
         }
 
         val emptyPanel = JPanel(BorderLayout()).apply {
@@ -331,7 +335,7 @@ class ElmWorkspaceConfigurable(
             targetDetailsPanel.minimumSize = Dimension(0, 0)
             firstComponent = leftPanel
             secondComponent = targetDetailsPanel
-            preferredSize = Dimension(0, JBUI.scale(BUILD_TARGETS_PANEL_PREFERRED_HEIGHT))
+//            preferredSize = Dimension(0, JBUI.scale(BUILD_TARGETS_PANEL_PREFERRED_HEIGHT))
         }
     }
 
