@@ -300,6 +300,12 @@
                 text="Refresh Elm projects"
                 icon="AllIcons.Actions.Refresh"/>
 
+        <action id="Elm.BuildAll"
+                class="org.elm.ide.actions.ElmBuildAllAction"
+                text="Build All Elm Targets"
+                description="Build all Elm build targets and show their combined errors"
+                icon="AllIcons.Actions.RunAll"/>
+
         <action id="Elm.RunExternalElmFormat"
                 class="org.elm.ide.actions.ElmExternalFormatAction"
                 text="Run elm-format on current file">
