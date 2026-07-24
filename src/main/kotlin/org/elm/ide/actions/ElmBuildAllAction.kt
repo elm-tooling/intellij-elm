@@ -11,7 +11,6 @@ import com.intellij.openapi.vfs.VirtualFile
 import org.elm.ide.notifications.showBalloon
 import org.elm.openapiext.saveAllDocuments
 import org.elm.workspace.commandLineTools.makeAllTargets
-import org.elm.workspace.elmWorkspace
 import java.nio.file.Files
 
 const val ELM_BUILD_ALL_ACTION_ID = "Elm.BuildAll"
