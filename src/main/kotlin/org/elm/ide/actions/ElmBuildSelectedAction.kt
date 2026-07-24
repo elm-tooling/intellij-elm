@@ -84,18 +84,14 @@ class ElmBuildTargetSelectionService {
 val Project.elmBuildTargetSelection: ElmBuildTargetSelectionService
     get() = service()
 
-/** All resolved build targets across every Elm project, in the tool window's display order. */
-fun resolveAllBuildTargets(project: Project): List<Pair<ElmProject, ResolvedBuildTarget>> {
-    val result = mutableListOf<Pair<ElmProject, ResolvedBuildTarget>>()
-    for (elmProject in project.elmWorkspace.allProjects.sortedBy { it.presentableName }) {
-        val resolved = when (val r = project.elmWorkspace.resolveBuildTargets(elmProject)) {
-            is org.elm.openapiext.Result.Ok -> r.value
-            is org.elm.openapiext.Result.Err -> emptyList()
-        }
-        for (target in resolved) result += elmProject to target
+/** All successfully resolved build targets (paired with their derived Elm project), in the
+ * tool window's display order. Targets that fail to resolve are omitted. */
+fun resolveAllBuildTargets(project: Project): List<Pair<ElmProject, ResolvedBuildTarget>> =
+    project.elmWorkspace.resolveBuildTargetsDetailed().mapNotNull { outcome ->
+        val elmProject = outcome.elmProject
+        val target = outcome.resolved
+        if (elmProject != null && target != null) elmProject to target else null
     }
-    return result
-}
 
 fun openElmCompilerToolWindow(project: Project) {
     ToolWindowManager.getInstance(project).getToolWindow(ELM_COMPILER_TOOL_WINDOW_ID)?.let { toolWindow ->

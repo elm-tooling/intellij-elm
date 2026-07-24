@@ -41,16 +41,16 @@ data class ElmReviewCompilerResolution(
 fun resolveElmReviewCompiler(
     project: Project,
     projectBasePath: Path,
-    elmProjectHint: ElmProject? = null,
+    @Suppress("UNUSED_PARAMETER") elmProjectHint: ElmProject? = null,
     suggestedTools: Map<String, Path?> = ElmSuggest.suggestTools(project)
 ): ElmReviewCompilerResolution {
-    val elmProject = elmProjectHint
-        ?: project.elmWorkspace.allProjects.firstOrNull { it.projectDirPath.normalize() == projectBasePath.normalize() }
-    val buildTargets = elmProject?.let { project.elmWorkspace.buildTargetConfigsFor(it) }.orEmpty()
+    // Build targets are project-agnostic now, so the compiler fallback considers every configured
+    // target's compiler (they store absolute executable paths). The primary source is still the
+    // global toolchain compiler; this only matters when that is unset.
     return resolveElmReviewCompiler(
         projectBasePath = projectBasePath,
         toolchainCompilerPath = project.elmToolchain.compilerPath,
-        buildTargets = buildTargets,
+        buildTargets = project.elmWorkspace.buildTargets,
         suggestedTools = suggestedTools
     )
 }

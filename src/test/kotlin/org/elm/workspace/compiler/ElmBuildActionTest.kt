@@ -6,7 +6,6 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.util.Ref
-import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.TestActionEvent
 import junit.framework.TestCase
@@ -61,7 +60,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
         val fileFrontend = myFixture.configureFromTempProjectFile("src/Frontend.elm").virtualFile
         val fileBackend = myFixture.configureFromTempProjectFile("src/Backend.elm").virtualFile
         configureBuildTargets(listOf(fileFrontend, fileBackend), ElmCompilerKind.LAMDERA)
-        doTest(listOf(fileFrontend, fileBackend), expectedNumErrors = 0, expectedOffset = listOf(0, 0), listOf("src/Frontend.elm", "src/Backend.elm"))
+        doTest(listOf(fileFrontend, fileBackend), expectedNumErrors = 0, expectedOffset = listOf(0, 0))
     }
 
     @Test
@@ -114,7 +113,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
             subscribe(ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
                 override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int) {
                     TestCase.assertEquals(expectedNumErrors, messages.size)
-                    TestCase.assertEquals("src/Main.elm", targetPath)
+                    TestCase.assertEquals(file.path, targetPath)
                     TestCase.assertEquals(expectedOffset, offset)
                     succeeded = true
                 }
@@ -129,13 +128,14 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
         assertTrue(succeeded)
     }
 
-    private fun doTest(files: List<VirtualFile>, expectedNumErrors: Int, expectedOffset: List<Int>, source: List<String> = listOf("src/Mail.elm")) {
+    private fun doTest(files: List<VirtualFile>, expectedNumErrors: Int, expectedOffset: List<Int>) {
         var succeeded = false
+        val inputPaths = files.map { it.path }
         with(project.messageBus.connect(testRootDisposable)) {
             subscribe(ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
                 override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int ) {
                     TestCase.assertEquals(expectedNumErrors, messages.size)
-                    assertTrue(source.contains(targetPath))
+                    assertTrue(inputPaths.contains(targetPath))
                     assertTrue(expectedOffset.contains(offset))
                     succeeded = true
                 }
@@ -188,18 +188,12 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
         configureBuildTargets(listOf(file), compilerKind)
 
     private fun configureBuildTargets(files: List<VirtualFile>, compilerKind: ElmCompilerKind) {
-        val elmProject = project.elmWorkspace.findProjectForFile(files.first())
-            ?: error("Could not find Elm project for test file")
-        val projectDir = myFixture.findFileInTempDir(".")
-            ?: error("Could not find test project root")
         val compilerPath = project.elmToolchain.compilerPath?.toString()
             ?: error("Compiler path is not configured in test toolchain")
         val targets = files.mapIndexed { index, file ->
-            val relativeInput = VfsUtilCore.getRelativePath(file, projectDir)
-                ?: error("Could not create relative input path for ${file.path}")
             ElmBuildTargetConfig(
                 name = "Target ${index + 1}",
-                inputPath = relativeInput,
+                inputPath = file.path,
                 outputPath = "",
                 mode = ElmBuildMode.NONE,
                 compilerKind = compilerKind,
@@ -207,7 +201,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
                 compileOnSave = true
             )
         }
-        project.elmWorkspace.setBuildTargetConfigsFor(elmProject.manifestPath, targets)
+        project.elmWorkspace.setBuildTargets(targets)
     }
 }
 

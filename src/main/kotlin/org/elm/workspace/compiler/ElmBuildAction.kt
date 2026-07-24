@@ -36,13 +36,17 @@ internal fun runElmBuildForFile(
     val elmProject = project.elmWorkspace.findProjectForFile(activeFile)
         ?: return ElmBuildRunFailure("Could not determine active Elm project")
 
-    val entryPoints = when (val result = project.elmWorkspace.resolveBuildTargets(elmProject)) {
-        is org.elm.openapiext.Result.Ok -> result.value
-        is org.elm.openapiext.Result.Err -> {
-            val suffix = if (result.reason.isBlank()) "" else "\n${result.reason}"
-            return ElmBuildRunFailure("Invalid build target configuration.$suffix", includeFixAction = true)
-        }
+    // Build the targets whose input file belongs to the active file's Elm project.
+    val outcomes = project.elmWorkspace.resolveBuildTargetsDetailed()
+        .filter { it.elmProject?.manifestPath == elmProject.manifestPath }
+    if (outcomes.isEmpty()) {
+        return ElmBuildRunFailure("No build targets configured", includeFixAction = true)
     }
+    val errors = outcomes.mapNotNull { it.error }
+    if (errors.isNotEmpty()) {
+        return ElmBuildRunFailure("Invalid build target configuration.\n${errors.joinToString("\n")}", includeFixAction = true)
+    }
+    val entryPoints = outcomes.mapNotNull { it.resolved }
 
     return try {
         makeProject(elmProject, project, entryPoints, currentFileInEditor)

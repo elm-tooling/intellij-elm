@@ -155,7 +155,8 @@ private class ElmBuildTargetsPanel(
                 selected: Boolean,
                 hasFocus: Boolean
             ) {
-                val text = "${value.displayName} (${value.elmProject.presentableName})"
+                val projectSuffix = value.elmProject?.let { " (${it.presentableName})" } ?: ""
+                val text = "${value.displayName}$projectSuffix"
                 if (value.error != null) {
                     icon = AllIcons.General.Error
                     append(text, SimpleTextAttributes.ERROR_ATTRIBUTES)
@@ -193,7 +194,7 @@ private class ElmBuildTargetsPanel(
             if (!e.valueIsAdjusting) {
                 val item = targetList.selectedValue
                 project.elmBuildTargetSelection.selectedKey =
-                    item?.target?.let { buildTargetKeyOf(item.elmProject, it) }
+                    item?.elmProject?.let { p -> item.target?.let { buildTargetKeyOf(p, it) } }
                 updateSelectionMessages()
             }
         }
@@ -211,23 +212,22 @@ private class ElmBuildTargetsPanel(
     fun refreshTargets() {
         val previousKey = project.elmBuildTargetSelection.selectedKey
         targetListModel.clear()
-        for (elmProject in project.elmWorkspace.allProjects.sortedBy { it.presentableName }) {
-            for (outcome in project.elmWorkspace.resolveBuildTargetsDetailed(elmProject)) {
-                val displayName = outcome.resolved?.let { displayTargetName(it, outcome.row) }
-                    ?: displayConfigName(outcome.config, outcome.row)
-                targetListModel.addElement(
-                    BuildTargetItem(
-                        elmProject, outcome.row, displayName, outcome.resolved, outcome.error, outcome.config
-                    )
+        for (outcome in project.elmWorkspace.resolveBuildTargetsDetailed()) {
+            val displayName = outcome.resolved?.let { displayTargetName(it, outcome.row) }
+                ?: displayConfigName(outcome.config, outcome.row)
+            targetListModel.addElement(
+                BuildTargetItem(
+                    outcome.elmProject, outcome.row, displayName, outcome.resolved, outcome.error, outcome.config
                 )
-            }
+            )
         }
         // Always keep one target selected (defaulting to the first), preserving the previous
         // selection when it still exists. Setting the index updates the selection service.
         if (!targetListModel.isEmpty) {
             val matchIndex = (0 until targetListModel.size()).firstOrNull {
                 val item = targetListModel.getElementAt(it)
-                item.target != null && buildTargetKeyOf(item.elmProject, item.target) == previousKey
+                item.elmProject != null && item.target != null &&
+                    buildTargetKeyOf(item.elmProject, item.target) == previousKey
             } ?: 0
             targetList.selectedIndex = matchIndex
         }
@@ -249,12 +249,13 @@ private class ElmBuildTargetsPanel(
     fun buildSelectedTarget() {
         val item = targetList.selectedValue ?: return
         val target = item.target
-        if (target == null) {
+        val elmProject = item.elmProject
+        if (target == null || elmProject == null) {
             // The selected target is misconfigured; show why instead of trying to build it.
             item.error?.let { onInvalidSelected(it) }
             return
         }
-        buildTarget(project, item.elmProject, target)
+        buildTarget(project, elmProject, target)
     }
 
     private fun editSelectedTarget() {
@@ -262,7 +263,7 @@ private class ElmBuildTargetsPanel(
         // Locate the row by its configured name/input path so invalid targets can be edited (and fixed) too.
         val name = item.target?.name ?: item.config.name
         val inputPath = item.target?.inputPathForCompiler ?: item.config.inputPath
-        project.elmWorkspace.showConfigureBuildTargetUI(item.elmProject.manifestPath, name, inputPath)
+        project.elmWorkspace.showConfigureBuildTargetUI(name, inputPath)
     }
 
     private inner class EditBuildTargetAction : DumbAwareAction(
@@ -295,7 +296,8 @@ private class ElmBuildTargetsPanel(
 }
 
 private data class BuildTargetItem(
-    val elmProject: ElmProject,
+    /** The owning Elm project derived from the input file, or null when none was found. */
+    val elmProject: ElmProject?,
     val index: Int,
     val displayName: String,
     /** The resolved target, or null when the target is misconfigured (see [error]). */

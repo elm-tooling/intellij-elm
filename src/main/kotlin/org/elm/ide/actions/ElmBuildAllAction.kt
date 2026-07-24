@@ -10,9 +10,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.elm.ide.notifications.showBalloon
 import org.elm.openapiext.saveAllDocuments
-import org.elm.workspace.ElmProject
 import org.elm.workspace.commandLineTools.makeAllTargets
-import org.elm.workspace.compiler.ResolvedBuildTarget
 import org.elm.workspace.elmWorkspace
 import java.nio.file.Files
 
@@ -52,14 +50,13 @@ class ElmBuildAllAction : DumbAwareAction() {
 fun buildAllTargets(project: Project) {
     saveAllDocuments()
     val currentFileInEditor: VirtualFile? = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
-    val targetsByProject = mutableListOf<Pair<ElmProject, List<ResolvedBuildTarget>>>()
-    for (elmProject in project.elmWorkspace.allProjects.sortedBy { it.presentableName }) {
-        val resolved = when (val result = project.elmWorkspace.resolveBuildTargets(elmProject)) {
-            is org.elm.openapiext.Result.Ok -> result.value
-            is org.elm.openapiext.Result.Err -> emptyList()
-        }
-        if (resolved.isNotEmpty()) targetsByProject += elmProject to resolved
-    }
+    // Group the resolved targets by their derived Elm project so each group compiles with the
+    // correct working directory (the project's elm.json directory).
+    val targetsByProject = resolveAllBuildTargets(project)
+        .groupBy({ it.first }, { it.second })
+        .entries
+        .sortedBy { it.key.presentableName }
+        .map { it.key to it.value }
     if (targetsByProject.isEmpty()) return
 
     ApplicationManager.getApplication().executeOnPooledThread {

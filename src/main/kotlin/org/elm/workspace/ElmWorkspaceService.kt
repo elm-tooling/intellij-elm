@@ -14,6 +14,7 @@ import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.*
 import com.intellij.openapi.diagnostic.logger
@@ -125,11 +126,10 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         val isElmFormatOnSaveEnabled: Boolean = DEFAULT_FORMAT_ON_SAVE,
         val isElmReviewOnTheFlyEnabled: Boolean = DEFAULT_REVIEW_ON_THE_FLY,
         val isElmBuildOnSaveEnabled: Boolean = DEFAULT_BUILD_ON_SAVE,
-        val buildTargetsByManifest: List<ElmProjectBuildTargetConfig> = emptyList()
+        val buildTargets: List<ElmBuildTargetConfig> = emptyList()
     )
 
     data class BuildTargetSelectionRequest(
-        val manifestPath: String,
         val targetName: String,
         val targetInputPath: String
     )
@@ -159,91 +159,61 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     @Volatile
     private var pendingBuildTargetSelection: BuildTargetSelectionRequest? = null
 
-    fun buildTargetConfigsFor(elmProject: ElmProject): List<ElmBuildTargetConfig> {
-        val manifestPath = elmProject.manifestPath.systemIndependentPath
-        return rawSettingsRef.get().buildTargetsByManifest
-            .firstOrNull { it.manifestPath == manifestPath }
-            ?.targets
-            .orEmpty()
-    }
+    /** The flat list of configured build targets. Each target names an absolute input file; the
+     * owning Elm project (elm.json) is derived from that file at resolution time. */
+    val buildTargets: List<ElmBuildTargetConfig>
+        get() = rawSettingsRef.get().buildTargets
 
-    fun setBuildTargetConfigsFor(manifestPath: Path, targets: List<ElmBuildTargetConfig>) {
-        val key = manifestPath.systemIndependentPath
-        modifySettings {
-            val rest = it.buildTargetsByManifest.filterNot { cfg -> cfg.manifestPath == key }
-            val updated = if (targets.isEmpty()) {
-                rest
-            } else {
-                rest + ElmProjectBuildTargetConfig(key, targets)
-            }
-            it.copy(buildTargetsByManifest = updated.sortedBy { cfg -> cfg.manifestPath })
-        }
-    }
-
-    fun resolveBuildTargets(
-        elmProject: ElmProject
-    ): Result<List<ResolvedBuildTarget>> {
-        val outcomes = resolveBuildTargetsDetailed(elmProject)
-        if (outcomes.isEmpty()) {
-            return Result.Err("No build targets configured")
-        }
-        val errors = outcomes.mapNotNull { it.error }
-        return when {
-            errors.isNotEmpty() -> Result.Err(errors.joinToString("\n"))
-            else -> Result.Ok(outcomes.mapNotNull { it.resolved })
-        }
+    fun setBuildTargets(targets: List<ElmBuildTargetConfig>) {
+        modifySettings { it.copy(buildTargets = targets) }
     }
 
     /**
-     * Resolve every configured build target for [elmProject] independently, returning one outcome
-     * per target (either a runnable [ResolvedBuildTarget] or an error message). Unlike
-     * [resolveBuildTargets], this does not collapse the whole project to a single error when one
-     * target is misconfigured, so the tool window can list valid and invalid targets side by side
-     * and surface the reason a target failed instead of silently dropping it.
+     * Resolve every configured build target independently, returning one outcome per target
+     * (either a runnable [ResolvedBuildTarget] plus its owning Elm project, or an error message).
+     * This does not collapse to a single error when one target is misconfigured, so the tool
+     * window can list valid and invalid targets side by side and surface the reason a target
+     * failed instead of silently dropping it.
+     *
+     * The owning Elm project is derived from the input file via [findProjectForFile] — the same
+     * nearest-elm.json logic the rest of the IDE uses — rather than being chosen by the user.
      */
-    fun resolveBuildTargetsDetailed(elmProject: ElmProject): List<BuildTargetOutcome> {
-        val targets = buildTargetConfigsFor(elmProject)
-        val projectRoot = elmProject.projectDirPath
-        val inputAllowedBlank = elmProject is ElmPackageProject
-        return targets.mapIndexed { index, target ->
-            resolveBuildTarget(projectRoot, target, index + 1, inputAllowedBlank)
+    fun resolveBuildTargetsDetailed(): List<BuildTargetOutcome> {
+        val targets = buildTargets
+        return runReadAction {
+            targets.mapIndexed { index, target ->
+                resolveBuildTarget(target, index + 1)
+            }
         }
     }
 
-    private fun resolveBuildTarget(
-        projectRoot: Path,
-        target: ElmBuildTargetConfig,
-        row: Int,
-        inputAllowedBlank: Boolean
-    ): BuildTargetOutcome {
-        fun invalid(message: String) = BuildTargetOutcome(row, target, resolved = null, error = message)
+    /** Must be called inside a read action (uses the VFS and the project directory index). */
+    private fun resolveBuildTarget(target: ElmBuildTargetConfig, row: Int): BuildTargetOutcome {
+        fun invalid(message: String, elmProject: ElmProject? = null) =
+            BuildTargetOutcome(row, target, elmProject = elmProject, resolved = null, error = message)
 
         val inputRaw = target.inputPath.trim()
-        if (inputRaw.isBlank() && !inputAllowedBlank) {
-            return invalid("Row $row: input path is blank")
+        if (inputRaw.isBlank()) {
+            return invalid("Row $row: input file is not set")
         }
-
-        val inputAbsPath = if (inputRaw.isBlank()) {
-            projectRoot.resolve(ELM_JSON).normalize()
-        } else {
-            val inputRelPath = inputRaw.toPathOrNull()
-            if (inputRelPath == null || inputRelPath.isAbsolute) {
-                return invalid("Row $row: input path must be project-relative")
-            }
-            val input = projectRoot.resolve(inputRelPath).normalize()
-            if (!input.startsWith(projectRoot) || !Files.exists(input)) {
-                return invalid("Row $row: input file '$inputRaw' does not exist in the project")
-            }
-            if (input.fileName?.toString()?.endsWith(".elm") != true) {
-                return invalid("Row $row: input file '$inputRaw' is not an Elm file")
-            }
-            input
+        val inputPath = inputRaw.toPathOrNull()
+        if (inputPath == null || !inputPath.isAbsolute) {
+            return invalid("Row $row: input path must be an absolute file path")
         }
+        if (inputPath.fileName?.toString()?.endsWith(".elm") != true) {
+            return invalid("Row $row: input file '$inputRaw' is not an Elm file")
+        }
+        val inputFile = findFileByPathTestAware(inputPath)
+        if (inputFile == null || !inputFile.exists()) {
+            return invalid("Row $row: input file '$inputRaw' does not exist")
+        }
+        val elmProject = findProjectForFile(inputFile)
+            ?: return invalid("Row $row: no Elm project (elm.json) found for '$inputRaw' — open the file and attach an elm.json")
 
         val compilerRaw = target.compilerPath.trim()
         val compilerPath = compilerRaw.toPathOrNull()
         if (compilerRaw.isBlank() || compilerPath == null || !Files.isExecutable(compilerPath)) {
-            return invalid("Row $row: compiler path '$compilerRaw' is invalid or not executable")
+            return invalid("Row $row: compiler path '$compilerRaw' is invalid or not executable", elmProject)
         }
 
         val outputRaw = target.outputPath.trim()
@@ -251,12 +221,8 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             nullOutputTargetPathString()
         } else {
             val outputPath = outputRaw.toPathOrNull()
-            if (outputPath == null || outputPath.isAbsolute) {
-                return invalid("Row $row: output path must be project-relative (or blank)")
-            }
-            val outputAbsPath = projectRoot.resolve(outputPath).normalize()
-            if (!outputAbsPath.startsWith(projectRoot)) {
-                return invalid("Row $row: output path '$outputRaw' is outside of the project")
+            if (outputPath == null || !outputPath.isAbsolute) {
+                return invalid("Row $row: output path must be an absolute file path (or blank)", elmProject)
             }
             outputRaw
         }
@@ -264,9 +230,10 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         return BuildTargetOutcome(
             row = row,
             config = target,
+            elmProject = elmProject,
             resolved = ResolvedBuildTarget(
                 name = target.name,
-                inputPath = inputAbsPath,
+                inputPath = inputPath,
                 inputPathForCompiler = inputRaw,
                 outputPathForCompiler = outputForCompiler,
                 mode = target.mode,
@@ -311,9 +278,8 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             .showSettingsDialog(intellijProject, ElmWorkspaceConfigurable::class.java)
     }
 
-    fun showConfigureBuildTargetUI(manifestPath: Path, targetName: String, targetInputPath: String) {
+    fun showConfigureBuildTargetUI(targetName: String, targetInputPath: String) {
         pendingBuildTargetSelection = BuildTargetSelectionRequest(
-            manifestPath = manifestPath.systemIndependentPath,
             targetName = targetName,
             targetInputPath = targetInputPath
         )
@@ -698,25 +664,20 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         settingsElement.setAttribute("isElmFormatOnSaveEnabled", raw.isElmFormatOnSaveEnabled.toString())
         settingsElement.setAttribute("isElmReviewOnTheFlyEnabled", raw.isElmReviewOnTheFlyEnabled.toString())
         settingsElement.setAttribute("isElmBuildOnSaveEnabled", raw.isElmBuildOnSaveEnabled.toString())
-        if (raw.buildTargetsByManifest.isNotEmpty()) {
+        if (raw.buildTargets.isNotEmpty()) {
             val buildTargetsElement = Element("buildTargets")
             state.addContent(buildTargetsElement)
-            for (projectConfig in raw.buildTargetsByManifest.sortedBy { it.manifestPath }) {
-                val projectElement = Element("project")
-                    .setAttribute("manifestPath", projectConfig.manifestPath)
-                for (target in projectConfig.targets) {
-                    projectElement.addContent(
-                        Element("target")
-                            .setAttribute("name", target.name)
-                            .setAttribute("inputPath", target.inputPath)
-                            .setAttribute("outputPath", target.outputPath)
-                            .setAttribute("mode", target.mode.name)
-                            .setAttribute("compilerKind", target.compilerKind.name)
-                            .setAttribute("compilerPath", target.compilerPath)
-                            .setAttribute("compileOnSave", target.compileOnSave.toString())
-                    )
-                }
-                buildTargetsElement.addContent(projectElement)
+            for (target in raw.buildTargets) {
+                buildTargetsElement.addContent(
+                    Element("target")
+                        .setAttribute("name", target.name)
+                        .setAttribute("inputPath", target.inputPath)
+                        .setAttribute("outputPath", target.outputPath)
+                        .setAttribute("mode", target.mode.name)
+                        .setAttribute("compilerKind", target.compilerKind.name)
+                        .setAttribute("compilerPath", target.compilerPath)
+                        .setAttribute("compileOnSave", target.compileOnSave.toString())
+                )
             }
         }
 
@@ -760,38 +721,32 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             .getAttributeValue("isElmBuildOnSaveEnabled")
             .takeIf { it != null && it.isNotBlank() }?.toBoolean()
             ?: DEFAULT_BUILD_ON_SAVE
-        val buildTargetsByManifest = state.getChild("buildTargets")
-            ?.getChildren("project")
-            ?.mapNotNull { projectElement ->
-                val manifestPath = projectElement.getAttributeValue("manifestPath") ?: return@mapNotNull null
-                val targets = projectElement.getChildren("target")
-                    .mapNotNull { targetElement ->
-                        val name = targetElement.getAttributeValue("name") ?: ""
-                        val inputPath = targetElement.getAttributeValue("inputPath") ?: return@mapNotNull null
-                        val outputPath = targetElement.getAttributeValue("outputPath") ?: ""
-                        val mode = targetElement.getAttributeValue("mode")
-                            ?.let { rawMode -> runCatching { ElmBuildMode.valueOf(rawMode) }.getOrNull() }
-                            ?: ElmBuildMode.NONE
-                        val compilerKind = targetElement.getAttributeValue("compilerKind")
-                            ?.let { rawKind -> runCatching { ElmCompilerKind.valueOf(rawKind) }.getOrNull() }
-                            ?: ElmCompilerKind.ELM
-                        val compilerPath = targetElement.getAttributeValue("compilerPath") ?: ""
-                        val compileOnSave = targetElement.getAttributeValue("compileOnSave")
-                            ?.takeIf { it.isNotBlank() }
-                            ?.toBoolean() ?: false
-                        ElmBuildTargetConfig(
-                            name = name,
-                            inputPath = inputPath,
-                            outputPath = outputPath,
-                            mode = mode,
-                            compilerKind = compilerKind,
-                            compilerPath = compilerPath,
-                            compileOnSave = compileOnSave
-                        )
-                    }
-                ElmProjectBuildTargetConfig(manifestPath = manifestPath, targets = targets)
+        val buildTargets = state.getChild("buildTargets")
+            ?.getChildren("target")
+            ?.mapNotNull { targetElement ->
+                val name = targetElement.getAttributeValue("name") ?: ""
+                val inputPath = targetElement.getAttributeValue("inputPath") ?: return@mapNotNull null
+                val outputPath = targetElement.getAttributeValue("outputPath") ?: ""
+                val mode = targetElement.getAttributeValue("mode")
+                    ?.let { rawMode -> runCatching { ElmBuildMode.valueOf(rawMode) }.getOrNull() }
+                    ?: ElmBuildMode.NONE
+                val compilerKind = targetElement.getAttributeValue("compilerKind")
+                    ?.let { rawKind -> runCatching { ElmCompilerKind.valueOf(rawKind) }.getOrNull() }
+                    ?: ElmCompilerKind.ELM
+                val compilerPath = targetElement.getAttributeValue("compilerPath") ?: ""
+                val compileOnSave = targetElement.getAttributeValue("compileOnSave")
+                    ?.takeIf { it.isNotBlank() }
+                    ?.toBoolean() ?: false
+                ElmBuildTargetConfig(
+                    name = name,
+                    inputPath = inputPath,
+                    outputPath = outputPath,
+                    mode = mode,
+                    compilerKind = compilerKind,
+                    compilerPath = compilerPath,
+                    compileOnSave = compileOnSave
+                )
             }
-            ?.sortedBy { it.manifestPath }
             .orEmpty()
 
         modifySettings(notify = false) {
@@ -805,7 +760,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 isElmFormatOnSaveEnabled = isElmFormatOnSaveEnabled,
                 isElmReviewOnTheFlyEnabled = isElmReviewOnTheFlyEnabled,
                 isElmBuildOnSaveEnabled = isElmBuildOnSaveEnabled,
-                buildTargetsByManifest = buildTargetsByManifest
+                buildTargets = buildTargets
             )
         }
 
