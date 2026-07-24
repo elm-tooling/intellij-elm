@@ -2,6 +2,7 @@ package org.elm.workspace.ui
 
 import com.intellij.ide.DataManager
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.keymap.KeymapUtil
@@ -19,6 +20,7 @@ import com.intellij.ui.JBSplitter
 import com.intellij.ui.JBColor
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.components.JBList
+import com.intellij.util.ui.EditableModel
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.update.Activatable
 import com.intellij.util.ui.update.UiNotifyConnector
@@ -117,7 +119,7 @@ class ElmWorkspaceConfigurable(
 
     private val projectSelector = ComboBox<ProjectChoice>()
 
-    private val targetListModel = DefaultListModel<String>()
+    private val targetListModel = TargetListModel()
     private val targetList = JBList(targetListModel).apply {
         selectionMode = ListSelectionModel.SINGLE_SELECTION
     }
@@ -133,6 +135,7 @@ class ElmWorkspaceConfigurable(
 
     private val buildTargetsByManifest = mutableMapOf<String, MutableList<ElmBuildTargetConfig>>()
     private var lastSelectedTargetIndex = -1
+    private var isReorderingTargets = false
     private var isLoadingTargetDetails = false
     private var isLoadingProjectChoices = false
     private var workspaceBusConnection: MessageBusConnection? = null
@@ -152,6 +155,10 @@ class ElmWorkspaceConfigurable(
 
         targetList.addListSelectionListener {
             if (it.valueIsAdjusting) return@addListSelectionListener
+            // While a drag/up-down reorder is in progress the target that owns the current
+            // form has moved, so persisting against the (now stale) index would corrupt data.
+            // reorderTargets() persists once up front and syncs the editor afterwards.
+            if (isReorderingTargets) return@addListSelectionListener
             persistTarget(lastSelectedTargetIndex)
             lastSelectedTargetIndex = targetList.selectedIndex
             loadTargetDetails(targetList.selectedIndex)
@@ -243,8 +250,21 @@ class ElmWorkspaceConfigurable(
 
     private fun buildTargetsPanel(): JComponent {
         val leftPanel = ToolbarDecorator.createDecorator(targetList)
-            .disableUpDownActions()
             .setToolbarPosition(ActionToolbarPosition.TOP)
+            .setMoveUpAction {
+                val idx = targetList.selectedIndex
+                if (idx > 0) {
+                    reorderTargets(idx, idx - 1)
+                    targetList.selectedIndex = idx - 1
+                }
+            }
+            .setMoveDownAction {
+                val idx = targetList.selectedIndex
+                if (idx in 0 until targetListModel.size() - 1) {
+                    reorderTargets(idx, idx + 1)
+                    targetList.selectedIndex = idx + 1
+                }
+            }
             .setAddAction {
                 val manifestPath = selectedManifestPath() ?: return@setAddAction
                 val targets = buildTargetsByManifest.getOrPut(manifestPath) { mutableListOf() }
@@ -354,6 +374,49 @@ class ElmWorkspaceConfigurable(
 
     private fun persistCurrentProjectTargets() {
         persistTarget(lastSelectedTargetIndex)
+    }
+
+    /**
+     * A [DefaultListModel] whose rows can be reordered via the toolbar up/down buttons and by
+     * drag-and-drop. [ToolbarDecorator] wires those up automatically once the model implements
+     * [EditableModel]; adding and removing rows are still handled by the decorator's explicit
+     * add/remove actions.
+     */
+    private inner class TargetListModel : DefaultListModel<String>(), EditableModel {
+        override fun addRow() {} // handled by ToolbarDecorator.setAddAction
+        override fun removeRow(index: Int) {} // handled by ToolbarDecorator.setRemoveAction
+
+        override fun canExchangeRows(oldIndex: Int, newIndex: Int): Boolean {
+            val count = currentTargets().size
+            return oldIndex != newIndex && oldIndex in 0 until count && newIndex in 0 until count
+        }
+
+        override fun exchangeRows(oldIndex: Int, newIndex: Int) = reorderTargets(oldIndex, newIndex)
+    }
+
+    private fun reorderTargets(oldIndex: Int, newIndex: Int) {
+        val targets = currentTargets()
+        if (oldIndex !in targets.indices || newIndex !in targets.indices) return
+
+        if (!isReorderingTargets) {
+            // Save any in-progress edits of the selected target before it moves, then suppress
+            // the selection listener until the reorder (and the framework's follow-up selection
+            // change) has settled, at which point we re-sync the editor to the new selection.
+            persistTarget(lastSelectedTargetIndex)
+            isReorderingTargets = true
+            ApplicationManager.getApplication().invokeLater {
+                isReorderingTargets = false
+                lastSelectedTargetIndex = targetList.selectedIndex
+                loadTargetDetails(targetList.selectedIndex)
+                updateReviewCompilerStatusLabel()
+            }
+        }
+
+        val movedTarget = targets.removeAt(oldIndex)
+        targets.add(newIndex, movedTarget)
+        val movedLabel = targetListModel.getElementAt(oldIndex)
+        targetListModel.removeElementAt(oldIndex)
+        targetListModel.add(newIndex, movedLabel)
     }
 
     private fun loadSelectedProjectTargets() {
