@@ -199,6 +199,44 @@ class ElmUnusedSymbolInspectionTest : ElmInspectionsTestBase(ElmUnusedSymbolInsp
         """.trimIndent())
 
     @Test
+    fun `test phantom type constructor taking Never is never marked as unused`() = checkByFileTree("""
+        --@ main.elm
+        import Basics exposing (Never)
+        type Id = Id Never
+        --^
+
+        --@ Basics.elm
+        module Basics exposing (Never)
+        type Never = JustOneMore Never
+        """.trimIndent())
+
+
+    @Test
+    fun `test phantom type constructor taking the type itself is never marked as unused`() = checkByText("""
+        type Id = Id Id
+        """.trimIndent())
+
+
+    @Test
+    fun `test a single unused constructor with an argument that is not phantom is still unused`() = checkByText("""
+        type Id = <warning descr="'Id' is never used">Id</warning> Int
+        """.trimIndent())
+
+
+    @Test
+    fun `test an unused constructor taking a same-named type from elsewhere is still unused`() = checkByFileTree("""
+        --@ main.elm
+        import Other exposing (Never)
+        type Id = <warning descr="'Id' is never used">Id</warning> Never
+        --^
+
+        --@ Other.elm
+        module Other exposing (Never)
+        type Never = Never
+        """.trimIndent())
+
+
+    @Test
     fun `test renames unused case branch patterns`() = checkFixByText("Rename to _", """
         type T = T () ()
         main : T -> ()

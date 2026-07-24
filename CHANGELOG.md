@@ -4,6 +4,7 @@
 
 ## [Unreleased]
 *   Fixed: an explicitly imported type now shadows one brought in by a wildcard (`exposing (..)`) import, regardless of import order, matching how values already resolved
+*   The constructor of a phantom type (which is unused on purpose; must be marked with `Never` or the type itself) is no longer marked as unused
 
 ## [6.0.0] - 2026-04-13
 *   Fixed: Reworked the elm-review panel (#19)
