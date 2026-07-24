@@ -3,6 +3,7 @@
 # Changelog for et-intellij-elm
 
 ## [Unreleased]
+*   Fixed: an explicitly imported type now shadows one brought in by a wildcard (`exposing (..)`) import, regardless of import order, matching how values already resolved
 
 ## [6.0.0] - 2026-04-13
 *   Fixed: Reworked the elm-review panel (#19)
