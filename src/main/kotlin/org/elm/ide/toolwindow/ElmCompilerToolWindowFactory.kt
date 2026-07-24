@@ -16,8 +16,10 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.ui.ColoredListCellRenderer
 import com.intellij.ui.JBColor
 import com.intellij.ui.OnePixelSplitter
+import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
 import com.intellij.ui.content.impl.ContentImpl
@@ -74,7 +76,11 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
             firstComponent = errorTreeViewPanel
             secondComponent = outputPanel
         }
-        buildTargetsPanel = ElmBuildTargetsPanel(project)
+        buildTargetsPanel = ElmBuildTargetsPanel(
+            project,
+            onInvalidSelected = { message -> errorTreeViewPanel.showConfigError(message) },
+            onValidSelected = { errorTreeViewPanel.clearConfigError() }
+        )
         buildTargetsPanelRef = buildTargetsPanel
         root = OnePixelSplitter(false, 0.24f).apply {
             firstComponent = buildTargetsPanel
@@ -85,6 +91,7 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
         with(project.messageBus.connect()) {
             subscribe(ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
                 override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int) {
+                    errorTreeViewPanel.onBuildMessagesArrived()
                     errorTreeViewPanel.clearMessages()
 
                     messages.forEachIndexed { index, elmError ->
@@ -130,12 +137,33 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
     }
 }
 
-private class ElmBuildTargetsPanel(private val project: Project) : JPanel(BorderLayout()) {
+private class ElmBuildTargetsPanel(
+    private val project: Project,
+    private val onInvalidSelected: (String) -> Unit,
+    private val onValidSelected: () -> Unit
+) : JPanel(BorderLayout()) {
     private val targetListModel = DefaultListModel<BuildTargetItem>()
     private val targetList = JBList(targetListModel).apply {
         selectionMode = ListSelectionModel.SINGLE_SELECTION
         visibleRowCount = 10
         emptyText.text = "No build targets configured"
+        cellRenderer = object : ColoredListCellRenderer<BuildTargetItem>() {
+            override fun customizeCellRenderer(
+                list: JList<out BuildTargetItem>,
+                value: BuildTargetItem,
+                index: Int,
+                selected: Boolean,
+                hasFocus: Boolean
+            ) {
+                val text = "${value.displayName} (${value.elmProject.presentableName})"
+                if (value.error != null) {
+                    icon = AllIcons.General.Error
+                    append(text, SimpleTextAttributes.ERROR_ATTRIBUTES)
+                } else {
+                    append(text)
+                }
+            }
+        }
     }
     private val addBuildTargetAction = AddBuildTargetAction()
     private val editBuildTargetAction = EditBuildTargetAction()
@@ -163,8 +191,10 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
 
         targetList.addListSelectionListener { e ->
             if (!e.valueIsAdjusting) {
+                val item = targetList.selectedValue
                 project.elmBuildTargetSelection.selectedKey =
-                    targetList.selectedValue?.let { buildTargetKeyOf(it.elmProject, it.target) }
+                    item?.target?.let { buildTargetKeyOf(item.elmProject, it) }
+                updateSelectionMessages()
             }
         }
         targetList.addMouseListener(object : MouseAdapter() {
@@ -182,12 +212,14 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
         val previousKey = project.elmBuildTargetSelection.selectedKey
         targetListModel.clear()
         for (elmProject in project.elmWorkspace.allProjects.sortedBy { it.presentableName }) {
-            val resolved = when (val result = project.elmWorkspace.resolveBuildTargets(elmProject)) {
-                is org.elm.openapiext.Result.Ok -> result.value
-                is org.elm.openapiext.Result.Err -> emptyList()
-            }
-            for ((index, target) in resolved.withIndex()) {
-                targetListModel.addElement(BuildTargetItem(elmProject, target, index + 1))
+            for (outcome in project.elmWorkspace.resolveBuildTargetsDetailed(elmProject)) {
+                val displayName = outcome.resolved?.let { displayTargetName(it, outcome.row) }
+                    ?: displayConfigName(outcome.config, outcome.row)
+                targetListModel.addElement(
+                    BuildTargetItem(
+                        elmProject, outcome.row, displayName, outcome.resolved, outcome.error, outcome.config
+                    )
+                )
             }
         }
         // Always keep one target selected (defaulting to the first), preserving the previous
@@ -195,10 +227,19 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
         if (!targetListModel.isEmpty) {
             val matchIndex = (0 until targetListModel.size()).firstOrNull {
                 val item = targetListModel.getElementAt(it)
-                buildTargetKeyOf(item.elmProject, item.target) == previousKey
+                item.target != null && buildTargetKeyOf(item.elmProject, item.target) == previousKey
             } ?: 0
             targetList.selectedIndex = matchIndex
         }
+        // Reflect the current selection's validity in the messages box (a refresh may have
+        // changed which target is selected, or cleared the list entirely).
+        updateSelectionMessages()
+    }
+
+    /** Show the selected target's config error in the messages box, or clear a shown one. */
+    private fun updateSelectionMessages() {
+        val error = targetList.selectedValue?.error
+        if (error != null) onInvalidSelected(error) else onValidSelected()
     }
 
     fun hasSelectedTarget(): Boolean = targetList.selectedIndex >= 0
@@ -207,12 +248,21 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
 
     fun buildSelectedTarget() {
         val item = targetList.selectedValue ?: return
-        buildTarget(project, item.elmProject, item.target)
+        val target = item.target
+        if (target == null) {
+            // The selected target is misconfigured; show why instead of trying to build it.
+            item.error?.let { onInvalidSelected(it) }
+            return
+        }
+        buildTarget(project, item.elmProject, target)
     }
 
     private fun editSelectedTarget() {
         val item = targetList.selectedValue ?: return
-        project.elmWorkspace.showConfigureBuildTargetUI(item.elmProject.manifestPath, item.target)
+        // Locate the row by its configured name/input path so invalid targets can be edited (and fixed) too.
+        val name = item.target?.name ?: item.config.name
+        val inputPath = item.target?.inputPathForCompiler ?: item.config.inputPath
+        project.elmWorkspace.showConfigureBuildTargetUI(item.elmProject.manifestPath, name, inputPath)
     }
 
     private inner class EditBuildTargetAction : DumbAwareAction(
@@ -246,18 +296,25 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
 
 private data class BuildTargetItem(
     val elmProject: ElmProject,
-    val target: ResolvedBuildTarget,
-    val index: Int
-) {
-    override fun toString(): String {
-        val targetName = displayTargetName(target, index)
-        return "$targetName (${elmProject.presentableName})"
-    }
-}
+    val index: Int,
+    val displayName: String,
+    /** The resolved target, or null when the target is misconfigured (see [error]). */
+    val target: ResolvedBuildTarget?,
+    /** Non-null when the target could not be resolved; the reason to surface to the user. */
+    val error: String?,
+    val config: ElmBuildTargetConfig
+)
 
 private fun displayTargetName(target: ResolvedBuildTarget, index: Int): String =
     target.name.ifBlank {
         target.inputPathForCompiler.ifBlank {
+            "Target $index"
+        }
+    }
+
+private fun displayConfigName(config: ElmBuildTargetConfig, index: Int): String =
+    config.name.ifBlank {
+        config.inputPath.ifBlank {
             "Target $index"
         }
     }
@@ -271,6 +328,33 @@ private class ElmCompilerErrorTreeViewPanel(
     private val onBuildAll: () -> Unit,
     private val isBuildAllEnabled: () -> Boolean
 ) : ElmErrorTreeViewPanel(project, "Elm Compiler", false, true) {
+    /** True while the messages tree is showing a build-target config error (not compiler output). */
+    private var showingConfigError = false
+
+    /** Show a misconfigured target's error in the messages box (where it otherwise says "No messages"). */
+    fun showConfigError(message: String) {
+        clearMessages()
+        for (line in message.lines()) {
+            addMessage(MessageCategory.ERROR, arrayOf(line), null, -1, -1, null)
+        }
+        showingConfigError = true
+        reload()
+        expandAll()
+    }
+
+    /** Clear a previously shown config error, leaving real build output (if any) untouched. */
+    fun clearConfigError() {
+        if (!showingConfigError) return
+        clearMessages()
+        showingConfigError = false
+        reload()
+    }
+
+    /** Called when real compiler output replaces the messages, so we stop treating it as a config error. */
+    fun onBuildMessagesArrived() {
+        showingConfigError = false
+    }
+
     override fun fillRightToolbarGroup(group: DefaultActionGroup) {
         super.fillRightToolbarGroup(group)
         group.add(BuildSelectedAction())

@@ -183,68 +183,88 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     fun resolveBuildTargets(
         elmProject: ElmProject
     ): Result<List<ResolvedBuildTarget>> {
-        val targets = buildTargetConfigsFor(elmProject)
-        if (targets.isEmpty()) {
+        val outcomes = resolveBuildTargetsDetailed(elmProject)
+        if (outcomes.isEmpty()) {
             return Result.Err("No build targets configured")
         }
+        val errors = outcomes.mapNotNull { it.error }
+        return when {
+            errors.isNotEmpty() -> Result.Err(errors.joinToString("\n"))
+            else -> Result.Ok(outcomes.mapNotNull { it.resolved })
+        }
+    }
 
-        val resolved = mutableListOf<ResolvedBuildTarget>()
-        val errors = mutableListOf<String>()
+    /**
+     * Resolve every configured build target for [elmProject] independently, returning one outcome
+     * per target (either a runnable [ResolvedBuildTarget] or an error message). Unlike
+     * [resolveBuildTargets], this does not collapse the whole project to a single error when one
+     * target is misconfigured, so the tool window can list valid and invalid targets side by side
+     * and surface the reason a target failed instead of silently dropping it.
+     */
+    fun resolveBuildTargetsDetailed(elmProject: ElmProject): List<BuildTargetOutcome> {
+        val targets = buildTargetConfigsFor(elmProject)
         val projectRoot = elmProject.projectDirPath
-        for ((index, target) in targets.withIndex()) {
-            val row = index + 1
-            val inputRaw = target.inputPath.trim()
-            val inputAllowedBlank = elmProject is ElmPackageProject
-            if (inputRaw.isBlank() && !inputAllowedBlank) {
-                errors += "Row $row: input path is blank"
-                continue
-            }
+        val inputAllowedBlank = elmProject is ElmPackageProject
+        return targets.mapIndexed { index, target ->
+            resolveBuildTarget(projectRoot, target, index + 1, inputAllowedBlank)
+        }
+    }
 
-            val inputAbsPath = if (inputRaw.isBlank()) {
-                projectRoot.resolve(ELM_JSON).normalize()
-            } else {
-                val inputRelPath = inputRaw.toPathOrNull()
-                if (inputRelPath == null || inputRelPath.isAbsolute) {
-                    errors += "Row $row: input path must be project-relative"
-                    continue
-                }
-                val input = projectRoot.resolve(inputRelPath).normalize()
-                if (!input.startsWith(projectRoot) || !Files.exists(input)) {
-                    errors += "Row $row: input file '$inputRaw' does not exist in the project"
-                    continue
-                }
-                if (input.fileName?.toString()?.endsWith(".elm") != true) {
-                    errors += "Row $row: input file '$inputRaw' is not an Elm file"
-                    continue
-                }
-                input
-            }
+    private fun resolveBuildTarget(
+        projectRoot: Path,
+        target: ElmBuildTargetConfig,
+        row: Int,
+        inputAllowedBlank: Boolean
+    ): BuildTargetOutcome {
+        fun invalid(message: String) = BuildTargetOutcome(row, target, resolved = null, error = message)
 
-            val compilerRaw = target.compilerPath.trim()
-            val compilerPath = compilerRaw.toPathOrNull()
-            if (compilerRaw.isBlank() || compilerPath == null || !Files.isExecutable(compilerPath)) {
-                errors += "Row $row: compiler path '$compilerRaw' is invalid or not executable"
-                continue
-            }
+        val inputRaw = target.inputPath.trim()
+        if (inputRaw.isBlank() && !inputAllowedBlank) {
+            return invalid("Row $row: input path is blank")
+        }
 
-            val outputRaw = target.outputPath.trim()
-            val outputForCompiler = if (outputRaw.isBlank()) {
-                nullOutputTargetPathString()
-            } else {
-                val outputPath = outputRaw.toPathOrNull()
-                if (outputPath == null || outputPath.isAbsolute) {
-                    errors += "Row $row: output path must be project-relative (or blank)"
-                    continue
-                }
-                val outputAbsPath = projectRoot.resolve(outputPath).normalize()
-                if (!outputAbsPath.startsWith(projectRoot)) {
-                    errors += "Row $row: output path '$outputRaw' is outside of the project"
-                    continue
-                }
-                outputRaw
+        val inputAbsPath = if (inputRaw.isBlank()) {
+            projectRoot.resolve(ELM_JSON).normalize()
+        } else {
+            val inputRelPath = inputRaw.toPathOrNull()
+            if (inputRelPath == null || inputRelPath.isAbsolute) {
+                return invalid("Row $row: input path must be project-relative")
             }
+            val input = projectRoot.resolve(inputRelPath).normalize()
+            if (!input.startsWith(projectRoot) || !Files.exists(input)) {
+                return invalid("Row $row: input file '$inputRaw' does not exist in the project")
+            }
+            if (input.fileName?.toString()?.endsWith(".elm") != true) {
+                return invalid("Row $row: input file '$inputRaw' is not an Elm file")
+            }
+            input
+        }
 
-            resolved += ResolvedBuildTarget(
+        val compilerRaw = target.compilerPath.trim()
+        val compilerPath = compilerRaw.toPathOrNull()
+        if (compilerRaw.isBlank() || compilerPath == null || !Files.isExecutable(compilerPath)) {
+            return invalid("Row $row: compiler path '$compilerRaw' is invalid or not executable")
+        }
+
+        val outputRaw = target.outputPath.trim()
+        val outputForCompiler = if (outputRaw.isBlank()) {
+            nullOutputTargetPathString()
+        } else {
+            val outputPath = outputRaw.toPathOrNull()
+            if (outputPath == null || outputPath.isAbsolute) {
+                return invalid("Row $row: output path must be project-relative (or blank)")
+            }
+            val outputAbsPath = projectRoot.resolve(outputPath).normalize()
+            if (!outputAbsPath.startsWith(projectRoot)) {
+                return invalid("Row $row: output path '$outputRaw' is outside of the project")
+            }
+            outputRaw
+        }
+
+        return BuildTargetOutcome(
+            row = row,
+            config = target,
+            resolved = ResolvedBuildTarget(
                 name = target.name,
                 inputPath = inputAbsPath,
                 inputPathForCompiler = inputRaw,
@@ -254,12 +274,9 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 compilerPath = compilerPath,
                 compileOnSave = target.compileOnSave,
                 offset = 0
-            )
-        }
-        return when {
-            errors.isNotEmpty() -> Result.Err(errors.joinToString("\n"))
-            else -> Result.Ok(resolved)
-        }
+            ),
+            error = null
+        )
     }
 
 
@@ -294,11 +311,11 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             .showSettingsDialog(intellijProject, ElmWorkspaceConfigurable::class.java)
     }
 
-    fun showConfigureBuildTargetUI(manifestPath: Path, target: ResolvedBuildTarget) {
+    fun showConfigureBuildTargetUI(manifestPath: Path, targetName: String, targetInputPath: String) {
         pendingBuildTargetSelection = BuildTargetSelectionRequest(
             manifestPath = manifestPath.systemIndependentPath,
-            targetName = target.name,
-            targetInputPath = target.inputPathForCompiler
+            targetName = targetName,
+            targetInputPath = targetInputPath
         )
         showConfigureToolchainUI()
     }

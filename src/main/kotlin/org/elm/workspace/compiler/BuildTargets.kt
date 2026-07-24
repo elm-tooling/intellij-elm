@@ -64,6 +64,20 @@ data class ResolvedBuildTarget(
     val offset: Int = 0
 )
 
+/**
+ * The result of resolving a single configured build target. Exactly one of [resolved] / [error]
+ * is non-null: [resolved] holds a runnable target, [error] holds a human-readable reason the
+ * target could not be resolved. Keeping targets separate (rather than collapsing a whole project
+ * to one error) lets the UI list valid and invalid targets side by side and surface why a target
+ * failed instead of silently dropping it.
+ */
+data class BuildTargetOutcome(
+    val row: Int,
+    val config: ElmBuildTargetConfig,
+    val resolved: ResolvedBuildTarget?,
+    val error: String?
+)
+
 fun nullOutputTargetPathString(): String =
     if (SystemInfo.isWindows) "NUL" else "/dev/null"
 
