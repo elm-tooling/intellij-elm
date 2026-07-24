@@ -43,6 +43,11 @@ class ElmReviewPass(
     override fun doCollectInformation(progress: ProgressIndicator) {
         if (file !is ElmFile || !isPassEnabled()) return
         val elmProject = file.elmProject ?: return
+        // Only review files that belong to one of the workspace's own Elm projects.
+        // Files opened from a dependency (e.g. go-to-definition into a package in ~/.elm)
+        // resolve to that package's ElmProject, which is not in `allProjects`. Reviewing
+        // such files is never useful.
+        if (elmProject !in file.project.elmWorkspace.allProjects) return
         val pathToListenFor: Path = elmProject.projectDirPath
 
         val service = editor.project?.elmReviewService ?: return
