@@ -3,6 +3,7 @@
 # Changelog for et-intellij-elm
 
 ## [Unreleased]
+*   The constructor of a phantom type (which is unused on purpose; must be marked with `Never` or the type itself) is no longer marked as unused
 
 ## [6.0.0] - 2026-04-13
 *   Fixed: Reworked the elm-review panel (#19)
