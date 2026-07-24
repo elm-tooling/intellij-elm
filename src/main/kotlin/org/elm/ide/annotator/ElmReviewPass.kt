@@ -6,11 +6,11 @@ import com.intellij.codeHighlighting.TextEditorHighlightingPassRegistrar
 import com.intellij.codeInsight.daemon.impl.DaemonCodeAnalyzerEx
 import com.intellij.codeInsight.daemon.impl.FileStatusMap
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
@@ -83,10 +83,10 @@ class ElmReviewPass(
     }
 
     private fun doFinish(groupedHighlights: List<HighlightInfo>) {
-        invokeLater(ModalityState.stateForComponent(editor.component)) {
+        ApplicationManager.getApplication().invokeLater({
             applyHighlighters(groupedHighlights)
             DaemonCodeAnalyzerEx.getInstanceEx(myProject).fileStatusMap.markFileUpToDate(document, id)
-        }
+        }, ModalityState.stateForComponent(editor.component))
     }
 
     private fun applyHighlighters(groupedHighlights: List<HighlightInfo>) {
