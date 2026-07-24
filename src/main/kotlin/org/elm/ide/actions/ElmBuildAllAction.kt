@@ -8,7 +8,6 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.wm.ToolWindowManager
 import org.elm.ide.notifications.showBalloon
 import org.elm.openapiext.saveAllDocuments
 import org.elm.workspace.ElmProject
@@ -38,9 +37,7 @@ class ElmBuildAllAction : DumbAwareAction() {
         val project = e.project ?: return
         // Open the Elm Compiler tool window (unless it is already open) before building, so
         // the build output and errors are visible even when there is nothing to build.
-        ToolWindowManager.getInstance(project).getToolWindow(ELM_COMPILER_TOOL_WINDOW_ID)?.let { toolWindow ->
-            if (!toolWindow.isVisible) toolWindow.show(null)
-        }
+        openElmCompilerToolWindow(project)
         buildAllTargets(project)
     }
 }

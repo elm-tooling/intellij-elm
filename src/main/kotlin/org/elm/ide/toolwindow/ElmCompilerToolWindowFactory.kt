@@ -5,18 +5,14 @@ import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.icons.AllIcons
-import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CustomShortcutSet
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
@@ -28,11 +24,11 @@ import com.intellij.ui.content.impl.ContentImpl
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.MessageCategory
 import com.intellij.util.ui.UIUtil
-import org.elm.ide.notifications.showBalloon
-import org.elm.openapiext.saveAllDocuments
+import org.elm.ide.actions.buildTarget
+import org.elm.ide.actions.buildTargetKeyOf
+import org.elm.ide.actions.elmBuildTargetSelection
 import org.elm.workspace.ElmProject
 import org.elm.workspace.ElmWorkspaceService
-import org.elm.workspace.commandLineTools.makeProject
 import org.elm.workspace.compiler.*
 import org.elm.workspace.elmWorkspace
 import java.awt.BorderLayout
@@ -40,7 +36,6 @@ import java.awt.CardLayout
 import java.awt.Font
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import javax.swing.*
@@ -166,8 +161,11 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
             add(JScrollPane(targetList), BorderLayout.CENTER)
         }, BorderLayout.CENTER)
 
-        targetList.addListSelectionListener {
-            // Action update is driven by IntelliJ toolbar refresh cycle.
+        targetList.addListSelectionListener { e ->
+            if (!e.valueIsAdjusting) {
+                project.elmBuildTargetSelection.selectedKey =
+                    targetList.selectedValue?.let { buildTargetKeyOf(it.elmProject, it.target) }
+            }
         }
         targetList.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
@@ -176,19 +174,12 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
                 }
             }
         })
-        val buildSelectedShortcutAction = object : DumbAwareAction() {
-            override fun actionPerformed(e: AnActionEvent) {
-                buildSelectedTarget()
-            }
-        }
-        val buildShortcutSet = ActionManager.getInstance().getAction(ELM_BUILD_ACTION_ID)?.shortcutSet
-            ?: CustomShortcutSet.fromString("alt shift P")
-        buildSelectedShortcutAction.registerCustomShortcutSet(buildShortcutSet, this)
 
         refreshTargets()
     }
 
     fun refreshTargets() {
+        val previousKey = project.elmBuildTargetSelection.selectedKey
         targetListModel.clear()
         for (elmProject in project.elmWorkspace.allProjects.sortedBy { it.presentableName }) {
             val resolved = when (val result = project.elmWorkspace.resolveBuildTargets(elmProject)) {
@@ -199,6 +190,15 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
                 targetListModel.addElement(BuildTargetItem(elmProject, target, index + 1))
             }
         }
+        // Always keep one target selected (defaulting to the first), preserving the previous
+        // selection when it still exists. Setting the index updates the selection service.
+        if (!targetListModel.isEmpty) {
+            val matchIndex = (0 until targetListModel.size()).firstOrNull {
+                val item = targetListModel.getElementAt(it)
+                buildTargetKeyOf(item.elmProject, item.target) == previousKey
+            } ?: 0
+            targetList.selectedIndex = matchIndex
+        }
     }
 
     fun hasSelectedTarget(): Boolean = targetList.selectedIndex >= 0
@@ -207,21 +207,7 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
 
     fun buildSelectedTarget() {
         val item = targetList.selectedValue ?: return
-        saveAllDocuments()
-        val currentFileInEditor: VirtualFile? = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
-        ApplicationManager.getApplication().executeOnPooledThread {
-            val stillExists = Files.exists(item.target.inputPath)
-            if (!stillExists) {
-                ApplicationManager.getApplication().invokeLater {
-                    project.showBalloon(
-                        "Cannot build target '${displayTargetName(item.target, item.index)}': input file not found.",
-                        NotificationType.ERROR
-                    )
-                }
-                return@executeOnPooledThread
-            }
-            makeProject(item.elmProject, project, listOf(item.target), currentFileInEditor)
-        }
+        buildTarget(project, item.elmProject, item.target)
     }
 
     private fun editSelectedTarget() {

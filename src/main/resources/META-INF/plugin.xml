@@ -300,6 +300,12 @@
                 text="Refresh Elm projects"
                 icon="AllIcons.Actions.Refresh"/>
 
+        <action id="Elm.BuildSelected"
+                class="org.elm.ide.actions.ElmBuildSelectedAction"
+                text="Build Selected Elm Target"
+                description="Build the target selected in the Elm Compiler tool window"
+                icon="AllIcons.Actions.Execute"/>
+
         <action id="Elm.BuildAll"
                 class="org.elm.ide.actions.ElmBuildAllAction"
                 text="Build All Elm Targets"
