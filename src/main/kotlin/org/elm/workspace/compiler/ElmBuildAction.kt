@@ -18,8 +18,6 @@ import org.elm.workspace.*
 import org.elm.workspace.commandLineTools.makeProject
 import java.nio.file.Path
 
-const val ELM_BUILD_ACTION_ID = "Elm.Build"
-
 internal data class ElmBuildRunFailure(val message: String, val includeFixAction: Boolean = false)
 
 internal fun runElmBuildForFile(

@@ -17,8 +17,6 @@ import org.elm.workspace.compiler.ResolvedBuildTarget
 import org.elm.workspace.elmWorkspace
 import java.nio.file.Files
 
-const val ELM_BUILD_SELECTED_ACTION_ID = "Elm.BuildSelected"
-
 /**
  * Build the target currently selected in the Elm Compiler tool window's build-targets list,
  * falling back to the first target when nothing has been selected yet.

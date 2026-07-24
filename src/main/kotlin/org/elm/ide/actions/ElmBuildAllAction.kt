@@ -13,7 +13,6 @@ import org.elm.openapiext.saveAllDocuments
 import org.elm.workspace.commandLineTools.makeAllTargets
 import java.nio.file.Files
 
-const val ELM_BUILD_ALL_ACTION_ID = "Elm.BuildAll"
 const val ELM_COMPILER_TOOL_WINDOW_ID = "Elm Compiler"
 
 /**
