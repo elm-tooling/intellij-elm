@@ -194,7 +194,7 @@ private class ElmBuildTargetsPanel(
             if (!e.valueIsAdjusting) {
                 val item = targetList.selectedValue
                 project.elmBuildTargetSelection.selectedKey =
-                    item?.elmProject?.let { p -> item.target?.let { buildTargetKeyOf(p, it) } }
+                    item?.target?.let { buildTargetKeyOf(it) }
                 updateSelectionMessages()
             }
         }
@@ -226,8 +226,7 @@ private class ElmBuildTargetsPanel(
         if (!targetListModel.isEmpty) {
             val matchIndex = (0 until targetListModel.size()).firstOrNull {
                 val item = targetListModel.getElementAt(it)
-                item.elmProject != null && item.target != null &&
-                    buildTargetKeyOf(item.elmProject, item.target) == previousKey
+                item.target != null && buildTargetKeyOf(item.target) == previousKey
             } ?: 0
             targetList.selectedIndex = matchIndex
         }
@@ -249,13 +248,12 @@ private class ElmBuildTargetsPanel(
     fun buildSelectedTarget() {
         val item = targetList.selectedValue ?: return
         val target = item.target
-        val elmProject = item.elmProject
-        if (target == null || elmProject == null) {
+        if (target == null) {
             // The selected target is misconfigured; show why instead of trying to build it.
             item.error?.let { onInvalidSelected(it) }
             return
         }
-        buildTarget(project, elmProject, target)
+        buildTarget(project, target)
     }
 
     private fun editSelectedTarget() {

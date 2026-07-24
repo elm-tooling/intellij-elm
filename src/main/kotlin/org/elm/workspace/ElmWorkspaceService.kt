@@ -192,58 +192,113 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         fun invalid(message: String, elmProject: ElmProject? = null) =
             BuildTargetOutcome(row, target, elmProject = elmProject, resolved = null, error = message)
 
-        val inputRaw = target.inputPath.trim()
-        if (inputRaw.isBlank()) {
-            return invalid("Row $row: input file is not set")
-        }
-        val inputPath = inputRaw.toPathOrNull()
-        if (inputPath == null || !inputPath.isAbsolute) {
-            return invalid("Row $row: input path must be an absolute file path")
-        }
-        if (inputPath.fileName?.toString()?.endsWith(".elm") != true) {
-            return invalid("Row $row: input file '$inputRaw' is not an Elm file")
-        }
-        val inputFile = findFileByPathTestAware(inputPath)
-        if (inputFile == null || !inputFile.exists()) {
-            return invalid("Row $row: input file '$inputRaw' does not exist")
-        }
-        val elmProject = findProjectForFile(inputFile)
-            ?: return invalid("Row $row: no Elm project (elm.json) found for '$inputRaw' — open the file and attach an elm.json")
-
-        val compilerRaw = target.compilerPath.trim()
-        val compilerPath = compilerRaw.toPathOrNull()
-        if (compilerRaw.isBlank() || compilerPath == null || !Files.isExecutable(compilerPath)) {
-            return invalid("Row $row: compiler path '$compilerRaw' is invalid or not executable", elmProject)
+        fun validCompilerPathOrNull(): Path? {
+            val raw = target.compilerPath.trim()
+            val path = raw.toPathOrNull()
+            return if (raw.isBlank() || path == null || !Files.isExecutable(path)) null else path
         }
 
-        val outputRaw = target.outputPath.trim()
-        val outputForCompiler = if (outputRaw.isBlank()) {
-            nullOutputTargetPathString()
-        } else {
-            val outputPath = outputRaw.toPathOrNull()
-            if (outputPath == null || !outputPath.isAbsolute) {
-                return invalid("Row $row: output path must be an absolute file path (or blank)", elmProject)
+        return when (target.type) {
+            ElmBuildTargetType.APPLICATION -> {
+                val inputRaw = target.inputPath.trim()
+                if (inputRaw.isBlank()) {
+                    return invalid("Row $row: input file is not set")
+                }
+                val inputPath = inputRaw.toPathOrNull()
+                if (inputPath == null || !inputPath.isAbsolute) {
+                    return invalid("Row $row: input path must be an absolute file path")
+                }
+                if (inputPath.fileName?.toString()?.endsWith(".elm") != true) {
+                    return invalid("Row $row: input file '$inputRaw' is not an Elm file")
+                }
+                val inputFile = findFileByPathTestAware(inputPath)
+                if (inputFile == null || !inputFile.exists()) {
+                    return invalid("Row $row: input file '$inputRaw' does not exist")
+                }
+                val elmProject = findProjectForFile(inputFile)
+                    ?: return invalid("Row $row: no Elm project (elm.json) found for '$inputRaw' — open the file and attach an elm.json")
+
+                val compilerPath = validCompilerPathOrNull()
+                    ?: return invalid("Row $row: compiler path '${target.compilerPath.trim()}' is invalid or not executable", elmProject)
+
+                val outputRaw = target.outputPath.trim()
+                val outputForCompiler = if (outputRaw.isBlank()) {
+                    nullOutputTargetPathString()
+                } else {
+                    val outputPath = outputRaw.toPathOrNull()
+                    if (outputPath == null || !outputPath.isAbsolute) {
+                        return invalid("Row $row: output path must be an absolute file path (or blank)", elmProject)
+                    }
+                    outputRaw
+                }
+
+                BuildTargetOutcome(
+                    row = row,
+                    config = target,
+                    elmProject = elmProject,
+                    resolved = ResolvedBuildTarget(
+                        name = target.name,
+                        type = ElmBuildTargetType.APPLICATION,
+                        workDir = elmProject.projectDirPath,
+                        inputPath = inputPath,
+                        inputPathForCompiler = inputRaw,
+                        outputPathForCompiler = outputForCompiler,
+                        mode = target.mode,
+                        compilerKind = target.compilerKind,
+                        compilerPath = compilerPath,
+                        compileOnSave = target.compileOnSave,
+                        offset = 0
+                    ),
+                    error = null
+                )
             }
-            outputRaw
-        }
 
-        return BuildTargetOutcome(
-            row = row,
-            config = target,
-            elmProject = elmProject,
-            resolved = ResolvedBuildTarget(
-                name = target.name,
-                inputPath = inputPath,
-                inputPathForCompiler = inputRaw,
-                outputPathForCompiler = outputForCompiler,
-                mode = target.mode,
-                compilerKind = target.compilerKind,
-                compilerPath = compilerPath,
-                compileOnSave = target.compileOnSave,
-                offset = 0
-            ),
-            error = null
-        )
+            ElmBuildTargetType.PACKAGE -> {
+                val manifestRaw = target.inputPath.trim()
+                if (manifestRaw.isBlank()) {
+                    return invalid("Row $row: elm.json file is not set")
+                }
+                val manifestPath = manifestRaw.toPathOrNull()
+                if (manifestPath == null || !manifestPath.isAbsolute) {
+                    return invalid("Row $row: elm.json path must be an absolute file path")
+                }
+                if (manifestPath.fileName?.toString() != ELM_JSON) {
+                    return invalid("Row $row: '$manifestRaw' is not an elm.json file")
+                }
+                val manifestFile = findFileByPathTestAware(manifestPath)
+                if (manifestFile == null || !manifestFile.exists()) {
+                    return invalid("Row $row: elm.json file '$manifestRaw' does not exist")
+                }
+                // We only need the elm.json's directory as the working directory; the package
+                // does not have to be an attached project. If it happens to be one, keep it for
+                // display purposes.
+                val workDir = manifestPath.parent.normalize()
+                val elmProject = allProjects.firstOrNull { it.manifestPath.normalize() == manifestPath.normalize() }
+
+                val compilerPath = validCompilerPathOrNull()
+                    ?: return invalid("Row $row: compiler path '${target.compilerPath.trim()}' is invalid or not executable", elmProject)
+
+                BuildTargetOutcome(
+                    row = row,
+                    config = target,
+                    elmProject = elmProject,
+                    resolved = ResolvedBuildTarget(
+                        name = target.name,
+                        type = ElmBuildTargetType.PACKAGE,
+                        workDir = workDir,
+                        inputPath = manifestPath,
+                        inputPathForCompiler = "",
+                        outputPathForCompiler = "",
+                        mode = ElmBuildMode.NONE,
+                        compilerKind = target.compilerKind,
+                        compilerPath = compilerPath,
+                        compileOnSave = target.compileOnSave,
+                        offset = 0
+                    ),
+                    error = null
+                )
+            }
+        }
     }
 
 
@@ -413,6 +468,8 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         // Run the Elm compiler to install the dependencies
         val tmpEntryPoint = ResolvedBuildTarget(
             name = "Install dependencies",
+            type = ElmBuildTargetType.APPLICATION,
+            workDir = dir.toPath(),
             inputPath = tempMain.toPath(),
             inputPathForCompiler = tempMain.path,
             outputPathForCompiler = nullOutputTargetPathString(),
@@ -671,6 +728,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 buildTargetsElement.addContent(
                     Element("target")
                         .setAttribute("name", target.name)
+                        .setAttribute("type", target.type.name)
                         .setAttribute("inputPath", target.inputPath)
                         .setAttribute("outputPath", target.outputPath)
                         .setAttribute("mode", target.mode.name)
@@ -725,6 +783,9 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             ?.getChildren("target")
             ?.mapNotNull { targetElement ->
                 val name = targetElement.getAttributeValue("name") ?: ""
+                val type = targetElement.getAttributeValue("type")
+                    ?.let { rawType -> runCatching { ElmBuildTargetType.valueOf(rawType) }.getOrNull() }
+                    ?: ElmBuildTargetType.APPLICATION
                 val inputPath = targetElement.getAttributeValue("inputPath") ?: return@mapNotNull null
                 val outputPath = targetElement.getAttributeValue("outputPath") ?: ""
                 val mode = targetElement.getAttributeValue("mode")
@@ -739,6 +800,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                     ?.toBoolean() ?: false
                 ElmBuildTargetConfig(
                     name = name,
+                    type = type,
                     inputPath = inputPath,
                     outputPath = outputPath,
                     mode = mode,

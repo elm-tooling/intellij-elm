@@ -49,7 +49,7 @@ internal fun runElmBuildForFile(
     val entryPoints = outcomes.mapNotNull { it.resolved }
 
     return try {
-        makeProject(elmProject, project, entryPoints, currentFileInEditor)
+        makeProject(project, entryPoints, currentFileInEditor)
         null
     } catch (_: ExecutionException) {
         ElmBuildRunFailure(

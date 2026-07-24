@@ -18,6 +18,20 @@ enum class ElmCompilerKind {
         }
 }
 
+enum class ElmBuildTargetType {
+    /** Compile a single entry `.elm` file to an output (the usual case). */
+    APPLICATION,
+
+    /** Type-check a package by running `elm make` with no arguments in the package's directory. */
+    PACKAGE;
+
+    override fun toString(): String =
+        when (this) {
+            APPLICATION -> "Application"
+            PACKAGE -> "Package"
+        }
+}
+
 enum class ElmBuildMode {
     NONE,
     DEBUG,
@@ -38,8 +52,17 @@ enum class ElmBuildMode {
         }
 }
 
+/**
+ * A configured build target.
+ *
+ * For [ElmBuildTargetType.APPLICATION], [inputPath] is the absolute path to the entry `.elm` file
+ * and [outputPath]/[mode] apply. For [ElmBuildTargetType.PACKAGE], [inputPath] is the absolute
+ * path to the package's `elm.json` and [outputPath]/[mode] are unused (the package is type-checked
+ * by running `elm make` with no arguments).
+ */
 data class ElmBuildTargetConfig(
     val name: String = "",
+    val type: ElmBuildTargetType = ElmBuildTargetType.APPLICATION,
     val inputPath: String = "",
     val outputPath: String = "",
     val mode: ElmBuildMode = ElmBuildMode.NONE,
@@ -51,6 +74,9 @@ data class ElmBuildTargetConfig(
 
 data class ResolvedBuildTarget(
     val name: String,
+    val type: ElmBuildTargetType,
+    /** The directory `elm make` runs in (the directory containing the target's `elm.json`). */
+    val workDir: Path,
     val inputPath: Path,
     val inputPathForCompiler: String,
     val outputPathForCompiler: String,
@@ -59,7 +85,18 @@ data class ResolvedBuildTarget(
     val compilerPath: Path,
     val compileOnSave: Boolean,
     val offset: Int = 0
-)
+) {
+    /** The arguments to pass to `elm make` (after the compiler executable) for this target. */
+    fun makeParameters(): List<String> {
+        val params = mutableListOf("make")
+        // A package is type-checked by running `elm make` with no input/output/mode.
+        if (type == ElmBuildTargetType.PACKAGE) return params
+        if (inputPathForCompiler.isNotBlank()) params += inputPathForCompiler
+        params += "--output=$outputPathForCompiler"
+        mode.asFlag()?.let { params += it }
+        return params
+    }
+}
 
 /**
  * The result of resolving a single configured build target. Exactly one of [resolved] / [error]

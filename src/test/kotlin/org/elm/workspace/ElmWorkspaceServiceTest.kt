@@ -8,6 +8,7 @@ import org.elm.openapiext.pathAsPath
 import org.elm.openapiext.toXmlString
 import org.elm.workspace.compiler.ElmBuildMode
 import org.elm.workspace.compiler.ElmBuildTargetConfig
+import org.elm.workspace.compiler.ElmBuildTargetType
 import org.elm.workspace.compiler.ElmCompilerKind
 import org.junit.Test
 import java.io.File
@@ -421,6 +422,91 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
         val outcome = workspace.resolveBuildTargetsDetailed().single()
         check(outcome.resolved == null) { "Expected target to fail, got ${outcome.resolved}" }
         check(outcome.error?.contains("input file is not set") == true) { "Unexpected error: ${outcome.error}" }
+    }
+
+    @Test
+    fun `test package build target resolves to the chosen elm-json and builds with no arguments`() {
+        val testProject = fileTree {
+            dir("pkg") {
+                project("elm.json", BASIC_PACKAGE_MANIFEST)
+                dir("src") {
+                    elm("Foo.elm")
+                }
+            }
+        }.create(project, elmWorkspaceDirectory)
+
+        val workspace = project.elmWorkspace
+        val rootPath = testProject.root.pathAsPath
+        val manifestPath = rootPath.resolve("pkg/elm.json")
+        workspace.asyncAttachElmProject(manifestPath).get()
+
+        val elmProject = workspace.allProjects.single() as ElmPackageProject
+        val compilerPath = project.elmToolchain.compilerPath?.toString()
+            ?: error("Compiler path is not configured in test toolchain")
+        workspace.setBuildTargets(
+            listOf(
+                ElmBuildTargetConfig(
+                    name = "Package check",
+                    type = ElmBuildTargetType.PACKAGE,
+                    inputPath = manifestPath.toString(),
+                    compilerKind = ElmCompilerKind.ELM,
+                    compilerPath = compilerPath,
+                    compileOnSave = true
+                )
+            )
+        )
+
+        val outcome = workspace.resolveBuildTargetsDetailed().single()
+        check(outcome.error == null) { "Expected package target to resolve, got error: ${outcome.error}" }
+        val resolved = outcome.resolved ?: error("Expected a resolved target")
+        val ownerManifest = outcome.elmProject?.manifestPath ?: error("Expected an owning Elm project")
+        checkEquals(elmProject.manifestPath, ownerManifest)
+        checkEquals(ElmBuildTargetType.PACKAGE, resolved.type)
+        checkEquals(elmProject.projectDirPath, resolved.workDir)
+        // A package is type-checked by `elm make` with no input/output/mode arguments.
+        checkEquals(listOf("make"), resolved.makeParameters())
+    }
+
+    @Test
+    fun `test package build target resolves even when its elm-json is not an attached project`() {
+        val testProject = fileTree {
+            dir("app") {
+                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                dir("src") { elm("Main.elm") }
+            }
+            // A second package that is deliberately NOT attached to the workspace.
+            dir("pkg") {
+                project("elm.json", BASIC_PACKAGE_MANIFEST)
+                dir("src") { elm("Foo.elm") }
+            }
+        }.create(project, elmWorkspaceDirectory)
+
+        val workspace = project.elmWorkspace
+        val rootPath = testProject.root.pathAsPath
+        workspace.asyncAttachElmProject(rootPath.resolve("app/elm.json")).get()
+
+        val compilerPath = project.elmToolchain.compilerPath?.toString()
+            ?: error("Compiler path is not configured in test toolchain")
+        val pkgManifest = rootPath.resolve("pkg/elm.json")
+        workspace.setBuildTargets(
+            listOf(
+                ElmBuildTargetConfig(
+                    name = "Unattached package",
+                    type = ElmBuildTargetType.PACKAGE,
+                    inputPath = pkgManifest.toString(),
+                    compilerKind = ElmCompilerKind.ELM,
+                    compilerPath = compilerPath,
+                    compileOnSave = true
+                )
+            )
+        )
+
+        val outcome = workspace.resolveBuildTargetsDetailed().single()
+        check(outcome.error == null) { "Expected package target to resolve without attachment, got error: ${outcome.error}" }
+        val resolved = outcome.resolved ?: error("Expected a resolved target")
+        // No attached project claims it, but the working directory is the elm.json's directory.
+        checkEquals(pkgManifest.parent, resolved.workDir)
+        checkEquals(listOf("make"), resolved.makeParameters())
     }
 
     @Test

@@ -12,7 +12,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindowManager
 import org.elm.ide.notifications.showBalloon
 import org.elm.openapiext.saveAllDocuments
-import org.elm.workspace.ElmProject
 import org.elm.workspace.commandLineTools.makeProject
 import org.elm.workspace.compiler.ResolvedBuildTarget
 import org.elm.workspace.elmWorkspace
@@ -43,11 +42,11 @@ class ElmBuildSelectedAction : DumbAwareAction() {
         if (targets.isEmpty()) return // Nothing to build; just leave the panel open.
 
         val selectedKey = project.elmBuildTargetSelection.selectedKey
-        val (elmProject, target) = targets.firstOrNull { buildTargetKeyOf(it.first, it.second) == selectedKey }
+        val target = targets.firstOrNull { buildTargetKeyOf(it) == selectedKey }
             ?: targets.first()
         // Keep the selection in sync so the panel reflects what we built.
-        project.elmBuildTargetSelection.selectedKey = buildTargetKeyOf(elmProject, target)
-        buildTarget(project, elmProject, target)
+        project.elmBuildTargetSelection.selectedKey = buildTargetKeyOf(target)
+        buildTarget(project, target)
     }
 }
 
@@ -57,15 +56,15 @@ class ElmBuildSelectedAction : DumbAwareAction() {
  * ordinal row index, which can shift as targets are added or removed.
  */
 data class BuildTargetKey(
-    val manifestPath: String,
+    val workDir: String,
     val name: String,
     val inputPathForCompiler: String,
     val outputPathForCompiler: String
 )
 
-fun buildTargetKeyOf(elmProject: ElmProject, target: ResolvedBuildTarget): BuildTargetKey =
+fun buildTargetKeyOf(target: ResolvedBuildTarget): BuildTargetKey =
     BuildTargetKey(
-        manifestPath = elmProject.manifestPath.toString(),
+        workDir = target.workDir.toString(),
         name = target.name,
         inputPathForCompiler = target.inputPathForCompiler,
         outputPathForCompiler = target.outputPathForCompiler
@@ -84,14 +83,10 @@ class ElmBuildTargetSelectionService {
 val Project.elmBuildTargetSelection: ElmBuildTargetSelectionService
     get() = service()
 
-/** All successfully resolved build targets (paired with their derived Elm project), in the
- * tool window's display order. Targets that fail to resolve are omitted. */
-fun resolveAllBuildTargets(project: Project): List<Pair<ElmProject, ResolvedBuildTarget>> =
-    project.elmWorkspace.resolveBuildTargetsDetailed().mapNotNull { outcome ->
-        val elmProject = outcome.elmProject
-        val target = outcome.resolved
-        if (elmProject != null && target != null) elmProject to target else null
-    }
+/** All successfully resolved build targets, in the tool window's display order. Targets that
+ * fail to resolve are omitted. */
+fun resolveAllBuildTargets(project: Project): List<ResolvedBuildTarget> =
+    project.elmWorkspace.resolveBuildTargetsDetailed().mapNotNull { it.resolved }
 
 fun openElmCompilerToolWindow(project: Project) {
     ToolWindowManager.getInstance(project).getToolWindow(ELM_COMPILER_TOOL_WINDOW_ID)?.let { toolWindow ->
@@ -103,7 +98,7 @@ fun openElmCompilerToolWindow(project: Project) {
  * Save all documents and build a single target, reporting a balloon if its input file has
  * gone missing. Must be called on the EDT; the compilation itself runs on a pooled thread.
  */
-fun buildTarget(project: Project, elmProject: ElmProject, target: ResolvedBuildTarget) {
+fun buildTarget(project: Project, target: ResolvedBuildTarget) {
     saveAllDocuments()
     val currentFileInEditor = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
     ApplicationManager.getApplication().executeOnPooledThread {
@@ -116,7 +111,7 @@ fun buildTarget(project: Project, elmProject: ElmProject, target: ResolvedBuildT
             }
             return@executeOnPooledThread
         }
-        makeProject(elmProject, project, listOf(target), currentFileInEditor)
+        makeProject(project, listOf(target), currentFileInEditor)
     }
 }
 

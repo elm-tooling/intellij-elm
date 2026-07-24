@@ -50,21 +50,12 @@ class ElmBuildAllAction : DumbAwareAction() {
 fun buildAllTargets(project: Project) {
     saveAllDocuments()
     val currentFileInEditor: VirtualFile? = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
-    // Group the resolved targets by their derived Elm project so each group compiles with the
-    // correct working directory (the project's elm.json directory).
-    val targetsByProject = resolveAllBuildTargets(project)
-        .groupBy({ it.first }, { it.second })
-        .entries
-        .sortedBy { it.key.presentableName }
-        .map { it.key to it.value }
-    if (targetsByProject.isEmpty()) return
+    val targets = resolveAllBuildTargets(project)
+    if (targets.isEmpty()) return
 
     ApplicationManager.getApplication().executeOnPooledThread {
-        val existingByProject = targetsByProject.mapNotNull { (elmProject, targets) ->
-            val existing = targets.filter { Files.exists(it.inputPath) }
-            if (existing.isEmpty()) null else elmProject to existing
-        }
-        if (existingByProject.isEmpty()) {
+        val existing = targets.filter { Files.exists(it.inputPath) }
+        if (existing.isEmpty()) {
             ApplicationManager.getApplication().invokeLater {
                 project.showBalloon(
                     "Cannot build targets: no build target input files were found.",
@@ -73,6 +64,7 @@ fun buildAllTargets(project: Project) {
             }
             return@executeOnPooledThread
         }
-        makeAllTargets(project, existingByProject, currentFileInEditor)
+        // makeAllTargets groups by working directory so each target compiles in its own project.
+        makeAllTargets(project, existing, currentFileInEditor)
     }
 }

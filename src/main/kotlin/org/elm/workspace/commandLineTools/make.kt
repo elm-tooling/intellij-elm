@@ -2,7 +2,6 @@ package org.elm.workspace.commandLineTools
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import org.elm.workspace.ElmProject
 import org.elm.workspace.compiler.ERRORS_TOPIC
 import org.elm.workspace.compiler.ElmCompilerKind
 import org.elm.workspace.compiler.ElmError
@@ -10,7 +9,6 @@ import org.elm.workspace.compiler.ResolvedBuildTarget
 import java.nio.file.Path
 
 fun makeProject(
-    elmProject: ElmProject,
     project: Project,
     entryPoints: List<ResolvedBuildTarget>,
     currentFileInEditor: VirtualFile?
@@ -18,37 +16,18 @@ fun makeProject(
     if (entryPoints.isEmpty()) return true
 
     var allSucceeded = true
-    val grouped = entryPoints.groupBy { it.compilerKind to it.compilerPath }
-    for ((kindAndPath, targets) in grouped) {
-        val (kind, path) = kindAndPath
+    // Each target carries its own working directory (its elm.json directory), so group by that
+    // together with the compiler; every group is one `elm make` working directory.
+    val grouped = entryPoints.groupBy { Triple(it.compilerKind, it.compilerPath, it.workDir) }
+    for ((key, targets) in grouped) {
+        val (kind, path, workDir) = key
         val succeeded = when (kind) {
             ElmCompilerKind.ELM ->
-                ElmCLI(path).make(
-                    project,
-                    elmProject.projectDirPath,
-                    elmProject,
-                    targets,
-                    jsonReport = true,
-                    currentFile = currentFileInEditor
-                )
+                ElmCLI(path).make(project, workDir, workDir, targets, jsonReport = true, currentFile = currentFileInEditor)
             ElmCompilerKind.LAMDERA ->
-                LamderaCLI(path).make(
-                    project,
-                    elmProject.projectDirPath,
-                    elmProject,
-                    targets,
-                    jsonReport = true,
-                    currentFile = currentFileInEditor
-                )
+                LamderaCLI(path).make(project, workDir, workDir, targets, jsonReport = true, currentFile = currentFileInEditor)
             ElmCompilerKind.WRAP ->
-                WrapCLI(path).make(
-                    project,
-                    elmProject.projectDirPath,
-                    elmProject,
-                    targets,
-                    jsonReport = true,
-                    currentFile = currentFileInEditor
-                )
+                WrapCLI(path).make(project, workDir, workDir, targets, jsonReport = true, currentFile = currentFileInEditor)
         }
         allSucceeded = allSucceeded && succeeded
     }
@@ -65,37 +44,34 @@ fun makeProject(
  */
 fun makeAllTargets(
     project: Project,
-    targetsByProject: List<Pair<ElmProject, List<ResolvedBuildTarget>>>,
+    targets: List<ResolvedBuildTarget>,
     currentFileInEditor: VirtualFile?
 ): Boolean {
-    val relevant = targetsByProject.filter { it.second.isNotEmpty() }
-    if (relevant.isEmpty()) return true
+    if (targets.isEmpty()) return true
 
     val sink = mutableListOf<ElmError>()
     var allSucceeded = true
-    for ((elmProject, targets) in relevant) {
-        val grouped = targets.groupBy { it.compilerKind to it.compilerPath }
-        for ((kindAndPath, kindTargets) in grouped) {
-            val (kind, path) = kindAndPath
-            val succeeded = when (kind) {
-                ElmCompilerKind.ELM ->
-                    ElmCLI(path).make(
-                        project, elmProject.projectDirPath, elmProject, kindTargets,
-                        jsonReport = true, currentFile = currentFileInEditor, messageSink = sink
-                    )
-                ElmCompilerKind.LAMDERA ->
-                    LamderaCLI(path).make(
-                        project, elmProject.projectDirPath, elmProject, kindTargets,
-                        jsonReport = true, currentFile = currentFileInEditor, messageSink = sink
-                    )
-                ElmCompilerKind.WRAP ->
-                    WrapCLI(path).make(
-                        project, elmProject.projectDirPath, elmProject, kindTargets,
-                        jsonReport = true, currentFile = currentFileInEditor, messageSink = sink
-                    )
-            }
-            allSucceeded = allSucceeded && succeeded
+    val grouped = targets.groupBy { Triple(it.compilerKind, it.compilerPath, it.workDir) }
+    for ((key, kindTargets) in grouped) {
+        val (kind, path, workDir) = key
+        val succeeded = when (kind) {
+            ElmCompilerKind.ELM ->
+                ElmCLI(path).make(
+                    project, workDir, workDir, kindTargets,
+                    jsonReport = true, currentFile = currentFileInEditor, messageSink = sink
+                )
+            ElmCompilerKind.LAMDERA ->
+                LamderaCLI(path).make(
+                    project, workDir, workDir, kindTargets,
+                    jsonReport = true, currentFile = currentFileInEditor, messageSink = sink
+                )
+            ElmCompilerKind.WRAP ->
+                WrapCLI(path).make(
+                    project, workDir, workDir, kindTargets,
+                    jsonReport = true, currentFile = currentFileInEditor, messageSink = sink
+                )
         }
+        allSucceeded = allSucceeded && succeeded
     }
 
     val sorted = sink.distinct().sortedWith(
@@ -111,7 +87,7 @@ fun makeAllTargets(
         sorted.filter(predicate) + sorted.filterNot(predicate)
     } else sorted
 
-    val baseDirPath = relevant.first().first.projectDirPath
+    val baseDirPath = targets.first().workDir
     project.messageBus.syncPublisher(ERRORS_TOPIC).update(baseDirPath, messages, "", 0)
     return messages.isEmpty() && allSucceeded
 }

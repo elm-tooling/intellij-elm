@@ -4,7 +4,6 @@ import com.intellij.execution.ExecutionException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.elm.openapiext.*
-import org.elm.workspace.ElmProject
 import org.elm.workspace.ParseException
 import org.elm.workspace.Version
 import org.elm.workspace.compiler.ERRORS_TOPIC
@@ -24,7 +23,9 @@ class ElmCLI(val elmExecutablePath: Path) {
     fun make(
         project: Project,
         workDir: Path,
-        elmProject: ElmProject?,
+        // The base dir for reporting errors to the tool window, or null to not report (e.g. an
+        // internal dependency-install build). Error file paths from `elm` are absolute regardless.
+        baseDirForErrors: Path?,
         entryPoints: List<ResolvedBuildTarget>,
         jsonReport: Boolean = false,
         currentFile: VirtualFile? = null,
@@ -38,13 +39,7 @@ class ElmCLI(val elmExecutablePath: Path) {
             val allMessages = mutableListOf<ElmError>()
             var allSucceeded = true
             for (entry in entryPoints) {
-                val modeFlag = entry.mode.asFlag()
-                val params = mutableListOf("make")
-                if (entry.inputPathForCompiler.isNotBlank()) {
-                    params += entry.inputPathForCompiler
-                }
-                params += "--output=${entry.outputPathForCompiler}"
-                if (modeFlag != null) params += modeFlag
+                val params = entry.makeParameters()
 
                 val commandLine = GeneralCommandLine(elmExecutablePath)
                     .withWorkDirectory(workDir)
@@ -88,19 +83,13 @@ class ElmCLI(val elmExecutablePath: Path) {
                 return messages.isEmpty() && allSucceeded
             }
 
-            if (elmProject == null) {
-                // from ElmWorkSpaceService
+            if (baseDirForErrors == null) {
+                // Internal build (e.g. dependency install from ElmWorkspaceService); don't report.
                 return allSucceeded
-                // TODO Lamdera
-                //  org.elm.workspace.log.error("Failed to install deps: Elm compiler failed: ${output.stderr}")
             } else {
                 val first = entryPoints.first()
-                fun postErrors() = project.messageBus.syncPublisher(ERRORS_TOPIC)
-                    .update(elmProject.projectDirPath, messages, first.inputPathForCompiler, first.offset)
-                when {
-                    isUnitTestMode -> postErrors()
-                    else -> postErrors()
-                }
+                project.messageBus.syncPublisher(ERRORS_TOPIC)
+                    .update(baseDirForErrors, messages, first.inputPathForCompiler, first.offset)
             }
             return messages.isEmpty() && allSucceeded
         } finally {

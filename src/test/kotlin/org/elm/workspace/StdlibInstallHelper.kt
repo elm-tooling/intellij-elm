@@ -109,6 +109,8 @@ object MinimalElmStdlibVariant : ElmStdlibVariant {
 
         val entryPoint = ResolvedBuildTarget(
             name = "Main",
+            type = org.elm.workspace.compiler.ElmBuildTargetType.APPLICATION,
+            workDir = onDiskTmpDir.pathAsPath,
             inputPath = Paths.get("Main.elm"),
             inputPathForCompiler = "Main.elm",
             outputPathForCompiler = nullOutputTargetPathString(),

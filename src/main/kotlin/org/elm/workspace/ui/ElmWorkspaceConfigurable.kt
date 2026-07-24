@@ -14,6 +14,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.util.messages.MessageBusConnection
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.HyperlinkLabel
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.JBColor
@@ -46,6 +47,7 @@ import org.elm.workspace.elmreview.ElmReviewCompilerSource
 import org.elm.workspace.elmreview.resolveElmReviewCompiler
 import org.elm.workspace.compiler.ElmBuildMode
 import org.elm.workspace.compiler.ElmBuildTargetConfig
+import org.elm.workspace.compiler.ElmBuildTargetType
 import org.elm.workspace.compiler.ElmCompilerKind
 import org.elm.workspace.compiler.toPathOrNull
 import java.awt.CardLayout
@@ -54,10 +56,12 @@ import java.awt.Dimension
 import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 import javax.swing.BoxLayout
+import javax.swing.ButtonGroup
 import javax.swing.JButton
 import javax.swing.JCheckBox
 import javax.swing.JComponent
 import javax.swing.JLabel
+import javax.swing.JRadioButton
 import javax.swing.JPanel
 import javax.swing.JScrollPane
 import javax.swing.JTextField
@@ -117,6 +121,13 @@ class ElmWorkspaceConfigurable(
     }
 
     private val targetName = JTextField()
+    private val targetTypeApplication = JRadioButton(ElmBuildTargetType.APPLICATION.toString(), true)
+    private val targetTypePackage = JRadioButton(ElmBuildTargetType.PACKAGE.toString())
+    private val targetTypeGroup = ButtonGroup().apply {
+        add(targetTypeApplication)
+        add(targetTypePackage)
+    }
+    private val targetInputLabel = JLabel("Input Elm File")
     private val targetInputPath = TextFieldWithBrowseButton()
     private val targetOutputPath = TextFieldWithBrowseButton()
     private val targetMode = ComboBox(ElmBuildMode.entries.toTypedArray())
@@ -124,6 +135,8 @@ class ElmWorkspaceConfigurable(
     private val targetCompilerPath = TextFieldWithBrowseButton()
     private val targetDetailsLayout = CardLayout()
     private val targetDetailsPanel = JPanel(targetDetailsLayout)
+    private lateinit var targetOutputRow: JComponent
+    private lateinit var targetModeRow: JComponent
 
     private val buildTargetList = mutableListOf<ElmBuildTargetConfig>()
     private var lastSelectedTargetIndex = -1
@@ -161,14 +174,28 @@ class ElmWorkspaceConfigurable(
         targetCompilerKind.addActionListener { persistTarget(targetList.selectedIndex) }
         targetCompilerPath.textField.addActionListener { persistTarget(targetList.selectedIndex) }
 
+        val onTargetTypeChanged = {
+            if (!isLoadingTargetDetails) {
+                updateTargetTypeFields()
+                persistTarget(targetList.selectedIndex)
+                refreshTargetListLabels(select = targetList.selectedIndex)
+            }
+        }
+        targetTypeApplication.addActionListener { onTargetTypeChanged() }
+        targetTypePackage.addActionListener { onTargetTypeChanged() }
+
         targetInputPath.addActionListener {
-            val path = selectAbsoluteFile("Select Elm entry file", elmOnly = true) ?: return@addActionListener
+            val path = if (targetTypePackage.isSelected) {
+                selectAbsoluteFile("Select elm.json") { it.name == "elm.json" }
+            } else {
+                selectAbsoluteFile("Select Elm entry file") { it.extension == "elm" }
+            } ?: return@addActionListener
             targetInputPath.text = path
             persistTarget(targetList.selectedIndex)
             refreshTargetListLabels(select = targetList.selectedIndex)
         }
         targetOutputPath.addActionListener {
-            val path = selectAbsoluteFile("Select output file", elmOnly = false) ?: return@addActionListener
+            val path = selectAbsoluteFile("Select output file") ?: return@addActionListener
             targetOutputPath.text = path
             persistTarget(targetList.selectedIndex)
         }
@@ -267,14 +294,22 @@ class ElmWorkspaceConfigurable(
             }
             .createPanel()
 
+        val typePanel = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.X_AXIS)
+            minimumSize = Dimension(0, 0)
+            add(targetTypeApplication)
+            add(targetTypePackage)
+        }
+
         val formPanel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             add(labeledField("Name", targetName))
+            add(labeledField("Type", typePanel))
             add(labeledField("Compiler", targetCompilerKind))
             add(labeledField("Compiler Path", targetCompilerPathWithAutoDiscoverButton()))
-            add(labeledField("Input Elm File", targetInputPath))
-            add(labeledField("Output", targetOutputPath))
-            add(labeledField("Mode", targetMode))
+            add(labeledField(targetInputLabel, targetInputPath))
+            add(labeledField("Output", targetOutputPath).also { targetOutputRow = it })
+            add(labeledField("Mode", targetMode).also { targetModeRow = it })
         }
 
         val emptyPanel = JPanel(BorderLayout()).apply {
@@ -301,13 +336,26 @@ class ElmWorkspaceConfigurable(
     }
 
     private fun labeledField(label: String, component: JComponent): JComponent =
+        labeledField(JLabel(label), component)
+
+    private fun labeledField(label: JLabel, component: JComponent): JComponent =
         JPanel(BorderLayout(0, 2)).apply {
             minimumSize = Dimension(0, 0)
             border = JBUI.Borders.empty(2, 0, 6, 0)
             component.minimumSize = Dimension(0, component.minimumSize.height)
-            add(JLabel(label), BorderLayout.NORTH)
+            add(label, BorderLayout.NORTH)
             add(component, BorderLayout.CENTER)
         }
+
+    /** Show/hide and relabel the input-related fields for the selected target type. */
+    private fun updateTargetTypeFields() {
+        val isPackage = targetTypePackage.isSelected
+        targetInputLabel.text = if (isPackage) "elm.json File" else "Input Elm File"
+        targetOutputRow.isVisible = !isPackage
+        targetModeRow.isVisible = !isPackage
+        targetDetailsPanel.revalidate()
+        targetDetailsPanel.repaint()
+    }
 
     private fun currentTargets(): MutableList<ElmBuildTargetConfig> = buildTargetList
 
@@ -333,11 +381,16 @@ class ElmWorkspaceConfigurable(
         if (isLoadingTargetDetails) return
         val targets = currentTargets()
         if (index !in targets.indices) return
+        val type = if (targetTypePackage.isSelected) ElmBuildTargetType.PACKAGE else ElmBuildTargetType.APPLICATION
         targets[index] = ElmBuildTargetConfig(
             name = targetName.text.trim(),
+            type = type,
             inputPath = targetInputPath.text.trim(),
-            outputPath = targetOutputPath.text.trim(),
-            mode = targetMode.selectedItem as? ElmBuildMode ?: ElmBuildMode.NONE,
+            // Output and mode are only meaningful for application targets.
+            outputPath = if (type == ElmBuildTargetType.APPLICATION) targetOutputPath.text.trim() else "",
+            mode = if (type == ElmBuildTargetType.APPLICATION) {
+                targetMode.selectedItem as? ElmBuildMode ?: ElmBuildMode.NONE
+            } else ElmBuildMode.NONE,
             compilerKind = targetCompilerKind.selectedItem as? ElmCompilerKind ?: ElmCompilerKind.ELM,
             compilerPath = targetCompilerPath.text.trim(),
             compileOnSave = true
@@ -403,11 +456,14 @@ class ElmWorkspaceConfigurable(
         isLoadingTargetDetails = true
         try {
             targetName.text = target.name
+            targetTypeApplication.isSelected = target.type == ElmBuildTargetType.APPLICATION
+            targetTypePackage.isSelected = target.type == ElmBuildTargetType.PACKAGE
             targetInputPath.text = target.inputPath
             targetOutputPath.text = target.outputPath
             targetMode.selectedItem = target.mode
             targetCompilerKind.selectedItem = target.compilerKind
             targetCompilerPath.text = target.compilerPath
+            updateTargetTypeFields()
         } finally {
             isLoadingTargetDetails = false
         }
@@ -416,18 +472,20 @@ class ElmWorkspaceConfigurable(
 
     private fun clearTargetEditor() {
         targetName.text = ""
+        targetTypeApplication.isSelected = true
         targetInputPath.text = ""
         targetOutputPath.text = ""
         targetMode.selectedItem = ElmBuildMode.NONE
         targetCompilerKind.selectedItem = ElmCompilerKind.ELM
         targetCompilerPath.text = ""
+        updateTargetTypeFields()
     }
 
-    private fun selectAbsoluteFile(title: String, elmOnly: Boolean): String? {
+    private fun selectAbsoluteFile(title: String, fileFilter: ((VirtualFile) -> Boolean)? = null): String? {
         val descriptor = FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
             .withTitle(title)
             .also { it.isForcedToUseIdeaFileChooser = true }
-        if (elmOnly) descriptor.withFileFilter { it.extension == "elm" }
+        if (fileFilter != null) descriptor.withFileFilter(fileFilter)
         // Start browsing from the current field value's directory when it points somewhere valid.
         val toSelect = targetInputPath.text.trim().toPathOrNull()
             ?.let { runCatching { findFileByPathTestAware(it) }.getOrNull() }

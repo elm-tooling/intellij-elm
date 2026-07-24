@@ -24,7 +24,7 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
     fun make(
         project: Project,
         workDir: Path,
-        elmProject: ElmProject?,
+        baseDirForErrors: Path?,
         entryPoints: List<ResolvedBuildTarget>,
         jsonReport: Boolean = false,
         currentFile: VirtualFile? = null,
@@ -38,13 +38,7 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
             val allMessages = mutableListOf<ElmError>()
             var allSucceeded = true
             for (entry in entryPoints) {
-                val modeFlag = entry.mode.asFlag()
-                val params = mutableListOf("make")
-                if (entry.inputPathForCompiler.isNotBlank()) {
-                    params += entry.inputPathForCompiler
-                }
-                params += "--output=${entry.outputPathForCompiler}"
-                if (modeFlag != null) params += modeFlag
+                val params = entry.makeParameters()
                 val commandLine = GeneralCommandLine(lamderaExecutablePath)
                     .withWorkDirectory(workDir)
                     .withParameters(*params.toTypedArray())
@@ -85,8 +79,8 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
                 return messages.isEmpty() && allSucceeded
             }
 
-            if (elmProject == null) {
-                // from ElmWorkSpaceService
+            if (baseDirForErrors == null) {
+                // Internal build (e.g. dependency install from ElmWorkspaceService); don't report.
                 if (!allSucceeded) {
                     log.error("Failed to install dependencies: Lamdera compiler failed")
                     return false
@@ -94,12 +88,8 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
                 return true
             } else {
                 val first = entryPoints.first()
-                fun postErrors() = project.messageBus.syncPublisher(ERRORS_TOPIC)
-                    .update(elmProject.projectDirPath, messages, first.inputPathForCompiler, first.offset)
-                when {
-                    isUnitTestMode -> postErrors()
-                    else -> postErrors()
-                }
+                project.messageBus.syncPublisher(ERRORS_TOPIC)
+                    .update(baseDirForErrors, messages, first.inputPathForCompiler, first.offset)
             }
             return messages.isEmpty() && allSucceeded
         } finally {
