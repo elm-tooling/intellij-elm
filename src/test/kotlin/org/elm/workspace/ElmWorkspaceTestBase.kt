@@ -30,6 +30,15 @@ abstract class ElmWorkspaceTestBase : CodeInsightFixtureTestCase<ModuleFixtureBu
     protected val elmWorkspaceDirectory: VirtualFile
         get() = myFixture.findFileInTempDir(".")
 
+    /**
+     * The version of the Elm compiler the developer has installed (e.g. 0.19.1, 0.19.2, ...).
+     * Test fixtures that are compiled by the real compiler must declare this version in their
+     * `elm.json`, otherwise the compiler rejects them with an "ELM VERSION MISMATCH" error.
+     * Falls back to 0.19.1 if the compiler version cannot be determined.
+     */
+    protected val installedElmCompilerVersion: Version
+        get() = toolchain.queryCompilerVersion(project).orNull() ?: Version(0, 19, 1)
+
     protected fun awaitWorkspaceLoaded(retries: Int = 3, timeoutSeconds: Long = 30): Boolean {
         repeat(retries) {
             project.elmWorkspace.asyncDiscoverAndRefresh().get(timeoutSeconds, TimeUnit.SECONDS)
