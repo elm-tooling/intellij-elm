@@ -1,7 +1,6 @@
 package org.elm.workspace.compiler
 
 import com.intellij.openapi.util.SystemInfo
-import org.elm.workspace.ElmProject
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -104,16 +103,10 @@ data class ResolvedBuildTarget(
  * target could not be resolved. Keeping targets separate (rather than collapsing everything to
  * one error) lets the UI list valid and invalid targets side by side and surface why a target
  * failed instead of silently dropping it.
- *
- * [elmProject] is the Elm project (elm.json) that owns the target's input file, derived from the
- * file itself rather than chosen by the user. It is null when no attached Elm project claims the
- * file (which is also surfaced as an [error]); when non-null its directory is the working
- * directory for `elm make`.
  */
 data class BuildTargetOutcome(
     val row: Int,
     val config: ElmBuildTargetConfig,
-    val elmProject: ElmProject?,
     val resolved: ResolvedBuildTarget?,
     val error: String?
 )

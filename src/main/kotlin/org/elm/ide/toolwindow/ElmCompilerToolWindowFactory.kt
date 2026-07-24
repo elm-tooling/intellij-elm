@@ -155,13 +155,11 @@ private class ElmBuildTargetsPanel(
                 selected: Boolean,
                 hasFocus: Boolean
             ) {
-                val projectSuffix = value.elmProject?.let { " (${it.presentableName})" } ?: ""
-                val text = "${value.displayName}$projectSuffix"
                 if (value.error != null) {
                     icon = AllIcons.General.Error
-                    append(text, SimpleTextAttributes.ERROR_ATTRIBUTES)
+                    append(value.displayName, SimpleTextAttributes.ERROR_ATTRIBUTES)
                 } else {
-                    append(text)
+                    append(value.displayName)
                 }
             }
         }
@@ -214,12 +212,12 @@ private class ElmBuildTargetsPanel(
     fun refreshTargets() {
         val previousKey = project.elmBuildTargetSelection.selectedKey
         targetListModel.clear()
-        for (outcome in project.elmWorkspace.resolveBuildTargetsDetailed()) {
-            val displayName = outcome.resolved?.let { displayTargetName(it, outcome.row) }
-                ?: displayConfigName(outcome.config, outcome.row)
+        for ((row, config, resolved, error) in project.elmWorkspace.resolveBuildTargetsDetailed()) {
+            val displayName = resolved?.let { displayTargetName(it, row) }
+                ?: displayConfigName(config, row)
             targetListModel.addElement(
                 BuildTargetItem(
-                    outcome.elmProject, outcome.row, displayName, outcome.resolved, outcome.error, outcome.config
+                    row, displayName, resolved, error, config
                 )
             )
         }
@@ -329,8 +327,6 @@ private class ElmBuildTargetsPanel(
 }
 
 private data class BuildTargetItem(
-    /** The owning Elm project derived from the input file, or null when none was found. */
-    val elmProject: ElmProject?,
     val index: Int,
     val displayName: String,
     /** The resolved target, or null when the target is misconfigured (see [error]). */

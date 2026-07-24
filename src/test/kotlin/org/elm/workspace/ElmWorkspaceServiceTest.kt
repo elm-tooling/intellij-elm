@@ -383,8 +383,6 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
         val outcome = workspace.resolveBuildTargetsDetailed().single()
         check(outcome.error == null) { "Expected target to resolve, got error: ${outcome.error}" }
         val resolved = outcome.resolved ?: error("Expected a resolved target")
-        val ownerManifest = outcome.elmProject?.manifestPath ?: error("Expected an owning Elm project")
-        checkEquals(elmProject.manifestPath, ownerManifest)
         checkEquals(inputPath, resolved.inputPathForCompiler)
     }
 
@@ -459,8 +457,6 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
         val outcome = workspace.resolveBuildTargetsDetailed().single()
         check(outcome.error == null) { "Expected package target to resolve, got error: ${outcome.error}" }
         val resolved = outcome.resolved ?: error("Expected a resolved target")
-        val ownerManifest = outcome.elmProject?.manifestPath ?: error("Expected an owning Elm project")
-        checkEquals(elmProject.manifestPath, ownerManifest)
         checkEquals(ElmBuildTargetType.PACKAGE, resolved.type)
         checkEquals(elmProject.projectDirPath, resolved.workDir)
         // A package is type-checked by `elm make` with no input/output/mode arguments.

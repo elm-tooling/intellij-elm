@@ -189,8 +189,8 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
 
     /** Must be called inside a read action (uses the VFS and the project directory index). */
     private fun resolveBuildTarget(target: ElmBuildTargetConfig, row: Int): BuildTargetOutcome {
-        fun invalid(message: String, elmProject: ElmProject? = null) =
-            BuildTargetOutcome(row, target, elmProject = elmProject, resolved = null, error = message)
+        fun invalid(message: String) =
+            BuildTargetOutcome(row, target, resolved = null, error = message)
 
         fun validCompilerPathOrNull(): Path? {
             val raw = target.compilerPath.trim()
@@ -219,7 +219,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                     ?: return invalid("Row $row: no Elm project (elm.json) found for '$inputRaw' — open the file and attach an elm.json")
 
                 val compilerPath = validCompilerPathOrNull()
-                    ?: return invalid("Row $row: compiler path '${target.compilerPath.trim()}' is invalid or not executable", elmProject)
+                    ?: return invalid("Row $row: compiler path '${target.compilerPath.trim()}' is invalid or not executable")
 
                 val outputRaw = target.outputPath.trim()
                 val outputForCompiler = if (outputRaw.isBlank()) {
@@ -227,7 +227,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 } else {
                     val outputPath = outputRaw.toPathOrNull()
                     if (outputPath == null || !outputPath.isAbsolute) {
-                        return invalid("Row $row: output path must be an absolute file path (or blank)", elmProject)
+                        return invalid("Row $row: output path must be an absolute file path (or blank)")
                     }
                     outputRaw
                 }
@@ -235,7 +235,6 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 BuildTargetOutcome(
                     row = row,
                     config = target,
-                    elmProject = elmProject,
                     resolved = ResolvedBuildTarget(
                         name = target.name,
                         type = ElmBuildTargetType.APPLICATION,
@@ -273,15 +272,13 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 // does not have to be an attached project. If it happens to be one, keep it for
                 // display purposes.
                 val workDir = manifestPath.parent.normalize()
-                val elmProject = allProjects.firstOrNull { it.manifestPath.normalize() == manifestPath.normalize() }
 
                 val compilerPath = validCompilerPathOrNull()
-                    ?: return invalid("Row $row: compiler path '${target.compilerPath.trim()}' is invalid or not executable", elmProject)
+                    ?: return invalid("Row $row: compiler path '${target.compilerPath.trim()}' is invalid or not executable")
 
                 BuildTargetOutcome(
                     row = row,
                     config = target,
-                    elmProject = elmProject,
                     resolved = ResolvedBuildTarget(
                         name = target.name,
                         type = ElmBuildTargetType.PACKAGE,
