@@ -27,7 +27,8 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
         elmProject: ElmProject?,
         entryPoints: List<ResolvedBuildTarget>,
         jsonReport: Boolean = false,
-        currentFile: VirtualFile? = null
+        currentFile: VirtualFile? = null,
+        messageSink: MutableList<ElmError>? = null
     ): Boolean {
 
         if (entryPoints.isEmpty()) return true
@@ -77,6 +78,13 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
                 val predicate: (ElmError) -> Boolean = { it.location?.path == currentFile.path }
                 sortedMessages.filter(predicate) + sortedMessages.filterNot(predicate)
             } else sortedMessages
+            if (messageSink != null) {
+                // Collect messages for an aggregated build (e.g. "Build all") instead of
+                // posting them here; the caller deduplicates and posts once.
+                messageSink += messages.map { it.withAbsolutePath(workDir) }
+                return messages.isEmpty() && allSucceeded
+            }
+
             if (elmProject == null) {
                 // from ElmWorkSpaceService
                 if (!allSucceeded) {

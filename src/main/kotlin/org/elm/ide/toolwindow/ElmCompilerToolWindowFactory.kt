@@ -31,6 +31,7 @@ import com.intellij.util.ui.UIUtil
 import org.elm.ide.notifications.showBalloon
 import org.elm.workspace.ElmProject
 import org.elm.workspace.ElmWorkspaceService
+import org.elm.workspace.commandLineTools.makeAllTargets
 import org.elm.workspace.commandLineTools.makeProject
 import org.elm.workspace.compiler.*
 import org.elm.workspace.elmWorkspace
@@ -69,7 +70,9 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
             onToggleBuildTargets = { setBuildTargetsVisible(!buildTargetsVisible) },
             isBuildTargetsVisible = { buildTargetsVisible },
             onBuildSelected = { buildTargetsPanelRef.buildSelectedTarget() },
-            isBuildSelectedEnabled = { buildTargetsPanelRef.hasSelectedTarget() }
+            isBuildSelectedEnabled = { buildTargetsPanelRef.hasSelectedTarget() },
+            onBuildAll = { buildTargetsPanelRef.buildAllTargets() },
+            isBuildAllEnabled = { buildTargetsPanelRef.hasTargets() }
         )
         val outputPanel = ElmCompilerOutputPanel(project)
         val messagesAndOutputSplit = OnePixelSplitter(false, 0.56f).apply {
@@ -200,6 +203,38 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
 
     fun hasSelectedTarget(): Boolean = targetList.selectedIndex >= 0
 
+    fun hasTargets(): Boolean = !targetListModel.isEmpty
+
+    fun buildAllTargets() {
+        val currentFileInEditor: VirtualFile? = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
+        val targetsByProject = mutableListOf<Pair<ElmProject, List<ResolvedBuildTarget>>>()
+        for (elmProject in project.elmWorkspace.allProjects.sortedBy { it.presentableName }) {
+            val resolved = when (val result = project.elmWorkspace.resolveBuildTargets(elmProject)) {
+                is org.elm.openapiext.Result.Ok -> result.value
+                is org.elm.openapiext.Result.Err -> emptyList()
+            }
+            if (resolved.isNotEmpty()) targetsByProject += elmProject to resolved
+        }
+        if (targetsByProject.isEmpty()) return
+
+        ApplicationManager.getApplication().executeOnPooledThread {
+            val existingByProject = targetsByProject.mapNotNull { (elmProject, targets) ->
+                val existing = targets.filter { Files.exists(it.inputPath) }
+                if (existing.isEmpty()) null else elmProject to existing
+            }
+            if (existingByProject.isEmpty()) {
+                ApplicationManager.getApplication().invokeLater {
+                    project.showBalloon(
+                        "Cannot build targets: no build target input files were found.",
+                        NotificationType.ERROR
+                    )
+                }
+                return@executeOnPooledThread
+            }
+            makeAllTargets(project, existingByProject, currentFileInEditor)
+        }
+    }
+
     fun buildSelectedTarget() {
         val item = targetList.selectedValue ?: return
         val currentFileInEditor: VirtualFile? = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
@@ -275,11 +310,14 @@ private class ElmCompilerErrorTreeViewPanel(
     private val onToggleBuildTargets: () -> Unit,
     private val isBuildTargetsVisible: () -> Boolean,
     private val onBuildSelected: () -> Unit,
-    private val isBuildSelectedEnabled: () -> Boolean
+    private val isBuildSelectedEnabled: () -> Boolean,
+    private val onBuildAll: () -> Unit,
+    private val isBuildAllEnabled: () -> Boolean
 ) : ElmErrorTreeViewPanel(project, "Elm Compiler", false, true) {
     override fun fillRightToolbarGroup(group: DefaultActionGroup) {
         super.fillRightToolbarGroup(group)
         group.add(BuildSelectedAction())
+        group.add(BuildAllAction())
         group.addSeparator()
         group.add(ToggleBuildTargetsAction())
         group.addSeparator()
@@ -300,6 +338,22 @@ private class ElmCompilerErrorTreeViewPanel(
 
         override fun actionPerformed(e: AnActionEvent) {
             onBuildSelected()
+        }
+    }
+
+    private inner class BuildAllAction : DumbAwareAction(
+        "Build all",
+        "Build all targets and show their combined errors",
+        AllIcons.Actions.RunAll
+    ) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            e.presentation.isEnabled = isBuildAllEnabled()
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            onBuildAll()
         }
     }
 
