@@ -11,6 +11,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.TestActionEvent
 import junit.framework.TestCase
 import org.elm.workspace.ElmWorkspaceTestBase
+import org.elm.workspace.Version
 import org.elm.workspace.elmToolchain
 import org.elm.workspace.elmWorkspace
 import org.intellij.lang.annotations.Language
@@ -29,7 +30,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
                 """.trimIndent()
 
         buildProject {
-            project("elm.json", manifestElm19)
+            project("elm.json", manifestElm19(installedElmCompilerVersion))
             dir("src") {
                 elm("Main.elm", source)
             }
@@ -74,7 +75,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
                 """.trimIndent()
 
         buildProject {
-            project("elm.json", manifestElm19)
+            project("elm.json", manifestElm19(installedElmCompilerVersion))
             dir("src") {
                 elm("Main.elm", source)
             }
@@ -98,7 +99,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
                 """.trimIndent()
 
         buildProject {
-            project("elm.json", manifestElm19)
+            project("elm.json", manifestElm19(installedElmCompilerVersion))
             dir("src") {
                 elm("Foo.elm", source)
             }
@@ -211,14 +212,17 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
     }
 }
 
+// The Elm compiler refuses to compile an application whose `elm.json` declares a different
+// `elm-version` than the compiler itself, so this manifest is parameterized by the installed
+// compiler version (0.19.1, 0.19.2, ...) rather than hardcoding one.
 @Language("JSON")
-private val manifestElm19 = """
+private fun manifestElm19(elmVersion: Version) = """
         {
             "type": "application",
             "source-directories": [
                 "src"
             ],
-            "elm-version": "0.19.1",
+            "elm-version": "$elmVersion",
             "dependencies": {
                 "direct": {
                     "elm/core": "1.0.0",
