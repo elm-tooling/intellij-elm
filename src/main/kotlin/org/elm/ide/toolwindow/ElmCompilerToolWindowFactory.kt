@@ -63,10 +63,13 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
             }
         }
 
+        lateinit var buildTargetsPanelRef: ElmBuildTargetsPanel
         val errorTreeViewPanel = ElmCompilerErrorTreeViewPanel(
             project,
             onToggleBuildTargets = { setBuildTargetsVisible(!buildTargetsVisible) },
-            isBuildTargetsVisible = { buildTargetsVisible }
+            isBuildTargetsVisible = { buildTargetsVisible },
+            onBuildSelected = { buildTargetsPanelRef.buildSelectedTarget() },
+            isBuildSelectedEnabled = { buildTargetsPanelRef.hasSelectedTarget() }
         )
         val outputPanel = ElmCompilerOutputPanel(project)
         val messagesAndOutputSplit = OnePixelSplitter(false, 0.56f).apply {
@@ -74,6 +77,7 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
             secondComponent = outputPanel
         }
         buildTargetsPanel = ElmBuildTargetsPanel(project)
+        buildTargetsPanelRef = buildTargetsPanel
         root = OnePixelSplitter(false, 0.24f).apply {
             firstComponent = buildTargetsPanel
             secondComponent = messagesAndOutputSplit
@@ -135,12 +139,11 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
         visibleRowCount = 10
         emptyText.text = "No build targets configured"
     }
-    private val buildSelectedAction = BuildSelectedAction()
     private val addBuildTargetAction = AddBuildTargetAction()
     private val editBuildTargetAction = EditBuildTargetAction()
     private val actionToolbar = ActionManager.getInstance().createActionToolbar(
         "Elm Compiler Build Targets",
-        DefaultActionGroup(buildSelectedAction, addBuildTargetAction, editBuildTargetAction),
+        DefaultActionGroup(addBuildTargetAction, editBuildTargetAction),
         false
     )
 
@@ -195,7 +198,9 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
         }
     }
 
-    private fun buildSelectedTarget() {
+    fun hasSelectedTarget(): Boolean = targetList.selectedIndex >= 0
+
+    fun buildSelectedTarget() {
         val item = targetList.selectedValue ?: return
         val currentFileInEditor: VirtualFile? = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
         ApplicationManager.getApplication().executeOnPooledThread {
@@ -216,22 +221,6 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
     private fun editSelectedTarget() {
         val item = targetList.selectedValue ?: return
         project.elmWorkspace.showConfigureBuildTargetUI(item.elmProject.manifestPath, item.target)
-    }
-
-    private inner class BuildSelectedAction : DumbAwareAction(
-        "Build selected",
-        "Build the selected target",
-        AllIcons.Actions.Execute
-    ) {
-        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
-
-        override fun update(e: AnActionEvent) {
-            e.presentation.isEnabled = targetList.selectedIndex >= 0
-        }
-
-        override fun actionPerformed(e: AnActionEvent) {
-            buildSelectedTarget()
-        }
     }
 
     private inner class EditBuildTargetAction : DumbAwareAction(
@@ -284,14 +273,34 @@ private fun displayTargetName(target: ResolvedBuildTarget, index: Int): String =
 private class ElmCompilerErrorTreeViewPanel(
     project: Project,
     private val onToggleBuildTargets: () -> Unit,
-    private val isBuildTargetsVisible: () -> Boolean
+    private val isBuildTargetsVisible: () -> Boolean,
+    private val onBuildSelected: () -> Unit,
+    private val isBuildSelectedEnabled: () -> Boolean
 ) : ElmErrorTreeViewPanel(project, "Elm Compiler", false, true) {
     override fun fillRightToolbarGroup(group: DefaultActionGroup) {
         super.fillRightToolbarGroup(group)
+        group.add(BuildSelectedAction())
+        group.addSeparator()
         group.add(ToggleBuildTargetsAction())
         group.addSeparator()
         group.add(ExpandAllAction())
         group.add(CollapseAllAction())
+    }
+
+    private inner class BuildSelectedAction : DumbAwareAction(
+        "Build selected",
+        "Build the selected target",
+        AllIcons.Actions.Execute
+    ) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            e.presentation.isEnabled = isBuildSelectedEnabled()
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            onBuildSelected()
+        }
     }
 
     private inner class ToggleBuildTargetsAction : DumbAwareAction(
