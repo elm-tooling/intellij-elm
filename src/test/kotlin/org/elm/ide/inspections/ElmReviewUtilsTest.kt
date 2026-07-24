@@ -1,6 +1,8 @@
 package org.elm.ide.inspections
 
-import com.intellij.openapi.application.runReadAction
+import com.intellij.codeInsight.daemon.impl.HighlightInfo
+import com.intellij.openapi.application.ReadAction
+import com.intellij.psi.PsiFile
 import junit.framework.TestCase
 import org.elm.workspace.ElmWorkspaceTestBase
 import org.elm.workspace.elmWorkspace
@@ -33,7 +35,7 @@ class ElmReviewUtilsTest : ElmWorkspaceTestBase() {
         )
         val result = ElmReviewResult(listOf(message), basePath, 0)
 
-        val highlights = runReadAction { highlightsForFile(project, basePath, result) }
+        val highlights = ReadAction.compute<List<Pair<PsiFile, HighlightInfo>>, Throwable> { highlightsForFile(project, basePath, result) }
 
         TestCase.assertEquals(1, highlights.size)
         TestCase.assertEquals(file.path, highlights[0].first.virtualFile.path)
@@ -60,7 +62,7 @@ class ElmReviewUtilsTest : ElmWorkspaceTestBase() {
         )
         val result = ElmReviewResult(listOf(message), basePath, 0)
 
-        val highlights = runReadAction { highlightsForFile(project, basePath, result) }
+        val highlights = ReadAction.compute<List<Pair<PsiFile, HighlightInfo>>, Throwable> { highlightsForFile(project, basePath, result) }
 
         assertTrue(highlights.isEmpty())
     }
