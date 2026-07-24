@@ -29,6 +29,7 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.MessageCategory
 import com.intellij.util.ui.UIUtil
 import org.elm.ide.notifications.showBalloon
+import org.elm.openapiext.saveAllDocuments
 import org.elm.workspace.ElmProject
 import org.elm.workspace.ElmWorkspaceService
 import org.elm.workspace.commandLineTools.makeProject
@@ -206,6 +207,7 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
 
     fun buildSelectedTarget() {
         val item = targetList.selectedValue ?: return
+        saveAllDocuments()
         val currentFileInEditor: VirtualFile? = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
         ApplicationManager.getApplication().executeOnPooledThread {
             val stillExists = Files.exists(item.target.inputPath)
