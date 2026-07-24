@@ -5,6 +5,13 @@
 ## [Unreleased]
 *   Fixed: an explicitly imported type now shadows one brought in by a wildcard (`exposing (..)`) import, regardless of import order, matching how values already resolved
 *   The constructor of a phantom type (which is unused on purpose; must be marked with `Never` or the type itself) is no longer marked as unused
+*   Elm Compiler Panel: Build button is now always visible
+*   Elm Compiler Panel: Added Build All button
+*   Elm Compiler Panel: Build Selected and Build All are now available in the command palette, and you can assign keyboard shortcuts to them
+*   Elm Compiler Panel: Targets can now be reordered, which is useful since Build Selected defaults to the first one
+*   Elm Compiler Panel: Targets now use the elm.json attached to the input file
+*   Elm Compiler Panel: Packages can now be configured as a build target more easily
+*   Elm Compiler Panel: Target configuration errors are now shown instead of showing no targets at all
 
 ## [6.0.0] - 2026-04-13
 *   Fixed: Reworked the elm-review panel (#19)
