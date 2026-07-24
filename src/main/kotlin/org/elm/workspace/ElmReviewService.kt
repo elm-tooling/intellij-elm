@@ -99,8 +99,9 @@ class ElmReviewService(private val project: Project) {
             val suggestedTools = ElmSuggest.suggestTools(project)
             try {
                 val compilerResolution = resolveElmReviewCompiler(
-                    project = project,
                     projectBasePath = projectBasePath,
+                    toolchainCompilerPath = project.elmToolchain.compilerPath,
+                    buildTargets = project.elmWorkspace.buildTargets,
                     suggestedTools = suggestedTools
                 )
                 val compilerPathForReview = compilerResolution.path
@@ -163,8 +164,9 @@ class ElmReviewService(private val project: Project) {
             } catch (t: Throwable) {
                 if (!project.isDisposed) {
                     val compilerPathForReview = resolveElmReviewCompiler(
-                        project = project,
                         projectBasePath = projectBasePath,
+                        toolchainCompilerPath = project.elmToolchain.compilerPath,
+                        buildTargets = project.elmWorkspace.buildTargets,
                         suggestedTools = suggestedTools
                     ).path
                     val args = buildList {

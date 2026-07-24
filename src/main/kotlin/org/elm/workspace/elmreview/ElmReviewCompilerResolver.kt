@@ -1,10 +1,6 @@
 package org.elm.workspace.elmreview
 
-import com.intellij.openapi.project.Project
-import org.elm.workspace.ElmSuggest
 import org.elm.workspace.elmCompilerTool
-import org.elm.workspace.elmToolchain
-import org.elm.workspace.elmWorkspace
 import org.elm.workspace.lamderaCompilerTool
 import org.elm.workspace.compiler.ElmBuildTargetConfig
 import org.elm.workspace.compiler.toPathOrNull
@@ -35,22 +31,6 @@ data class ElmReviewCompilerResolution(
             ElmReviewCompilerSource.DISCOVERED -> "Discovered (${discoveredToolName.orEmpty()}): ${path ?: "<none>"}"
             ElmReviewCompilerSource.NONE -> "None"
         }
-}
-
-fun resolveElmReviewCompiler(
-    project: Project,
-    projectBasePath: Path,
-    suggestedTools: Map<String, Path?> = ElmSuggest.suggestTools(project)
-): ElmReviewCompilerResolution {
-    // Build targets are project-agnostic now, so the compiler fallback considers every configured
-    // target's compiler (they store absolute executable paths). The primary source is still the
-    // global toolchain compiler; this only matters when that is unset.
-    return resolveElmReviewCompiler(
-        projectBasePath = projectBasePath,
-        toolchainCompilerPath = project.elmToolchain.compilerPath,
-        buildTargets = project.elmWorkspace.buildTargets,
-        suggestedTools = suggestedTools
-    )
 }
 
 fun resolveElmReviewCompiler(
