@@ -68,7 +68,7 @@ class ElmFormatOnFileSaveListener : FileDocumentManagerListener {
                     val projectPath = elmProject.projectDirPath
                     ApplicationManager.getApplication().invokeLater {
                         if (!project.isDisposed) {
-                            project.elmReviewService.runReview(projectPath, elmProject)
+                            project.elmReviewService.runReview(projectPath)
                         }
                     }
                 }

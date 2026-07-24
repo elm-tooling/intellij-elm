@@ -334,7 +334,7 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
         override fun actionPerformed(e: AnActionEvent) {
             val elmProject = activeEditorElmProject(e) ?: return
             saveAllDocuments()
-            projectRef.elmReviewService.runReviewFromManualAction(elmProject.projectDirPath, elmProject)
+            projectRef.elmReviewService.runReviewFromManualAction(elmProject.projectDirPath)
         }
     }
 

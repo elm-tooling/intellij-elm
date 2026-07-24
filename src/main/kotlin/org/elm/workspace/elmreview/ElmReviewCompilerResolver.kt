@@ -1,7 +1,6 @@
 package org.elm.workspace.elmreview
 
 import com.intellij.openapi.project.Project
-import org.elm.workspace.ElmProject
 import org.elm.workspace.ElmSuggest
 import org.elm.workspace.elmCompilerTool
 import org.elm.workspace.elmToolchain
@@ -41,7 +40,6 @@ data class ElmReviewCompilerResolution(
 fun resolveElmReviewCompiler(
     project: Project,
     projectBasePath: Path,
-    @Suppress("UNUSED_PARAMETER") elmProjectHint: ElmProject? = null,
     suggestedTools: Map<String, Path?> = ElmSuggest.suggestTools(project)
 ): ElmReviewCompilerResolution {
     // Build targets are project-agnostic now, so the compiler fallback considers every configured
