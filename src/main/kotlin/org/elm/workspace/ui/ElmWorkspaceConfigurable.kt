@@ -71,10 +71,6 @@ import javax.swing.DefaultListModel
 class ElmWorkspaceConfigurable(
     private val project: Project
 ) : Configurable, Disposable {
-    private companion object {
-        const val BUILD_TARGETS_PANEL_PREFERRED_HEIGHT = 320
-    }
-
     private val uiDebouncer = UiDebouncer(this)
 
     private fun toolPathTextField(programName: String): TextFieldWithBrowseButton {
@@ -335,7 +331,6 @@ class ElmWorkspaceConfigurable(
             targetDetailsPanel.minimumSize = Dimension(0, 0)
             firstComponent = leftPanel
             secondComponent = targetDetailsPanel
-//            preferredSize = Dimension(0, JBUI.scale(BUILD_TARGETS_PANEL_PREFERRED_HEIGHT))
         }
     }
 
