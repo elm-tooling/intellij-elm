@@ -7,6 +7,7 @@
 *   The constructor of a phantom type (which is unused on purpose; must be marked with `Never` or the type itself) is no longer marked as unused
 *   Fixed: elm-review is no longer run on files from dependencies (in `~/.elm`)
 *   Fixed: Global elm-review errors now show up in the elm-review panel
+*   Fixed: Elm 0.19.2 has a bug where error locations are off-by-one – added a workaround for that in the Elm Compiler feature
 
 ## [6.0.0] - 2026-04-13
 *   Fixed: Reworked the elm-review panel (#19)
