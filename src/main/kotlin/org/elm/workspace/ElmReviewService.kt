@@ -127,7 +127,10 @@ class ElmReviewService(private val project: Project) {
                 val output = command.execute(
                     elmReviewTool,
                     project,
-                    timeoutInMilliseconds = 120_000
+                    timeoutInMilliseconds = 120_000,
+                    // A non-zero exit code just means elm-review found errors, which is
+                    // handled below; the generic warning would only be noise.
+                    logNonZeroExit = false
                 )
 
                 val json = extractElmReviewJson(output.stdout, output.stderr)

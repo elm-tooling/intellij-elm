@@ -53,7 +53,8 @@ fun GeneralCommandLine.execute(
     toolName: String,
     project: Project,
     timeoutInMilliseconds: Int = 3000,
-    stdIn: String? = null
+    stdIn: String? = null,
+    logNonZeroExit: Boolean = true
 ): ProcessOutput {
 
     val handler =
@@ -80,7 +81,7 @@ fun GeneralCommandLine.execute(
     try {
         fun runProcess(): ProcessOutput {
             val output = handler.runProcess(timeoutInMilliseconds)
-            if (output.exitCode != 0) {
+            if (output.exitCode != 0 && logNonZeroExit) {
                 log.warn("Command $toolName exited with code ${output.exitCode}")
             }
             return output
