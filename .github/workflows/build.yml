@@ -14,7 +14,7 @@
 
 name: Build
 on:
-  # Trigger the workflow on pushes to only the 'main' branch (this avoids duplicate checks being run e.g. for dependabot pull requests)
+  # Trigger the workflow on pushes to only the 'main' and 'develop' branches (this avoids duplicate checks being run e.g. for dependabot pull requests)
   push:
     branches: [main, develop]
   # Trigger the workflow on any pull request
@@ -133,6 +133,37 @@ jobs:
 
       - name: Install elm tools
         run: npm install --global elm elm-test elm-format elm-review lamdera
+
+      # Restore the Elm package cache. Keyed on the dummy projects' manifests, so it is
+      # rebuilt whenever the set of packages/versions they install changes (see
+      # install-packages-for-ci/README.md).
+      - name: Cache Elm packages (~/.elm)
+        uses: actions/cache@v6
+        with:
+          path: ~/.elm
+          key: elm-${{ hashFiles('install-packages-for-ci/*/elm.json') }}
+
+      # Fail early if a test fixture uses a package/version the dummy projects don't install.
+      - name: Verify Elm pre-warm projects are up to date
+        run: ./install-packages-for-ci/verify.sh
+
+      # Pre-populate ~/.elm so the test suite never has to download packages mid-run.
+      # Retried for transient network errors.
+      - name: Pre-warm Elm packages
+        run: |
+          set -uo pipefail
+          warm() {
+            for d in install-packages-for-ci/*/; do
+              ( cd "$d" && elm make ../Main.elm --output=/dev/null )
+            done
+          }
+          for attempt in 1 2 3; do
+            if warm; then exit 0; fi
+            echo "::warning::Pre-warm attempt $attempt failed; retrying in 15s"
+            sleep 15
+          done
+          echo "::error::Failed to pre-warm ~/.elm after 3 attempts"
+          exit 1
 
       # Run tests
       - name: Run Tests
@@ -267,7 +298,13 @@ jobs:
   # - plain semver => full release (published)
   releaseDraft:
     name: Create/Publish Release
-    if: github.event_name != 'pull_request' && (github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip release]'))
+    # Release only on a push to main. A PR build's ref is refs/pull/<n>/merge, so the ref
+    # check alone already excludes pull_request events — no separate event_name check needed.
+    # github.event.head_commit exists only on push events (null otherwise), so the
+    # event_name guard keeps the [skip release] test from being applied where it's meaningless
+    # (e.g. workflow_dispatch). Note it's the *tip* commit only — [skip release] on an earlier
+    # commit in the same push won't be seen.
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip release]'))
     needs: [ build, test, inspectCode, verify ]
     runs-on: ubuntu-latest
     permissions:
