@@ -9,6 +9,7 @@ import org.elm.workspace.*
 import org.elm.workspace.compiler.ERRORS_TOPIC
 import org.elm.workspace.compiler.ElmError
 import org.elm.workspace.compiler.COMPILER_OUTPUT_TOPIC
+import org.elm.workspace.compiler.ElmCompilerOutput
 import org.elm.workspace.compiler.ResolvedBuildTarget
 import org.elm.workspace.compiler.elmJsonToCompilerMessages
 import org.elm.ide.statusbar.elmTaskStatus
@@ -28,7 +29,10 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
         entryPoints: List<ResolvedBuildTarget>,
         jsonReport: Boolean = false,
         currentFile: VirtualFile? = null,
-        messageSink: MutableList<ElmError>? = null
+        messageSink: MutableList<ElmError>? = null,
+        // Collects console output for an aggregated build (e.g. "Build all") instead of posting it
+        // here; the caller posts every command's output at once. Null for a normal single build.
+        outputSink: MutableList<ElmCompilerOutput>? = null
     ): Boolean {
 
         if (entryPoints.isEmpty()) return true
@@ -36,6 +40,7 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
         project.elmTaskStatus.compilerStarted()
         try {
             val allMessages = mutableListOf<ElmError>()
+            val outputs = mutableListOf<ElmCompilerOutput>()
             var allSucceeded = true
             for (entry in entryPoints) {
                 val params = entry.makeParameters()
@@ -44,7 +49,7 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
                     .withParameters(*params.toTypedArray())
                     .apply { if (jsonReport) addParameter("--report=json") }
                 val output = commandLine.execute(elmCompilerTool, project)
-                project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(
+                outputs += ElmCompilerOutput(
                     lamderaCompilerTool,
                     commandLine.commandLineString,
                     output.stdout,
@@ -60,6 +65,11 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
                 if (!cleansedJson.isNullOrEmpty()) {
                     allMessages += elmJsonToCompilerMessages(cleansedJson)
                 }
+            }
+            if (outputSink != null) {
+                outputSink += outputs
+            } else {
+                project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(outputs)
             }
             val sortedMessages = allMessages.sortedWith(
                 compareBy(

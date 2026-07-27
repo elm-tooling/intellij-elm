@@ -20,6 +20,7 @@ import org.elm.workspace.Version
 import org.elm.workspace.elmTestTool
 import org.elm.workspace.compiler.COMPILER_OUTPUT_TOPIC
 import org.elm.workspace.compiler.ERRORS_TOPIC
+import org.elm.workspace.compiler.ElmCompilerOutput
 import org.elm.workspace.compiler.ElmError
 import org.elm.workspace.compiler.ResolvedBuildTarget
 import org.elm.workspace.compiler.elmJsonToCompilerMessages
@@ -87,7 +88,10 @@ class ElmTestCLI(private val executablePath: Path) {
         baseDirForErrors: Path?,
         entryPoints: List<ResolvedBuildTarget>,
         currentFile: VirtualFile? = null,
-        messageSink: MutableList<ElmError>? = null
+        messageSink: MutableList<ElmError>? = null,
+        // Collects console output for an aggregated build (e.g. "Build all") instead of posting it
+        // here; the caller posts every command's output at once. Null for a normal single build.
+        outputSink: MutableList<ElmCompilerOutput>? = null
     ): Boolean {
         if (entryPoints.isEmpty()) return true
 
@@ -95,6 +99,7 @@ class ElmTestCLI(private val executablePath: Path) {
         project.elmTaskStatus.compilerStarted()
         try {
             val allMessages = mutableListOf<ElmError>()
+            val outputs = mutableListOf<ElmCompilerOutput>()
             var allSucceeded = true
             // Elm 0.19.2 has a bug where the error locations reported by `--report=json` are off by
             // one: https://github.com/elm/compiler/issues/2358. elm-test drives the Elm compiler, so
@@ -125,7 +130,7 @@ class ElmTestCLI(private val executablePath: Path) {
                 // Generous timeout: elm-test is a Node-backed tool, so it pays Node startup on top
                 // of the compilation itself, and can easily exceed the short default.
                 val output = commandLine.execute(elmTestTool, project, timeoutInMilliseconds = MAKE_TIMEOUT_MS)
-                project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(
+                outputs += ElmCompilerOutput(
                     elmTestTool,
                     commandLine.commandLineString,
                     output.stdout,
@@ -139,6 +144,12 @@ class ElmTestCLI(private val executablePath: Path) {
                 if (!cleansedJson.isNullOrEmpty()) {
                     allMessages += elmJsonToCompilerMessages(cleansedJson, rowAndColumnOffsetFor(elmCompilerPath))
                 }
+            }
+
+            if (outputSink != null) {
+                outputSink += outputs
+            } else {
+                project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(outputs)
             }
 
             val sortedMessages = allMessages.sortedWith(

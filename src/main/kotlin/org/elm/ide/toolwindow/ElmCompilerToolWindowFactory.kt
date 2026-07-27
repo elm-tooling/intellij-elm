@@ -121,9 +121,9 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
             })
 
             subscribe(COMPILER_OUTPUT_TOPIC, object : ElmCompilerOutputListener {
-                override fun update(toolName: String, commandLine: String, stdout: String, stderr: String, exitCode: Int) {
+                override fun update(outputs: List<ElmCompilerOutput>) {
                     ToolWindowManager.getInstance(project).invokeLater {
-                        outputPanel.showOutput(toolName, commandLine, stdout, stderr, exitCode)
+                        outputPanel.showOutput(outputs)
                     }
                 }
             })
@@ -523,25 +523,40 @@ private class ElmCompilerOutputPanel(project: Project) : JPanel(BorderLayout()) 
         cardLayout.show(content, "empty")
     }
 
-    fun showOutput(toolName: String, commandLine: String, stdout: String, stderr: String, exitCode: Int) {
+    fun showOutput(outputs: List<ElmCompilerOutput>) {
         console.clear()
-        console.print("Tool: $toolName\n", ConsoleViewContentType.SYSTEM_OUTPUT)
-        console.print("Command: $commandLine\n", ConsoleViewContentType.SYSTEM_OUTPUT)
-        console.print("Exit Code: $exitCode\n\n", ConsoleViewContentType.SYSTEM_OUTPUT)
+        if (outputs.isEmpty()) {
+            cardLayout.show(content, "empty")
+            return
+        }
+        // "Build all" posts the output of every command across all targets; render each as its own
+        // section, separated by a divider, so nothing is lost the way a single replacing view would.
+        outputs.forEachIndexed { index, output ->
+            if (index > 0) {
+                console.print("\n${"─".repeat(80)}\n\n", ConsoleViewContentType.SYSTEM_OUTPUT)
+            }
+            renderOutput(output)
+        }
+        cardLayout.show(content, "output")
+    }
 
-        if (stdout.isNotBlank()) {
-            renderOutputStream("STDOUT", stdout, ConsoleViewContentType.NORMAL_OUTPUT)
+    private fun renderOutput(output: ElmCompilerOutput) {
+        console.print("Tool: ${output.toolName}\n", ConsoleViewContentType.SYSTEM_OUTPUT)
+        console.print("Command: ${output.commandLine}\n", ConsoleViewContentType.SYSTEM_OUTPUT)
+        console.print("Exit Code: ${output.exitCode}\n\n", ConsoleViewContentType.SYSTEM_OUTPUT)
+
+        if (output.stdout.isNotBlank()) {
+            renderOutputStream("STDOUT", output.stdout, ConsoleViewContentType.NORMAL_OUTPUT)
             console.print("\n", ConsoleViewContentType.SYSTEM_OUTPUT)
         }
 
-        if (stderr.isNotBlank()) {
-            renderOutputStream("STDERR", stderr, ConsoleViewContentType.ERROR_OUTPUT)
+        if (output.stderr.isNotBlank()) {
+            renderOutputStream("STDERR", output.stderr, ConsoleViewContentType.ERROR_OUTPUT)
         }
 
-        if (stdout.isBlank() && stderr.isBlank()) {
+        if (output.stdout.isBlank() && output.stderr.isBlank()) {
             console.print("(no output)\n", ConsoleViewContentType.SYSTEM_OUTPUT)
         }
-        cardLayout.show(content, "output")
     }
 
     private fun renderOutputStream(label: String, text: String, defaultType: ConsoleViewContentType) {

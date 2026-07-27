@@ -9,6 +9,7 @@ import org.elm.workspace.Version
 import org.elm.workspace.compiler.ERRORS_TOPIC
 import org.elm.workspace.compiler.ElmError
 import org.elm.workspace.compiler.COMPILER_OUTPUT_TOPIC
+import org.elm.workspace.compiler.ElmCompilerOutput
 import org.elm.workspace.compiler.ResolvedBuildTarget
 import org.elm.workspace.compiler.elmJsonToCompilerMessages
 import org.elm.workspace.elmCompilerTool
@@ -29,7 +30,10 @@ class ElmCLI(val elmExecutablePath: Path) {
         entryPoints: List<ResolvedBuildTarget>,
         jsonReport: Boolean = false,
         currentFile: VirtualFile? = null,
-        messageSink: MutableList<ElmError>? = null
+        messageSink: MutableList<ElmError>? = null,
+        // Collects console output for an aggregated build (e.g. "Build all") instead of posting it
+        // here; the caller posts every command's output at once. Null for a normal single build.
+        outputSink: MutableList<ElmCompilerOutput>? = null
     ): Boolean {
 
         if (entryPoints.isEmpty()) return true
@@ -37,6 +41,7 @@ class ElmCLI(val elmExecutablePath: Path) {
         project.elmTaskStatus.compilerStarted()
         try {
             val allMessages = mutableListOf<ElmError>()
+            val outputs = mutableListOf<ElmCompilerOutput>()
             var allSucceeded = true
             // Elm 0.19.2 has a bug where the error locations reported by `--report=json` are
             // off by one: https://github.com/elm/compiler/issues/2358
@@ -53,7 +58,7 @@ class ElmCLI(val elmExecutablePath: Path) {
                     .withParameters(*params.toTypedArray())
                     .apply { if (jsonReport) addParameter("--report=json") }
                 val output = commandLine.execute(elmCompilerTool, project)
-                project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(
+                outputs += ElmCompilerOutput(
                     elmCompilerTool,
                     commandLine.commandLineString,
                     output.stdout,
@@ -69,6 +74,12 @@ class ElmCLI(val elmExecutablePath: Path) {
                 if (!cleansedJson.isNullOrEmpty()) {
                     allMessages += elmJsonToCompilerMessages(cleansedJson, rowAndColumnOffset)
                 }
+            }
+
+            if (outputSink != null) {
+                outputSink += outputs
+            } else {
+                project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(outputs)
             }
 
             val sortedMessages = allMessages.sortedWith(

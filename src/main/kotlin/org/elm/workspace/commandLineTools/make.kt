@@ -2,9 +2,11 @@ package org.elm.workspace.commandLineTools
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import org.elm.workspace.compiler.COMPILER_OUTPUT_TOPIC
 import org.elm.workspace.compiler.ERRORS_TOPIC
 import org.elm.workspace.compiler.ElmBuildTargetType
 import org.elm.workspace.compiler.ElmCompilerKind
+import org.elm.workspace.compiler.ElmCompilerOutput
 import org.elm.workspace.compiler.ElmError
 import org.elm.workspace.compiler.ResolvedBuildTarget
 import java.nio.file.Path
@@ -54,10 +56,11 @@ private fun List<ResolvedBuildTarget>.groupByElmTest(): Map<Pair<Path, Path>, Li
 /**
  * Build every target across all Elm projects and display the combined, deduplicated errors.
  *
- * Each individual build would normally post its errors to [ERRORS_TOPIC], where the tool window
- * *replaces* the currently shown messages. To show errors from all targets at once we instead
- * collect them via a message sink (with file paths made absolute so they resolve regardless of
- * which project they came from), deduplicate, and post a single combined result.
+ * Each individual build would normally post its errors to [ERRORS_TOPIC] and its console output to
+ * [COMPILER_OUTPUT_TOPIC], where the tool window *replaces* what is currently shown. To show the
+ * results from all targets at once we instead collect errors via a message sink (with file paths
+ * made absolute so they resolve regardless of which project they came from) and console output via
+ * an output sink, then post a single combined result for each.
  */
 fun makeAllTargets(
     project: Project,
@@ -69,6 +72,7 @@ fun makeAllTargets(
     val (testTargets, compilerTargets) = targets.partition { it.type == ElmBuildTargetType.TEST }
 
     val sink = mutableListOf<ElmError>()
+    val outputSink = mutableListOf<ElmCompilerOutput>()
     var allSucceeded = true
     val grouped = compilerTargets.groupBy { Triple(it.compilerKind, it.compilerPath, it.workDir) }
     for ((key, kindTargets) in grouped) {
@@ -77,17 +81,17 @@ fun makeAllTargets(
             ElmCompilerKind.ELM ->
                 ElmCLI(path).make(
                     project, workDir, workDir, kindTargets,
-                    jsonReport = true, currentFile = currentFileInEditor, messageSink = sink
+                    jsonReport = true, currentFile = currentFileInEditor, messageSink = sink, outputSink = outputSink
                 )
             ElmCompilerKind.LAMDERA ->
                 LamderaCLI(path).make(
                     project, workDir, workDir, kindTargets,
-                    jsonReport = true, currentFile = currentFileInEditor, messageSink = sink
+                    jsonReport = true, currentFile = currentFileInEditor, messageSink = sink, outputSink = outputSink
                 )
             ElmCompilerKind.WRAP ->
                 WrapCLI(path).make(
                     project, workDir, workDir, kindTargets,
-                    jsonReport = true, currentFile = currentFileInEditor, messageSink = sink
+                    jsonReport = true, currentFile = currentFileInEditor, messageSink = sink, outputSink = outputSink
                 )
         }
         allSucceeded = allSucceeded && succeeded
@@ -95,10 +99,13 @@ fun makeAllTargets(
     for ((key, elmTestTargets) in testTargets.groupByElmTest()) {
         val (exe, workDir) = key
         val succeeded = ElmTestCLI(exe).make(
-            project, workDir, elmTestTargets, currentFile = currentFileInEditor, messageSink = sink
+            project, workDir, elmTestTargets, currentFile = currentFileInEditor,
+            messageSink = sink, outputSink = outputSink
         )
         allSucceeded = allSucceeded && succeeded
     }
+
+    project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(outputSink)
 
     val sorted = sink.distinct().sortedWith(
         compareBy(

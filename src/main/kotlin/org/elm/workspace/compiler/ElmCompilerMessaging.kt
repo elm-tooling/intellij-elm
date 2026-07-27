@@ -11,8 +11,21 @@ interface ElmErrorsListener {
     fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int)
 }
 
+/** The console output of a single compiler invocation (one `elm make` / `lamdera make` / `elm-test make`). */
+data class ElmCompilerOutput(
+    val toolName: String,
+    val commandLine: String,
+    val stdout: String,
+    val stderr: String,
+    val exitCode: Int
+)
+
 interface ElmCompilerOutputListener {
-    fun update(toolName: String, commandLine: String, stdout: String, stderr: String, exitCode: Int)
+    /**
+     * The output of one build. A single-target build posts one entry per command; "Build all"
+     * posts every command's output across all targets so the tool window shows them all.
+     */
+    fun update(outputs: List<ElmCompilerOutput>)
 }
 
 val ERRORS_TOPIC = Topic("Elm compiler-messages", ElmErrorsListener::class.java)
