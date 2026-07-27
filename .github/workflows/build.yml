@@ -46,7 +46,7 @@ jobs:
 
       # Setup Java 21 environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: 21
@@ -117,7 +117,7 @@ jobs:
 
       # Set up Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: 21
@@ -201,7 +201,7 @@ jobs:
 
       # Set up Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: 21
@@ -233,7 +233,7 @@ jobs:
 
       # Set up Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: 21
