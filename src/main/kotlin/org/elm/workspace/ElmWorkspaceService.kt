@@ -474,9 +474,14 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 installProjectDeps(manifestPath, elmCompilerVersion)
             }
 
+            // An application's manifest pins the exact Elm version it must be built with, and that
+            // compiler stores its packages under ~/.elm/<that version>/ — so the manifest is
+            // authoritative for locating them (Elm or Lamdera), regardless of the configured
+            // compiler. Packages declare a range, so fall back to the configured compiler's version.
+            val cachePackageVersion = peekApplicationElmVersion(manifestPath) ?: elmCompilerVersion
+
             // not thread-safe; do not reuse across threads!
-            // TODO lamderaCompilerVersion
-            val repo = ElmPackageRepository(elmCompilerVersion)
+            val repo = ElmPackageRepository(cachePackageVersion)
 
             // External files may have been created/modified by the Elm compiler. Refresh.
             findFileByPathTestAware(Paths.get(repo.elmHomePath))?.also {

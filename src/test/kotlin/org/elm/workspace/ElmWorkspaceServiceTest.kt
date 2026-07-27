@@ -20,7 +20,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
     fun `test finds Elm project for source file`() {
         val testProject = fileTree {
             dir("a") {
-                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
                 dir("src") {
                     elm("Main.elm")
                     elm("Utils.elm")
@@ -56,7 +56,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
                         "source-directories": [
                             "src", "vendor"
                         ],
-                        "elm-version": "0.19.1",
+                        "elm-version": "$installedElmCompilerVersion",
                         "dependencies": {
                             "direct": {
                                 "elm/browser": "1.0.2",
@@ -105,7 +105,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
             return
         }
 
-        checkEquals(Version(0, 19, 1), elmProject.elmVersion)
+        checkEquals(installedElmCompilerVersion, elmProject.elmVersion)
         checkEquals(setOf(Paths.get("src"), Paths.get("vendor")), elmProject.sourceDirectories.toSet())
 
         checkDependencies(elmProject.dependencies,
@@ -183,16 +183,74 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
     }
 
     @Test
+    fun `test peekApplicationElmVersion reads the exact version from an application manifest`() {
+        // This drives how the `~/.elm/<version>/` package cache directory is chosen when a project is
+        // loaded. An application's manifest pins the exact Elm version it must be built with, which is
+        // authoritative for locating its packages (Elm or Lamdera) regardless of the configured
+        // compiler. Packages declare a range and fall back to the configured compiler (null here).
+        val testProject = fileTree {
+            dir("app") {
+                project("elm.json", """
+                    {
+                      "type": "application",
+                      "source-directories": [ "src" ],
+                      "elm-version": "0.19.5",
+                      "dependencies": { "direct": {}, "indirect": {} },
+                      "test-dependencies": { "direct": {}, "indirect": {} }
+                    }
+                    """)
+            }
+            dir("lamdera") {
+                project("elm.json", """
+                    {
+                      "type": "application",
+                      "source-directories": [ "src" ],
+                      "elm-version": "0.19.1",
+                      "dependencies": {
+                        "direct": { "lamdera/core": "1.0.0" },
+                        "indirect": {}
+                      },
+                      "test-dependencies": { "direct": {}, "indirect": {} }
+                    }
+                    """)
+            }
+            dir("pkg") {
+                project("elm.json", BASIC_PACKAGE_MANIFEST)
+            }
+        }.create(project, elmWorkspaceDirectory)
+
+        val rootPath = testProject.root.pathAsPath
+
+        // Application: the exact pinned version comes from the manifest, independent of the configured
+        // compiler. Using an unusual 0.19.5 makes clear the value is not the running compiler's.
+        checkEquals(Version(0, 19, 5), peekApplicationElmVersion(rootPath.resolve("app/elm.json"))!!)
+
+        // Lamdera application: its manifest pins the Lamdera compiler's Elm version (0.19.1), so
+        // lookups land in ~/.elm/0.19.1/packages/ even under an Elm 0.19.2 toolchain.
+        checkEquals(Version(0, 19, 1), peekApplicationElmVersion(rootPath.resolve("lamdera/elm.json"))!!)
+
+        // Package: null (elm-version is a range; falls back to the compiler).
+        check(peekApplicationElmVersion(rootPath.resolve("pkg/elm.json")) == null) {
+            "Expected null for a package manifest (elm-version is a range)"
+        }
+
+        // Missing manifest: null, so the caller falls back to the configured compiler version.
+        check(peekApplicationElmVersion(rootPath.resolve("nope/elm.json")) == null) {
+            "Expected null for a missing manifest"
+        }
+    }
+
+    @Test
     fun `test can attach multiple Elm projects`() {
         val testProject = fileTree {
             dir("a") {
-                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
                 dir("src") {
                     elm("Main.elm")
                 }
             }
             dir("b") {
-                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
                 dir("src") {
                     elm("Main.elm")
                 }
@@ -221,7 +279,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
     @Test
     fun `test auto discover Elm project at root level`() {
         val testProject = fileTree {
-            project("elm.json", BASIC_APPLICATION_MANIFEST)
+            project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
             dir("src") {
                 elm("Main.elm")
             }
@@ -250,7 +308,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
     fun `test refresh detaches project when manifest is deleted`() {
         val testProject = fileTree {
             dir("a") {
-                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
                 dir("src") {
                     elm("Main.elm")
                 }
@@ -277,7 +335,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
         // setup real files on disk
         val testProject = fileTree {
             dir("a") {
-                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
                 dir("src") {
                     elm("Main.elm")
                 }
@@ -351,7 +409,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
     fun `test build target derives its Elm project from the input file`() {
         val testProject = fileTree {
             dir("app") {
-                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
                 dir("src") {
                     elm("Main.elm")
                 }
@@ -390,7 +448,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
     fun `test build target reports an error for a blank input path`() {
         val testProject = fileTree {
             dir("app") {
-                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
                 dir("src") {
                     elm("Main.elm")
                 }
@@ -467,7 +525,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
     fun `test package build target resolves even when its elm-json is not an attached project`() {
         val testProject = fileTree {
             dir("app") {
-                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
                 dir("src") { elm("Main.elm") }
             }
             // A second package that is deliberately NOT attached to the workspace.
@@ -509,7 +567,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
     fun `test an automatic test target is appended for a project that has a tests directory`() {
         val testProject = fileTree {
             dir("app") {
-                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
                 dir("src") {
                     elm("Main.elm")
                 }
@@ -549,7 +607,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
     fun `test no automatic test target is created when the project has no tests directory`() {
         val testProject = fileTree {
             dir("app") {
-                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
                 dir("src") {
                     elm("Main.elm")
                 }
@@ -568,7 +626,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
     @Test
     fun `test auto discover Elm project skips project with bad sidecar manifest`() {
         fileTree {
-            project("elm.json", BASIC_APPLICATION_MANIFEST)
+            project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
             file("elm.intellij.json", """ { "BOGUS": "INVALID ELM.INTELLIJ.JSON" } """)
             dir("src") {
                 elm("Main.elm")
@@ -593,7 +651,7 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
 
         val testProject = fileTree {
             dir("a") {
-                project("elm.json", if (isApplicationProject) BASIC_APPLICATION_MANIFEST else BASIC_PACKAGE_MANIFEST)
+                project("elm.json", if (isApplicationProject) basicApplicationManifest(installedElmCompilerVersion) else BASIC_PACKAGE_MANIFEST)
                 if (sidecarManifestContent != null)
                     file("elm.intellij.json", sidecarManifestContent)
                 dir("src") {
@@ -633,12 +691,16 @@ private fun makeConstraint(low: Version, high: Version): Constraint {
 
 /**
  * A minimal `elm.json` file for an application project.
+ *
+ * Parameterized by the installed compiler version: an application's `elm-version` must match the
+ * compiler that builds it (the compiler rejects a mismatch), and that version also selects which
+ * `~/.elm/<version>/packages/` directory the plugin resolves its dependencies from.
  */
-private const val BASIC_APPLICATION_MANIFEST = """
+private fun basicApplicationManifest(elmVersion: Version) = """
 {
   "type": "application",
   "source-directories": [ "src" ],
-  "elm-version": "0.19.1",
+  "elm-version": "$elmVersion",
   "dependencies": {
     "direct": {
         "elm/core": "1.0.0",
