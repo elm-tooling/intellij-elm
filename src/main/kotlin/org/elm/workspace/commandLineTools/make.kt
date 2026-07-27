@@ -3,6 +3,7 @@ package org.elm.workspace.commandLineTools
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.elm.workspace.compiler.ERRORS_TOPIC
+import org.elm.workspace.compiler.ElmBuildTargetType
 import org.elm.workspace.compiler.ElmCompilerKind
 import org.elm.workspace.compiler.ElmError
 import org.elm.workspace.compiler.ResolvedBuildTarget
@@ -15,10 +16,13 @@ fun makeProject(
 ): Boolean {
     if (entryPoints.isEmpty()) return true
 
+    // Test targets run via elm-test, not the compiler CLIs, so handle them on their own path.
+    val (testTargets, compilerTargets) = entryPoints.partition { it.type == ElmBuildTargetType.TEST }
+
     var allSucceeded = true
     // Each target carries its own working directory (its elm.json directory), so group by that
     // together with the compiler; every group is one `elm make` working directory.
-    val grouped = entryPoints.groupBy { Triple(it.compilerKind, it.compilerPath, it.workDir) }
+    val grouped = compilerTargets.groupBy { Triple(it.compilerKind, it.compilerPath, it.workDir) }
     for ((key, targets) in grouped) {
         val (kind, path, workDir) = key
         val succeeded = when (kind) {
@@ -31,8 +35,21 @@ fun makeProject(
         }
         allSucceeded = allSucceeded && succeeded
     }
+    for ((key, targets) in testTargets.groupByElmTest()) {
+        val (exe, workDir) = key
+        val succeeded = ElmTestCLI(exe).make(project, workDir, targets, currentFile = currentFileInEditor)
+        allSucceeded = allSucceeded && succeeded
+    }
     return allSucceeded
 }
+
+/**
+ * Group test targets by their `elm-test` executable and working directory, mirroring how compiler
+ * targets are grouped: every group is a single `elm-test make` working directory. Targets are known
+ * to carry a non-null [ResolvedBuildTarget.testExecutablePath] because they are [ElmBuildTargetType.TEST].
+ */
+private fun List<ResolvedBuildTarget>.groupByElmTest(): Map<Pair<Path, Path>, List<ResolvedBuildTarget>> =
+    groupBy { it.testExecutablePath!! to it.workDir }
 
 /**
  * Build every target across all Elm projects and display the combined, deduplicated errors.
@@ -49,9 +66,11 @@ fun makeAllTargets(
 ): Boolean {
     if (targets.isEmpty()) return true
 
+    val (testTargets, compilerTargets) = targets.partition { it.type == ElmBuildTargetType.TEST }
+
     val sink = mutableListOf<ElmError>()
     var allSucceeded = true
-    val grouped = targets.groupBy { Triple(it.compilerKind, it.compilerPath, it.workDir) }
+    val grouped = compilerTargets.groupBy { Triple(it.compilerKind, it.compilerPath, it.workDir) }
     for ((key, kindTargets) in grouped) {
         val (kind, path, workDir) = key
         val succeeded = when (kind) {
@@ -71,6 +90,13 @@ fun makeAllTargets(
                     jsonReport = true, currentFile = currentFileInEditor, messageSink = sink
                 )
         }
+        allSucceeded = allSucceeded && succeeded
+    }
+    for ((key, elmTestTargets) in testTargets.groupByElmTest()) {
+        val (exe, workDir) = key
+        val succeeded = ElmTestCLI(exe).make(
+            project, workDir, elmTestTargets, currentFile = currentFileInEditor, messageSink = sink
+        )
         allSucceeded = allSucceeded && succeeded
     }
 

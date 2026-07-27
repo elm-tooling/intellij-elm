@@ -270,7 +270,9 @@ private class ElmBuildTargetsPanel(
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
         override fun update(e: AnActionEvent) {
-            e.presentation.isEnabled = targetList.selectedIndex >= 0
+            // Automatic test targets are not user-configured, so there is nothing to edit.
+            val item = targetList.selectedValue
+            e.presentation.isEnabled = item != null && !item.isAutomatic
         }
 
         override fun actionPerformed(e: AnActionEvent) {
@@ -299,7 +301,10 @@ private data class BuildTargetItem(
     /** Non-null when the target could not be resolved; the reason to surface to the user. */
     val error: String?,
     val config: ElmBuildTargetConfig
-)
+) {
+    /** True for the automatic, non-editable test targets appended after the configured ones. */
+    val isAutomatic: Boolean get() = config.type == ElmBuildTargetType.TEST
+}
 
 private fun displayTargetName(target: ResolvedBuildTarget, index: Int): String =
     target.name.ifBlank {

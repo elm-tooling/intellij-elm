@@ -506,6 +506,66 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
     }
 
     @Test
+    fun `test an automatic test target is appended for a project that has a tests directory`() {
+        val testProject = fileTree {
+            dir("app") {
+                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                dir("src") {
+                    elm("Main.elm")
+                }
+                dir("tests") {
+                    elm("MainTest.elm")
+                }
+            }
+        }.create(project, elmWorkspaceDirectory)
+
+        val workspace = project.elmWorkspace
+        val rootPath = testProject.root.pathAsPath
+        workspace.asyncAttachElmProject(rootPath.resolve("app/elm.json")).get()
+        val elmProject = workspace.allProjects.single()
+
+        // Ensure elm-test is configured so the target resolves; the resolution logic only needs a
+        // non-null path, so reuse the compiler executable (which exists) rather than depending on
+        // elm-test being discoverable in the test sandbox.
+        val elmTestPath = project.elmToolchain.compilerPath ?: error("Compiler path is not configured in test toolchain")
+        workspace.useToolchain(project.elmToolchain.copy(elmTestPath = elmTestPath))
+
+        // No configured build targets: the only outcome should be the automatic test target,
+        // appended after the (empty) configured list.
+        val outcomes = workspace.resolveBuildTargetsDetailed()
+        val testOutcome = outcomes.single()
+        checkEquals(ElmBuildTargetType.TEST, testOutcome.config.type)
+        checkEquals("Tests (${elmProject.presentableName})", testOutcome.config.name)
+
+        val resolved = testOutcome.resolved ?: error("Expected the test target to resolve: ${testOutcome.error}")
+        checkEquals(ElmBuildTargetType.TEST, resolved.type)
+        checkEquals(elmProject.projectDirPath, resolved.workDir)
+        checkEquals(elmProject.testsDirPath, resolved.inputPath)
+        check(resolved.testExecutablePath == elmTestPath) { "Expected elm-test path $elmTestPath, got ${resolved.testExecutablePath}" }
+        check(resolved.testsCustomDir == null) { "Default tests dir should not be passed as an argument" }
+    }
+
+    @Test
+    fun `test no automatic test target is created when the project has no tests directory`() {
+        val testProject = fileTree {
+            dir("app") {
+                project("elm.json", BASIC_APPLICATION_MANIFEST)
+                dir("src") {
+                    elm("Main.elm")
+                }
+            }
+        }.create(project, elmWorkspaceDirectory)
+
+        val workspace = project.elmWorkspace
+        val rootPath = testProject.root.pathAsPath
+        workspace.asyncAttachElmProject(rootPath.resolve("app/elm.json")).get()
+
+        check(workspace.resolveBuildTargetsDetailed().isEmpty()) {
+            "Expected no build targets when there are no configured targets and no tests directory"
+        }
+    }
+
+    @Test
     fun `test auto discover Elm project skips project with bad sidecar manifest`() {
         fileTree {
             project("elm.json", BASIC_APPLICATION_MANIFEST)

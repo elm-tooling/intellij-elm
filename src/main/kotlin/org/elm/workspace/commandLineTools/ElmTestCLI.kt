@@ -7,14 +7,22 @@ import com.intellij.execution.process.ProcessHandler
 import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
+import org.elm.ide.statusbar.elmTaskStatus
 import org.elm.openapiext.GeneralCommandLine
 import org.elm.openapiext.Result
 import org.elm.openapiext.execute
+import org.elm.openapiext.isSuccess
 import org.elm.workspace.ElmSuggest
 import org.elm.workspace.ElmProject
 import org.elm.workspace.ParseException
 import org.elm.workspace.Version
 import org.elm.workspace.elmTestTool
+import org.elm.workspace.compiler.COMPILER_OUTPUT_TOPIC
+import org.elm.workspace.compiler.ERRORS_TOPIC
+import org.elm.workspace.compiler.ElmError
+import org.elm.workspace.compiler.ResolvedBuildTarget
+import org.elm.workspace.compiler.elmJsonToCompilerMessages
 import java.nio.file.Path
 
 private val log = logger<ElmTestCLI>()
@@ -64,6 +72,95 @@ class ElmTestCLI(private val executablePath: Path) {
         return ColoredProcessHandler(commandLine)
     }
 
+    /**
+     * Type-check a project's tests by running `elm-test make --report=json` (the same command line
+     * used to run tests, but with the `make` subcommand). Compilation errors are reported to the
+     * Elm Compiler tool window just like a regular `elm make` build; `elm-test` forwards the
+     * compiler's `--report=json` error output on stderr in the same shape the compiler produces.
+     *
+     * Mirrors the shape of [ElmCLI.make]: each entry runs in its own working directory, output is
+     * published to [COMPILER_OUTPUT_TOPIC], and errors are either collected into [messageSink] (for
+     * an aggregated "Build all") or posted once to [ERRORS_TOPIC].
+     */
+    fun make(
+        project: Project,
+        baseDirForErrors: Path?,
+        entryPoints: List<ResolvedBuildTarget>,
+        currentFile: VirtualFile? = null,
+        messageSink: MutableList<ElmError>? = null
+    ): Boolean {
+        if (entryPoints.isEmpty()) return true
+
+        val suggestedTools = ElmSuggest.suggestTools(project)
+        project.elmTaskStatus.compilerStarted()
+        try {
+            val allMessages = mutableListOf<ElmError>()
+            var allSucceeded = true
+            for (entry in entryPoints) {
+                val elmCompilerPath = entry.compilerPath
+                val commandLine = GeneralCommandLine(executablePath.toString(), "make", "--report=json")
+                    .withWorkDirectory(entry.workDir.toString())
+                    .withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
+                    .apply {
+                        augmentPathForNodeBackedTool(
+                            env = environment,
+                            executablePath = executablePath,
+                            compilerPath = elmCompilerPath,
+                            suggestedTools = suggestedTools
+                        )
+                    }
+                    .withParameters("--compiler", elmCompilerPath.toString())
+                // elm-test defaults to the "tests" directory; only pass a path for a custom one.
+                entry.testsCustomDir?.let { commandLine.withParameters(it) }
+
+                // Generous timeout: elm-test is a Node-backed tool, so it pays Node startup on top
+                // of the compilation itself, and can easily exceed the short default.
+                val output = commandLine.execute(elmTestTool, project, timeoutInMilliseconds = MAKE_TIMEOUT_MS)
+                project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(
+                    elmTestTool,
+                    commandLine.commandLineString,
+                    output.stdout,
+                    output.stderr,
+                    output.exitCode
+                )
+                if (!output.isSuccess) {
+                    allSucceeded = false
+                }
+                val cleansedJson = "\\{.*}".toRegex().find(output.stderr)?.value
+                if (!cleansedJson.isNullOrEmpty()) {
+                    allMessages += elmJsonToCompilerMessages(cleansedJson)
+                }
+            }
+
+            val sortedMessages = allMessages.sortedWith(
+                compareBy(
+                    { it.location?.moduleName },
+                    { it.location?.region?.start?.line },
+                    { it.location?.region?.start?.column }
+                )
+            )
+            val messages = if (currentFile != null) {
+                val predicate: (ElmError) -> Boolean = { it.location?.path == currentFile.path }
+                sortedMessages.filter(predicate) + sortedMessages.filterNot(predicate)
+            } else sortedMessages
+
+            if (messageSink != null) {
+                // Collect messages for an aggregated build (e.g. "Build all") instead of posting
+                // them here; the caller deduplicates and posts once.
+                messageSink += messages.map { it.withAbsolutePath(entryPoints.first().workDir) }
+                return messages.isEmpty() && allSucceeded
+            }
+
+            if (baseDirForErrors != null) {
+                project.messageBus.syncPublisher(ERRORS_TOPIC)
+                    .update(baseDirForErrors, messages, "", 0)
+            }
+            return messages.isEmpty() && allSucceeded
+        } finally {
+            project.elmTaskStatus.compilerFinished()
+        }
+    }
+
 
     fun queryVersion(project: Project): Result<Version> {
         // Output of `elm-test --version` can be a plain version or include a binary prefix
@@ -95,6 +192,9 @@ class ElmTestCLI(private val executablePath: Path) {
     }
 
     companion object {
+        /** Timeout for `elm-test make`; large enough to cover Node startup plus compilation. */
+        private const val MAKE_TIMEOUT_MS = 120_000
+
         private val VERSION_TOKEN_REGEX = Regex("""\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?""")
 
         internal fun parseVersionLine(line: String): Result<Version> {

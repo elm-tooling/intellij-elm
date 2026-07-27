@@ -22,12 +22,21 @@ enum class ElmBuildTargetType {
     APPLICATION,
 
     /** Type-check a package by running `elm make` with no arguments in the package's directory. */
-    PACKAGE;
+    PACKAGE,
+
+    /**
+     * Type-check a project's tests by running `elm-test make` in the project's directory. These
+     * targets are generated automatically (one per Elm project that has a tests directory), not
+     * configured by the user, and are executed via [org.elm.workspace.commandLineTools.ElmTestCLI]
+     * rather than the compiler CLIs.
+     */
+    TEST;
 
     override fun toString(): String =
         when (this) {
             APPLICATION -> "Application"
             PACKAGE -> "Package"
+            TEST -> "Test"
         }
 }
 
@@ -83,10 +92,26 @@ data class ResolvedBuildTarget(
     val compilerKind: ElmCompilerKind,
     val compilerPath: Path,
     val compileOnSave: Boolean,
-    val offset: Int = 0
+    val offset: Int = 0,
+    /**
+     * For [ElmBuildTargetType.TEST], the absolute path to the `elm-test` executable used to run
+     * the build. Null for compiler targets, which are run via their [compilerKind]'s CLI instead.
+     */
+    val testExecutablePath: Path? = null,
+    /**
+     * For [ElmBuildTargetType.TEST] projects that keep their tests in a non-default directory, the
+     * relative directory to pass to `elm-test` (mirroring how the test runner supplies it). Null
+     * when tests live in the default `tests` directory (or for non-test targets).
+     */
+    val testsCustomDir: String? = null
 ) {
     /** The arguments to pass to `elm make` (after the compiler executable) for this target. */
     fun makeParameters(): List<String> {
+        // Test targets are executed via ElmTestCLI (which builds its own `elm-test make`
+        // command line), not through the compiler CLIs that call this.
+        check(type != ElmBuildTargetType.TEST) {
+            "Test targets are executed via ElmTestCLI, not makeParameters()"
+        }
         val params = mutableListOf("make")
         // A package is type-checked by running `elm make` with no input/output/mode.
         if (type == ElmBuildTargetType.PACKAGE) return params

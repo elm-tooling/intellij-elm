@@ -181,10 +181,75 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     fun resolveBuildTargetsDetailed(): List<BuildTargetOutcome> {
         val targets = buildTargets
         return runReadAction {
-            targets.mapIndexed { index, target ->
+            val configured = targets.mapIndexed { index, target ->
                 resolveBuildTarget(target, index + 1)
             }
+            // Append the automatic test targets after the user-configured ones, continuing the
+            // row numbering so any error messages stay unambiguous.
+            configured + resolveTestBuildTargets(startRow = configured.size + 1)
         }
+    }
+
+    /**
+     * Build the automatic, per-project test targets shown at the end of the build-targets list.
+     * One target is produced for every Elm project that has a tests directory; each is type-checked
+     * by running `elm-test make` (see [org.elm.workspace.commandLineTools.ElmTestCLI]). A target that
+     * cannot run yet (e.g. because `elm-test` or the compiler is not configured) is surfaced as an
+     * error outcome rather than dropped, matching how misconfigured user targets are shown.
+     *
+     * Must be called inside a read action (touches the VFS and the project list).
+     */
+    private fun resolveTestBuildTargets(startRow: Int): List<BuildTargetOutcome> {
+        val toolchain = settings.toolchain
+        val elmTestPath = toolchain.elmTestPath
+        val compilerPath = toolchain.elmCompilerPath
+        val compilerKind = when (toolchain.compilerType) {
+            ElmCompilerType.ELM -> ElmCompilerKind.ELM
+            ElmCompilerType.LAMDERA -> ElmCompilerKind.LAMDERA
+            ElmCompilerType.ELM_WRAP -> ElmCompilerKind.WRAP
+        }
+
+        return allProjects
+            .filter { Files.exists(it.testsDirPath) }
+            .mapIndexed { index, elmProject ->
+                val row = startRow + index
+                val name = "Tests (${elmProject.presentableName})"
+                // A synthetic config so the outcome carries a display name for error rows; test
+                // targets are not user-editable, so the other config fields are left at defaults.
+                val config = ElmBuildTargetConfig(name = name, type = ElmBuildTargetType.TEST)
+
+                fun invalid(message: String) =
+                    BuildTargetOutcome(row, config, resolved = null, error = message)
+
+                if (elmTestPath == null) {
+                    return@mapIndexed invalid("$name: elm-test is not configured (set its path in the Elm settings)")
+                }
+                if (compilerPath == null) {
+                    return@mapIndexed invalid("$name: the Elm compiler is not configured (set its path in the Elm settings)")
+                }
+
+                BuildTargetOutcome(
+                    row = row,
+                    config = config,
+                    resolved = ResolvedBuildTarget(
+                        name = name,
+                        type = ElmBuildTargetType.TEST,
+                        workDir = elmProject.projectDirPath,
+                        inputPath = elmProject.testsDirPath,
+                        inputPathForCompiler = "",
+                        outputPathForCompiler = "",
+                        mode = ElmBuildMode.NONE,
+                        compilerKind = compilerKind,
+                        compilerPath = compilerPath,
+                        compileOnSave = false,
+                        offset = 0,
+                        testExecutablePath = elmTestPath,
+                        // elm-test defaults to the "tests" directory; only pass a path when custom.
+                        testsCustomDir = if (elmProject.isCustomTestsDir) elmProject.testsRelativeDirPath else null
+                    ),
+                    error = null
+                )
+            }
     }
 
     /** Must be called inside a read action (uses the VFS and the project directory index). */
@@ -295,6 +360,11 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                     error = null
                 )
             }
+
+            // Test targets are generated automatically (see resolveTestBuildTargets), never from a
+            // user-configured entry, so one reaching here would be a bug in that generation.
+            ElmBuildTargetType.TEST ->
+                invalid("Row $row: test targets are generated automatically and cannot be configured")
         }
     }
 
