@@ -173,6 +173,7 @@ class ElmTestRunProfileState internal constructor(
         override fun createTestEventsConverter(testFrameworkName: String, consoleProperties: TestConsoleProperties): OutputToGeneralTestEventsConverter {
             return object : OutputToGeneralTestEventsConverter(testFrameworkName, consoleProperties) {
                 var processor = ElmTestJsonProcessor(testsRelativeDirPath)
+                private var reporterAttached = false
 
                 @Synchronized
                 override fun finishTesting() {
@@ -185,6 +186,16 @@ class ElmTestRunProfileState internal constructor(
                     visitor: ServiceMessageVisitor
                 ): Boolean {
                     val events = processor.accept(text) ?: return false
+                    // Signal that a real test reporter is present, as soon as elm-test produces
+                    // recognized output. Without this, a run that reports no tests at all — e.g.
+                    // when every test is skipped, where elm-test emits only runStart/runComplete
+                    // (with `autoFail: "Test.skip was used"`) and no testCompleted — leaves the root
+                    // node childless with no reporter attached, which the SMTestRunner renders as
+                    // "Test framework quit unexpectedly" rather than "No tests were found".
+                    if (!reporterAttached) {
+                        reporterAttached = true
+                        getProcessor().onTestsReporterAttached()
+                    }
                     events.forEach { processEvent(it) }
                     return true
                 }
