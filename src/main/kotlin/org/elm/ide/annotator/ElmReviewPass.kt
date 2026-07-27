@@ -6,12 +6,13 @@ import com.intellij.codeHighlighting.TextEditorHighlightingPassRegistrar
 import com.intellij.codeInsight.daemon.impl.DaemonCodeAnalyzerEx
 import com.intellij.codeInsight.daemon.impl.FileStatusMap
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileDocumentManager
-import com.intellij.openapi.application.invokeLater
-import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.DumbAware
@@ -51,7 +52,7 @@ class ElmReviewPass(
         val pathToListenFor: Path = elmProject.projectDirPath
 
         val service = editor.project?.elmReviewService ?: return
-        val sourceFilePath = runReadAction { Path.of(file.virtualFile.path) }
+        val sourceFilePath = ReadAction.compute<Path, Throwable> { Path.of(file.virtualFile.path) }
         service.runReviewOnDocumentChange(
             projectBasePath = pathToListenFor,
             sourceFilePath = sourceFilePath,
@@ -71,7 +72,7 @@ class ElmReviewPass(
             doFinish(emptyList())
             return
         }
-        runReadAction {
+        ReadAction.run<Throwable> {
             doFinish(collectCurrentFileHighlights())
         }
     }
@@ -87,10 +88,10 @@ class ElmReviewPass(
     }
 
     private fun doFinish(groupedHighlights: List<HighlightInfo>) {
-        invokeLater(ModalityState.stateForComponent(editor.component)) {
+        ApplicationManager.getApplication().invokeLater({
             applyHighlighters(groupedHighlights)
             DaemonCodeAnalyzerEx.getInstanceEx(myProject).fileStatusMap.markFileUpToDate(document, id)
-        }
+        }, ModalityState.stateForComponent(editor.component))
     }
 
     private fun applyHighlighters(groupedHighlights: List<HighlightInfo>) {
@@ -180,7 +181,7 @@ class ElmReviewPassFactory(
                     scheduleExternalActivity(object : Update(baseDirPath) {
                         override fun run() {
                             val daemon = DaemonCodeAnalyzerEx.getInstanceEx(project)
-                            val docsToMark = runReadAction {
+                            val docsToMark = ReadAction.compute<List<Document>, Throwable> {
                                 val psiManager = PsiManager.getInstance(project)
                                 FileEditorManager.getInstance(project).openFiles
                                     .mapNotNull { psiManager.findFile(it) as? ElmFile }
