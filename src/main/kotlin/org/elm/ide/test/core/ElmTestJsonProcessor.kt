@@ -81,7 +81,15 @@ class ElmTestJsonProcessor(private val testsRelativeDirPath: String) {
             }
             "todo" -> {
                 val comment = getComment(obj)
-                sequenceOf(newTestIgnoredEvent(path, comment))
+                val duration = durationOf(obj)
+                // A `todo` is reported as an ignored test. It needs the same `testStarted` /
+                // `testFinished` bracketing as any other test: without `testStarted` the platform
+                // logs "Test wasn't started!" and auto-starts it, and without `testFinished` it
+                // stays in the SMTestRunner's set of running tests — leaving the tree "incomplete"
+                // so the root node is marked "Terminated" instead of showing the ignored test.
+                sequenceOf(newTestStartedEvent(path))
+                        .plus(newTestIgnoredEvent(path, comment))
+                        .plus(newTestFinishedEvent(path, duration))
             }
             else -> {
                 val duration = durationOf(obj)

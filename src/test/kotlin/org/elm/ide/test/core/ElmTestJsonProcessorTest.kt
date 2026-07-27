@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.intellij.execution.testframework.sm.runner.events.TestFailedEvent
 import com.intellij.execution.testframework.sm.runner.events.TestFinishedEvent
+import com.intellij.execution.testframework.sm.runner.events.TestIgnoredEvent
 import com.intellij.execution.testframework.sm.runner.events.TestStartedEvent
 import com.intellij.execution.testframework.sm.runner.events.TestSuiteStartedEvent
 import org.elm.ide.test.core.ElmTestJsonProcessor.Companion.closeSuitePaths
@@ -200,6 +201,25 @@ class ElmTestJsonProcessorTest {
         assertNull(getMessage(obj))
         assertNull(getExpected(obj))
         assertNull(getActual(obj))
+    }
+
+    @Test
+    fun testCompletedTodoEmitsStartedIgnoredFinished() {
+        // A todo test (e.g. the one `elm-test init` generates) must be bracketed by
+        // testStarted/testFinished around testIgnored; otherwise the ignored test is left running
+        // and the root node is marked "Terminated". (Exact payload from `elm-test init`, whose
+        // single label is just the module name.)
+        val list = processor
+                .accept("{\"event\":\"testCompleted\",\"status\":\"todo\",\"labels\":[\"Example\"],\"failures\":[\"Implement our first test.\"],\"duration\":\"1\"}")
+                ?.toList()
+        assertEquals(4, list!!.size)
+        assertTrue(list[0] is TestSuiteStartedEvent)
+        assertTrue(list[1] is TestStartedEvent)
+        assertTrue(list[2] is TestIgnoredEvent)
+        assertTrue(list[3] is TestFinishedEvent)
+        assertEquals("todo", list[1].name)
+        assertEquals("todo", list[2].name)
+        assertEquals("todo", list[3].name)
     }
 
     @Test
