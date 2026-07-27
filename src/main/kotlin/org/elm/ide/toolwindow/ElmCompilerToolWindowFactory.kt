@@ -29,7 +29,6 @@ import com.intellij.util.ui.UIUtil
 import org.elm.ide.actions.buildTarget
 import org.elm.ide.actions.buildTargetKeyOf
 import org.elm.ide.actions.elmBuildTargetSelection
-import org.elm.workspace.ElmProject
 import org.elm.workspace.ElmWorkspaceService
 import org.elm.workspace.compiler.*
 import org.elm.workspace.elmWorkspace
