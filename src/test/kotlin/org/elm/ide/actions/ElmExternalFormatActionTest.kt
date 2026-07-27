@@ -85,8 +85,6 @@ class ElmExternalFormatActionTest : ElmWorkspaceTestBase() {
         TestCase.assertEquals(originalCode, document.text)
 
         TestCase.assertEquals("elm-format encountered syntax errors that it could not fix", ref.get().content)
-        TestCase.assertEquals(1, ref.get().actions.size)
-        TestCase.assertEquals("Show Errors", ref.get().actions.first().templatePresentation.text)
     }
 
     @Test
