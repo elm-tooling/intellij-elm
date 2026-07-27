@@ -4,7 +4,6 @@ import com.intellij.openapi.project.Project
 import org.elm.openapiext.Result
 import org.elm.workspace.commandLineTools.ElmCLI
 import org.elm.workspace.commandLineTools.ElmFormatCLI
-import org.elm.workspace.commandLineTools.ElmReviewCLI
 import org.elm.workspace.commandLineTools.ElmTestCLI
 import org.elm.workspace.commandLineTools.LamderaCLI
 import org.elm.workspace.commandLineTools.WrapCLI
@@ -74,8 +73,6 @@ data class ElmToolchain(
     val elmFormatCLI: ElmFormatCLI? = elmFormatPath?.let { ElmFormatCLI(it) }
 
     val elmTestCLI: ElmTestCLI? = elmTestPath?.let { ElmTestCLI(it) }
-
-    val elmReviewCLI: ElmReviewCLI? = elmReviewPath?.let { ElmReviewCLI(it) }
 
     fun queryCompilerVersion(project: Project): Result<Version> =
         when (compilerType) {
