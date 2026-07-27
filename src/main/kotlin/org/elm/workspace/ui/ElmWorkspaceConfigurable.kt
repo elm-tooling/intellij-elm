@@ -8,6 +8,8 @@ import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.keymap.impl.ui.KeymapPanel
 import com.intellij.openapi.actionSystem.ActionToolbarPosition
+import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.ui.AnActionButton
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ex.Settings
 import com.intellij.openapi.project.Project
@@ -269,14 +271,13 @@ class ElmWorkspaceConfigurable(
                     targetList.selectedIndex = idx + 1
                 }
             }
-            .setAddAction {
-                val defaultCompilerPath = ElmSuggest.suggestTools(project)[elmCompilerTool]?.toString().orEmpty()
-                buildTargetList += ElmBuildTargetConfig(
-                    name = "Target ${buildTargetList.size + 1}",
-                    compileOnSave = true,
-                    compilerPath = defaultCompilerPath
-                )
-                refreshTargetListLabels(select = buildTargetList.lastIndex)
+            .setAddAction { button ->
+                val suggestions = detectBuildTargetSuggestions(project)
+                if (suggestions.isEmpty()) {
+                    addTargetConfig(emptyTargetConfig())
+                    return@setAddAction
+                }
+                showAddTargetChooser(suggestions, button)
             }
             .setRemoveAction {
                 val idx = targetList.selectedIndex
@@ -332,6 +333,46 @@ class ElmWorkspaceConfigurable(
             firstComponent = leftPanel
             secondComponent = targetDetailsPanel
         }
+    }
+
+    /**
+     * Offer the auto-detected [suggestions] (plus an "Empty" choice) in a popup anchored to the
+     * "+" toolbar [button]. Picking a suggestion appends its target; picking "Empty" appends a
+     * blank target (the same one the "+" button used to add unconditionally).
+     */
+    private fun showAddTargetChooser(suggestions: List<BuildTargetSuggestion>, button: AnActionButton?) {
+        val choices = suggestions.map { TargetChoice(it.label, it.config) } +
+            TargetChoice("Empty", null)
+        val popup = JBPopupFactory.getInstance()
+            .createPopupChooserBuilder(choices)
+            .setTitle("Add Build Target")
+            .setItemChosenCallback { choice ->
+                addTargetConfig(choice.config ?: emptyTargetConfig())
+            }
+            .createPopup()
+        val popupPoint = button?.preferredPopupPoint
+        if (popupPoint != null) popup.show(popupPoint) else popup.showInBestPositionFor(
+            DataManager.getInstance().getDataContext(targetList)
+        )
+    }
+
+    /** A row in the "add build target" chooser. A null [config] represents the "Empty" choice. */
+    private class TargetChoice(val label: String, val config: ElmBuildTargetConfig?) {
+        override fun toString() = label
+    }
+
+    private fun addTargetConfig(config: ElmBuildTargetConfig) {
+        buildTargetList += config
+        refreshTargetListLabels(select = buildTargetList.lastIndex)
+    }
+
+    private fun emptyTargetConfig(): ElmBuildTargetConfig {
+        val defaultCompilerPath = ElmSuggest.suggestTools(project)[elmCompilerTool]?.toString().orEmpty()
+        return ElmBuildTargetConfig(
+            name = "Target ${buildTargetList.size + 1}",
+            compileOnSave = true,
+            compilerPath = defaultCompilerPath
+        )
     }
 
     private fun labeledField(label: String, component: JComponent): JComponent =
