@@ -42,6 +42,10 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <postStartupActivity implementation="org.elm.workspace.ElmAutoDiscoverProjectActivity"/>
+        <!-- Backs the "Rerun Automatically" toggle in the test runner toolbar. Must be registered
+             as a project service, otherwise `Project.elmAutoTestManager` throws "Cannot find
+             service" when the toolbar renders. -->
+        <projectService serviceImplementation="org.elm.ide.test.run.ElmTestAutoTestManager"/>
         <notificationGroup id="Elm Plugin" displayType="BALLOON" isLogByDefault="true"/>
         <additionalTextAttributes scheme="Default" file="colorSchemes/ElmDefault.xml"/>
         <additionalTextAttributes scheme="Darcula" file="colorSchemes/ElmDarcula.xml"/>
