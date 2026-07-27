@@ -5,6 +5,9 @@
 ## [Unreleased]
 *   Fixed: an explicitly imported type now shadows one brought in by a wildcard (`exposing (..)`) import, regardless of import order, matching how values already resolved
 *   The constructor of a phantom type (which is unused on purpose; must be marked with `Never` or the type itself) is no longer marked as unused
+*   Fixed: elm-review is no longer run on files from dependencies (in `~/.elm`)
+*   Fixed: Global elm-review errors now show up in the elm-review panel
+*   Fixed: Elm 0.19.2 has a bug where error locations are off-by-one – added a workaround for that in the Elm Compiler feature
 *   Elm Compiler Panel: Build button is now always visible
 *   Elm Compiler Panel: Added Build All button
 *   Elm Compiler Panel: Build Selected and Build All are now available in the command palette, and you can assign keyboard shortcuts to them

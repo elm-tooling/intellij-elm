@@ -6,7 +6,6 @@ import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.CapturingProcessHandler
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.runBackgroundableTask
@@ -55,8 +54,7 @@ class ElmReviewCLI(private val elmReviewExecutablePath: Path) {
                 val handler = CapturingProcessHandler(generalCommandLine)
                 try {
                     val output = handler.runProcess()
-                    val alreadyDisposed = runReadAction { project.isDisposed }
-                    if (alreadyDisposed) {
+                    if (project.isDisposed) {
                         throw ExecutionException("External command failed to start")
                     }
                     if (output.exitCode != 0) {

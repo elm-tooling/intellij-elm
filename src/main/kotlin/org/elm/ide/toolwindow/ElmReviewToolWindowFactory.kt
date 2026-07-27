@@ -18,6 +18,7 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
+import com.intellij.pom.Navigatable
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindow
@@ -88,17 +89,28 @@ class ElmReviewToolWindowFactory : ToolWindowFactory {
     }
 }
 
+private const val GLOBAL_ERRORS_GROUP = "Global errors"
+
+/**
+ * A [Navigatable] that goes nowhere. Used for global elm-review errors, which are not tied to a
+ * source file and therefore have nothing to jump to when activated in the tree.
+ */
+private object NonNavigatable : Navigatable {
+    override fun navigate(requestFocus: Boolean) {}
+    override fun canNavigate(): Boolean = false
+    override fun canNavigateToSource(): Boolean = false
+}
+
 private fun toIssues(baseDirPath: Path, messages: List<ElmReviewError>): List<ElmReviewIssue> {
-    val issues = mutableListOf<ElmReviewIssue>()
-    messages.forEach { elmReviewError ->
-        val sourceLocation = elmReviewError.path ?: return@forEach
-        val virtualFile = baseDirPath.resolve(sourceLocation).let {
-            LocalFileSystem.getInstance().findFileByPath(it.toString())
+    return messages.map { elmReviewError ->
+        // `path` is null for global errors that aren't tied to a source file; keep them so they
+        // can be shown under the synthetic "Global errors" group instead of being dropped.
+        val sourceLocation = elmReviewError.path
+        val virtualFile = sourceLocation?.let {
+            LocalFileSystem.getInstance().findFileByPath(baseDirPath.resolve(it).toString())
         }
-        val issue = ElmReviewIssue(baseDirPath, sourceLocation, virtualFile, elmReviewError)
-        issues += issue
+        ElmReviewIssue(baseDirPath, sourceLocation, virtualFile, elmReviewError)
     }
-    return issues
 }
 
 private class ElmReviewDetailsPanel(project: Project) : JPanel(BorderLayout()) {
@@ -213,7 +225,7 @@ private class ElmReviewDetailsPanel(project: Project) : JPanel(BorderLayout()) {
 
 private data class ElmReviewIssue(
     val baseDirPath: Path,
-    val sourceLocation: String,
+    val sourceLocation: String?,
     val virtualFile: VirtualFile?,
     val error: ElmReviewError
 ) {
@@ -280,22 +292,26 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
             val elmReviewError = issue.error
             val ruleText = elmReviewTreeRuleLabel(elmReviewError, issue.isFixable, showSuppressed)
             val treeMessage = elmReviewTreeMessage(elmReviewError)
-            val location = elmReviewLocation(elmReviewError)
-            if (location == null) {
-                addErrorMessage(
+            if (issue.sourceLocation == null) {
+                // Global errors have no file to group under and nothing to navigate to, so put
+                // them under a synthetic "Global errors" node with a non-navigable entry.
+                addMessage(
                     MessageCategory.SIMPLE,
                     arrayOf("$encodedIndex$ruleText", treeMessage),
-                    issue.virtualFile,
-                    0,
-                    0
+                    GLOBAL_ERRORS_GROUP,
+                    NonNavigatable,
+                    "",
+                    "",
+                    null
                 )
             } else {
+                val location = elmReviewLocation(elmReviewError)
                 addErrorMessage(
                     MessageCategory.SIMPLE,
                     arrayOf("$encodedIndex$ruleText", treeMessage),
                     issue.virtualFile,
-                    location.first,
-                    location.second
+                    location?.first ?: 0,
+                    location?.second ?: 0
                 )
             }
         }
@@ -450,8 +466,9 @@ private class ElmReviewErrorTreeViewPanel(project: Project) : ElmErrorTreeViewPa
         var firstFileToFocus: VirtualFile? = null
         targetIssues.forEach { issue ->
             if (!issue.isFixable) return@forEach
+            val sourceLocation = issue.sourceLocation ?: return@forEach
             val file = issue.virtualFile ?: LocalFileSystem.getInstance()
-                .refreshAndFindFileByPath(issue.baseDirPath.resolve(issue.sourceLocation).toString())
+                .refreshAndFindFileByPath(issue.baseDirPath.resolve(sourceLocation).toString())
                 ?: return@forEach
             val document = FileDocumentManager.getInstance().getDocument(file) ?: return@forEach
             if (firstFileToFocus == null) firstFileToFocus = file

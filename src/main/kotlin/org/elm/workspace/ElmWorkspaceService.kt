@@ -401,7 +401,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 ?: resolveCompilerVersionForProjectLoad()
 
             if (installDeps) {
-                installProjectDeps(manifestPath)
+                installProjectDeps(manifestPath, elmCompilerVersion)
             }
 
             // not thread-safe; do not reuse across threads!
@@ -427,7 +427,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             }
         }
 
-    private fun installProjectDeps(manifestPath: Path): Boolean {
+    private fun installProjectDeps(manifestPath: Path, compilerVersion: Version): Boolean {
         // The only way to install an Elm project's dependencies is to compile
         // the project. But the project may not be in a compilable state when
         // we try to load it. So we will copy the `elm.json` into a temp dir
@@ -441,6 +441,16 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         val dto = mapper.readTree(manifestPath.toFile()) as ObjectNode
         if (dto.has("source-directories")) {
             dto.putArray("source-directories").add("src")
+        }
+
+        // An application's `elm.json` pins an exact `elm-version`, and the Elm compiler refuses
+        // to build (and therefore to download dependencies) unless it matches the compiler exactly.
+        // Since this is a throwaway copy used only to trigger the download, rewrite it to the
+        // compiler's own version so deps land in `~/.elm/<compilerVersion>/packages/` regardless of
+        // which 0.19.x the user has installed. (Packages declare a version *range*, so they never
+        // hit this mismatch and are left untouched. Lamdera has its own versioning scheme.)
+        if (settings.toolchain.compilerType == ElmCompilerType.ELM && dto.get("type")?.textValue() == "application") {
+            dto.put("elm-version", compilerVersion.toString())
         }
         val tempManifest = dir.toPath().resolve(ELM_JSON).toFile()
         mapper.writeValue(tempManifest, dto)
@@ -526,15 +536,11 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             )
         } else
         runAsyncTask(intellijProject, "Preparing Elm project refresh") {
-            if (isUnitTestMode) {
-                Version(0, 19, 1)
-            } else {
-                settings.toolchain.queryCompilerVersion(intellijProject).orNull()
-                    ?: run {
-                        log.warn("Could not determine version of the selected compiler while refreshing Elm projects. Falling back to 0.19.1.")
-                        Version(0, 19, 1)
-                    }
-            }
+            settings.toolchain.queryCompilerVersion(intellijProject).orNull()
+                ?: run {
+                    log.warn("Could not determine version of the selected compiler while refreshing Elm projects. Falling back to 0.19.1.")
+                    Version(0, 19, 1)
+                }
         }.thenCompose { elmCompilerVersion ->
             allProjects.map { elmProject ->
                 asyncLoadProject(
@@ -606,7 +612,6 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     }
 
     private fun resolveCompilerVersionForProjectLoad(): Version {
-        if (isUnitTestMode) return Version(0, 19, 1)
         return settings.toolchain.queryCompilerVersion(intellijProject).orNull()
             ?: run {
                 log.warn("Could not determine version of the selected compiler while loading Elm projects. Falling back to 0.19.1.")

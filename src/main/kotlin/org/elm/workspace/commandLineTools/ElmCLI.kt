@@ -38,6 +38,13 @@ class ElmCLI(val elmExecutablePath: Path) {
         try {
             val allMessages = mutableListOf<ElmError>()
             var allSucceeded = true
+            // Elm 0.19.2 has a bug where the error locations reported by `--report=json` are
+            // off by one: https://github.com/elm/compiler/issues/2358
+            // Correct them by adding 1 to each reported row and column. Computed
+            // lazily so we only run `elm --version` when there is actually an error to adjust.
+            val rowAndColumnOffset by lazy {
+                if (queryVersion(project).orNull()?.xyz == Version(0, 19, 2)) 1 else 0
+            }
             for (entry in entryPoints) {
                 val params = entry.makeParameters()
 
@@ -60,7 +67,7 @@ class ElmCLI(val elmExecutablePath: Path) {
                 val regex = "\\{.*}".toRegex()
                 val cleansedJson = regex.find(json)?.value
                 if (!cleansedJson.isNullOrEmpty()) {
-                    allMessages += elmJsonToCompilerMessages(cleansedJson)
+                    allMessages += elmJsonToCompilerMessages(cleansedJson, rowAndColumnOffset)
                 }
             }
 
