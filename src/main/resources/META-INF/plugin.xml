@@ -316,7 +316,7 @@
                 class="org.elm.ide.actions.ElmRunTestsSelectedAction"
                 text="Run Selected Elm Tests"
                 description="Run the tests for the selected test target in the Elm Compiler tool window"
-                icon="AllIcons.RunConfigurations.TestState.Run"/>
+                icon="AllIcons.RunConfigurations.TestState.Green2"/>
 
         <action id="Elm.RunExternalElmFormat"
                 class="org.elm.ide.actions.ElmExternalFormatAction"

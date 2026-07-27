@@ -418,7 +418,7 @@ private class ElmCompilerErrorTreeViewPanel(
     private inner class RunTestsSelectedAction : DumbAwareAction(
         "Run tests",
         "Run the tests for the selected test target",
-        AllIcons.RunConfigurations.TestState.Run
+        AllIcons.RunConfigurations.TestState.Green2
     ) {
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
