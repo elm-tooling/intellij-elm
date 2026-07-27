@@ -4,7 +4,11 @@ import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.State
+import com.intellij.openapi.components.Storage
+import com.intellij.openapi.components.StoragePathMacros
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.DumbAwareAction
@@ -72,10 +76,49 @@ fun buildTargetKeyOf(target: ResolvedBuildTarget): BuildTargetKey =
  * Remembers which build target is selected in the Elm Compiler tool window, so the
  * "Build Selected Elm Target" command can build it even when triggered from outside the
  * tool window (e.g. via a keyboard shortcut while editing).
+ *
+ * The selection is persisted in the project's workspace file so it survives IDE restarts —
+ * useful when one target (e.g. a project's tests) is the one you build most often. It is stored
+ * per-project rather than shared in VCS because a [BuildTargetKey] holds absolute paths.
  */
 @Service(Service.Level.PROJECT)
-class ElmBuildTargetSelectionService {
+@State(name = "ElmBuildTargetSelection", storages = [Storage(StoragePathMacros.WORKSPACE_FILE)])
+class ElmBuildTargetSelectionService : PersistentStateComponent<ElmBuildTargetSelectionService.State> {
+    /**
+     * The serialized form of [selectedKey]. A non-null [workDir] marks a real selection; the
+     * XML serializer needs a mutable, no-arg-constructable holder, which is why this mirrors
+     * [BuildTargetKey] rather than persisting it directly.
+     */
+    class State {
+        var workDir: String? = null
+        var name: String? = null
+        var inputPathForCompiler: String? = null
+        var outputPathForCompiler: String? = null
+    }
+
     var selectedKey: BuildTargetKey? = null
+
+    override fun getState(): State = State().also { state ->
+        selectedKey?.let {
+            state.workDir = it.workDir
+            state.name = it.name
+            state.inputPathForCompiler = it.inputPathForCompiler
+            state.outputPathForCompiler = it.outputPathForCompiler
+        }
+    }
+
+    override fun loadState(state: State) {
+        // A real BuildTargetKey always has a concrete working directory, so its absence means
+        // nothing was selected. The other fields may legitimately be empty strings.
+        selectedKey = state.workDir?.let { workDir ->
+            BuildTargetKey(
+                workDir = workDir,
+                name = state.name.orEmpty(),
+                inputPathForCompiler = state.inputPathForCompiler.orEmpty(),
+                outputPathForCompiler = state.outputPathForCompiler.orEmpty()
+            )
+        }
+    }
 }
 
 val Project.elmBuildTargetSelection: ElmBuildTargetSelectionService
