@@ -51,8 +51,20 @@ data class BuildTargetSuggestion(
 fun detectBuildTargetSuggestions(
     project: Project,
     existingTargets: List<ElmBuildTargetConfig>
+): List<BuildTargetSuggestion> =
+    buildTargetSuggestionsFor(project, project.elmWorkspace.allProjects, existingTargets)
+
+/**
+ * The workspace-independent core of [detectBuildTargetSuggestions], taking the [elmProjects]
+ * explicitly. Exposed (rather than folded into the function above) so tests can exercise it with
+ * hand-built projects — in particular a [LamderaApplicationProject], whose dependencies can't be
+ * resolved from the package cache without first installing Lamdera's packages into `~/.elm`.
+ */
+internal fun buildTargetSuggestionsFor(
+    project: Project,
+    elmProjects: List<ElmProject>,
+    existingTargets: List<ElmBuildTargetConfig>
 ): List<BuildTargetSuggestion> {
-    val elmProjects = project.elmWorkspace.allProjects
     if (elmProjects.isEmpty()) return emptyList()
 
     val tools = ElmSuggest.suggestTools(project)
