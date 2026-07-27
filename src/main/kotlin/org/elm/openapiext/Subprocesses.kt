@@ -31,7 +31,6 @@ import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.CapturingProcessHandler
 import com.intellij.execution.process.ProcessOutput
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.util.io.systemIndependentPath
@@ -73,8 +72,7 @@ fun GeneralCommandLine.execute(
             CapturingProcessHandler(this)
         }
 
-    val alreadyDisposed = ReadAction.compute<Boolean, Throwable> { project.isDisposed }
-    if (alreadyDisposed) {
+    if (project.isDisposed) {
         return ProcessOutput().apply { setCancelled() }
     }
 
