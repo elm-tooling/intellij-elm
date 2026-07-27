@@ -16,6 +16,7 @@ import org.elm.workspace.LamderaApplicationProject
 import org.elm.workspace.compiler.ElmBuildTargetConfig
 import org.elm.workspace.compiler.ElmBuildTargetType
 import org.elm.workspace.compiler.ElmCompilerKind
+import org.elm.workspace.compiler.toPathOrNull
 import org.elm.workspace.elmCompilerTool
 import org.elm.workspace.elmWorkspace
 import org.elm.workspace.lamderaCompilerTool
@@ -42,8 +43,15 @@ data class BuildTargetSuggestion(
  *
  * Application labels are always prefixed with the owning project's name so suggestions from
  * different projects (e.g. two `src/Main.elm` files) can be told apart.
+ *
+ * Suggestions that would duplicate an [existingTargets] entry are filtered out: a package
+ * suggestion whose `elm.json` is already a package target, or an application/Lamdera suggestion
+ * whose entry `.elm` file is already an application target.
  */
-fun detectBuildTargetSuggestions(project: Project): List<BuildTargetSuggestion> {
+fun detectBuildTargetSuggestions(
+    project: Project,
+    existingTargets: List<ElmBuildTargetConfig>
+): List<BuildTargetSuggestion> {
     val elmProjects = project.elmWorkspace.allProjects
     if (elmProjects.isEmpty()) return emptyList()
 
@@ -111,7 +119,19 @@ fun detectBuildTargetSuggestions(project: Project): List<BuildTargetSuggestion> 
             else -> {}
         }
     }
-    return suggestions
+    return suggestions.filterNot { suggestion -> existingTargets.any { it.matchesInput(suggestion.config) } }
+}
+
+/**
+ * True if this target already covers the same input as [suggestion]: a package target with the
+ * same `elm.json`, or an application target with the same entry `.elm` file. Paths are compared
+ * after normalization so `./src/Main.elm` and `src/Main.elm` are treated as the same file.
+ */
+private fun ElmBuildTargetConfig.matchesInput(suggestion: ElmBuildTargetConfig): Boolean {
+    if (type != suggestion.type) return false
+    val a = inputPath.trim().toPathOrNull()?.normalize()
+    val b = suggestion.inputPath.trim().toPathOrNull()?.normalize()
+    return if (a != null && b != null) a == b else inputPath.trim() == suggestion.inputPath.trim()
 }
 
 /**

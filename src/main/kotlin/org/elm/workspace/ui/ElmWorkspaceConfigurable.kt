@@ -272,7 +272,7 @@ class ElmWorkspaceConfigurable(
                 }
             }
             .setAddAction { button ->
-                val suggestions = detectBuildTargetSuggestions(project)
+                val suggestions = detectBuildTargetSuggestions(project, buildTargetList)
                 if (suggestions.isEmpty()) {
                     addTargetConfig(emptyTargetConfig())
                     return@setAddAction
