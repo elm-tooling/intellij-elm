@@ -312,6 +312,12 @@
                 description="Build all Elm build targets and show their combined errors"
                 icon="AllIcons.Actions.RunAll"/>
 
+        <action id="Elm.RunTestsSelected"
+                class="org.elm.ide.actions.ElmRunTestsSelectedAction"
+                text="Run Selected Elm Tests"
+                description="Run the tests for the selected test target in the Elm Compiler tool window"
+                icon="AllIcons.RunConfigurations.TestState.Run"/>
+
         <action id="Elm.RunExternalElmFormat"
                 class="org.elm.ide.actions.ElmExternalFormatAction"
                 text="Run elm-format on current file">

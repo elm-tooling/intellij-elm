@@ -69,7 +69,9 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
             onBuildSelected = { buildTargetsPanelRef.buildSelectedTarget() },
             isBuildSelectedEnabled = { buildTargetsPanelRef.hasSelectedTarget() },
             onBuildAll = { org.elm.ide.actions.buildAllTargets(project) },
-            isBuildAllEnabled = { buildTargetsPanelRef.hasTargets() }
+            isBuildAllEnabled = { buildTargetsPanelRef.hasTargets() },
+            onRunTestsSelected = { buildTargetsPanelRef.runSelectedTestTarget() },
+            isRunTestsSelectedVisible = { buildTargetsPanelRef.isTestTargetSelected() }
         )
         val outputPanel = ElmCompilerOutputPanel(project)
         val messagesAndOutputSplit = OnePixelSplitter(false, 0.56f).apply {
@@ -254,6 +256,17 @@ private class ElmBuildTargetsPanel(
         buildTarget(project, target)
     }
 
+    /** True when the selected target is a runnable (resolved) test target. */
+    fun isTestTargetSelected(): Boolean =
+        targetList.selectedValue?.target?.type == ElmBuildTargetType.TEST
+
+    /** Run the tests for the selected test target; no-op if the selection is not a test target. */
+    fun runSelectedTestTarget() {
+        val target = targetList.selectedValue?.target ?: return
+        if (target.type != ElmBuildTargetType.TEST) return
+        org.elm.ide.actions.runElmTestsForTarget(project, target)
+    }
+
     private fun editSelectedTarget() {
         val item = targetList.selectedValue ?: return
         // Locate the row by its configured name/input path so invalid targets can be edited (and fixed) too.
@@ -327,7 +340,9 @@ private class ElmCompilerErrorTreeViewPanel(
     private val onBuildSelected: () -> Unit,
     private val isBuildSelectedEnabled: () -> Boolean,
     private val onBuildAll: () -> Unit,
-    private val isBuildAllEnabled: () -> Boolean
+    private val isBuildAllEnabled: () -> Boolean,
+    private val onRunTestsSelected: () -> Unit,
+    private val isRunTestsSelectedVisible: () -> Boolean
 ) : ElmErrorTreeViewPanel(project, "Elm Compiler", false, true) {
     /** True while the messages tree is showing a build-target config error (not compiler output). */
     private var showingConfigError = false
@@ -360,6 +375,7 @@ private class ElmCompilerErrorTreeViewPanel(
         super.fillRightToolbarGroup(group)
         group.add(BuildSelectedAction())
         group.add(BuildAllAction())
+        group.add(RunTestsSelectedAction())
         group.addSeparator()
         group.add(ToggleBuildTargetsAction())
         group.addSeparator()
@@ -396,6 +412,23 @@ private class ElmCompilerErrorTreeViewPanel(
 
         override fun actionPerformed(e: AnActionEvent) {
             onBuildAll()
+        }
+    }
+
+    private inner class RunTestsSelectedAction : DumbAwareAction(
+        "Run tests",
+        "Run the tests for the selected test target",
+        AllIcons.RunConfigurations.TestState.Run
+    ) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            // Only offer this for the automatic test targets; hidden for regular build targets.
+            e.presentation.isVisible = isRunTestsSelectedVisible()
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            onRunTestsSelected()
         }
     }
 
