@@ -96,6 +96,15 @@ class ElmTestCLI(private val executablePath: Path) {
         try {
             val allMessages = mutableListOf<ElmError>()
             var allSucceeded = true
+            // Elm 0.19.2 has a bug where the error locations reported by `--report=json` are off by
+            // one: https://github.com/elm/compiler/issues/2358. elm-test drives the Elm compiler, so
+            // the same correction applies when the underlying compiler is 0.19.2. Query the compiler
+            // version only when there is actually an error to adjust, memoized per compiler path.
+            val offsetByCompiler = mutableMapOf<Path, Int>()
+            fun rowAndColumnOffsetFor(compilerPath: Path): Int =
+                offsetByCompiler.getOrPut(compilerPath) {
+                    if (ElmCLI(compilerPath).queryVersion(project).orNull()?.xyz == Version(0, 19, 2)) 1 else 0
+                }
             for (entry in entryPoints) {
                 val elmCompilerPath = entry.compilerPath
                 val commandLine = GeneralCommandLine(executablePath.toString(), "make", "--report=json")
@@ -128,7 +137,7 @@ class ElmTestCLI(private val executablePath: Path) {
                 }
                 val cleansedJson = "\\{.*}".toRegex().find(output.stderr)?.value
                 if (!cleansedJson.isNullOrEmpty()) {
-                    allMessages += elmJsonToCompilerMessages(cleansedJson)
+                    allMessages += elmJsonToCompilerMessages(cleansedJson, rowAndColumnOffsetFor(elmCompilerPath))
                 }
             }
 
