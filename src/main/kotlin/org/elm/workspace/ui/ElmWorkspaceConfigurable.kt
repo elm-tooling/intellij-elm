@@ -132,9 +132,11 @@ class ElmWorkspaceConfigurable(
     private val targetName = JTextField()
     private val targetTypeApplication = JRadioButton(ElmBuildTargetType.APPLICATION.toString(), true)
     private val targetTypePackage = JRadioButton(ElmBuildTargetType.PACKAGE.toString())
-    private val targetTypeGroup = ButtonGroup().apply {
-        add(targetTypeApplication)
-        add(targetTypePackage)
+    init {
+        ButtonGroup().apply {
+            add(targetTypeApplication)
+            add(targetTypePackage)
+        }
     }
     private val targetInputLabel = JLabel("Input Elm File")
     private val targetInputPath = TextFieldWithBrowseButton()
