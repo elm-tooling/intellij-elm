@@ -21,7 +21,7 @@ warm. These two dummy projects exist only to drive that population.
 ## Why more than one project?
 
 Some packages are pinned at **multiple versions** across the fixtures (`elm/core` 1.0.0 &
-1.0.5, `elm/json` 1.0.0 & 1.1.3, `elm/parser` 1.0.0 & 1.1.0). A single `elm.json` can only
+1.0.5, `elm/json` 1.0.0 & 1.1.4, `elm/parser` 1.0.0 & 1.1.0). A single `elm.json` can only
 hold one version of each package, so each bucket subdirectory holds one non-conflicting set:
 today `a/` has the older versions and `b/` has everything else. If a fixture ever introduces
 a *third* version of some package, just add a `c/` (etc.) — no code changes needed.

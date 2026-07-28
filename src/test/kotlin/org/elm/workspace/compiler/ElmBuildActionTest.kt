@@ -262,7 +262,7 @@ private val manifestLamdera101 = """
                     "elm/bytes": "1.0.8",
                     "elm/file": "1.0.5",
                     "elm/http": "2.0.0",
-                    "elm/json": "1.1.3",
+                    "elm/json": "1.1.4",
                     "elm/time": "1.0.0",
                     "elm/virtual-dom": "1.0.2"
                 }
