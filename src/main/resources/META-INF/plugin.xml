@@ -244,7 +244,7 @@
                     factoryClass="org.elm.ide.toolwindow.ElmToolWindowFactory"/>
         <toolWindow id="Elm Compiler" anchor="bottom" icon="/icons/elm-toolwindow.svg"
                     factoryClass="org.elm.ide.toolwindow.ElmCompilerToolWindowFactory"/>
-        <toolWindow id="Elm Review" anchor="bottom" secondary="false" icon="/icons/elm-toolwindow.svg"
+        <toolWindow id="Elm Review" anchor="bottom" secondary="false" icon="/icons/elm-review.svg"
                     factoryClass="org.elm.ide.toolwindow.ElmReviewToolWindowFactory"/>
         <statusBarWidgetFactory
                 id="org.elm.statusBar.tasks"
