@@ -23,6 +23,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.RootsChangeRescanningInfo.TOTAL_RESCAN
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ex.ProjectRootManagerEx
 import com.intellij.openapi.util.EmptyRunnable
 import com.intellij.openapi.util.SimpleModificationTracker
@@ -30,6 +31,8 @@ import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.impl.source.resolve.ResolveCache
+import com.intellij.psi.search.FilenameIndex
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.io.systemIndependentPath
 import com.intellij.util.messages.Topic
 import com.intellij.util.ui.update.MergingUpdateQueue
@@ -158,6 +161,8 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     private val rawSettingsRef = AtomicReference(RawSettings())
     @Volatile
     private var pendingBuildTargetSelection: BuildTargetSelectionRequest? = null
+    @Volatile
+    private var pendingProjectSelection: Path? = null
 
     /** The flat list of configured build targets. Each target names an absolute input file; the
      * owning Elm project (elm.json) is derived from that file at resolution time. */
@@ -414,6 +419,22 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         return pending
     }
 
+    /**
+     * Open the Elm settings and scroll to the "Elm Projects" list, preselecting the `elm.json`
+     * nearest to [contextFilePath] (the file the user was looking at) so they can see which project
+     * to enable. Used by the "no Elm project for this file" editor banner.
+     */
+    fun showConfigureProjectsUI(contextFilePath: Path?) {
+        pendingProjectSelection = contextFilePath
+        showConfigureToolchainUI()
+    }
+
+    fun consumePendingProjectSelection(): Path? {
+        val pending = pendingProjectSelection
+        pendingProjectSelection = null
+        return pending
+    }
+
 
     // ELM PROJECTS
 
@@ -431,6 +452,47 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
      */
     val allProjects: List<ElmProject>
         get() = projectsRef.get()
+
+
+    /**
+     * The set of `elm.json` manifest paths the user has enabled (their INTENT), persisted
+     * independently of whether the project currently loads. A path stays here even if loading
+     * fails, so a transient failure surfaces as an enabled-but-errored project in the settings UI
+     * instead of silently disappearing. Only successfully-loaded projects live in [projectsRef]
+     * and participate in file resolution.
+     */
+    private val enabledPathsRef = AtomicReference<Set<Path>>(emptySet())
+
+
+    /**
+     * Load errors for enabled projects that failed to load, keyed by manifest path. Used by the
+     * settings UI to show why an enabled project is not currently loaded (and to offer a retry).
+     */
+    private val loadErrorsRef = AtomicReference<Map<Path, String>>(emptyMap())
+
+
+    /** The manifest paths the user has enabled, whether or not they currently load. */
+    val enabledProjectPaths: Set<Path>
+        get() = enabledPathsRef.get()
+
+
+    /** The most recent load error for each enabled-but-not-loaded project, keyed by manifest path. */
+    val projectLoadErrors: Map<Path, String>
+        get() = loadErrorsRef.get()
+
+
+    private fun recordLoadError(manifestPath: Path, message: String) {
+        loadErrorsRef.updateAndGet { it + (manifestPath to message) }
+    }
+
+    private fun clearLoadError(manifestPath: Path) {
+        loadErrorsRef.updateAndGet { it - manifestPath }
+    }
+
+    private fun describeError(error: Throwable): String {
+        val root = unwrapCompletionError(error)
+        return root.message ?: root::class.java.simpleName
+    }
 
 
     /**
@@ -593,58 +655,119 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     fun asyncAttachElmProject(manifestPath: Path): CompletableFuture<List<ElmProject>> =
         asyncLoadProject(manifestPath, installDeps = true)
             .thenApply {
+                // Only mark the project enabled once it has actually loaded, so a failed attach
+                // (e.g. auto-discovery guessing a bad `elm.json`) does not persist as intent. The
+                // exception still propagates to the caller.
+                enabledPathsRef.updateAndGet { paths -> paths + manifestPath }
+                clearLoadError(manifestPath)
                 upsertProject(it)
             }
 
 
     fun detachElmProject(manifestPath: Path) {
+        enabledPathsRef.updateAndGet { it - manifestPath }
+        clearLoadError(manifestPath)
         modifyProjects { oldProjects ->
             oldProjects.filter { it.manifestPath != manifestPath }
         }
     }
 
 
-    fun asyncRefreshAllProjects(installDeps: Boolean = false): CompletableFuture<List<ElmProject>> =
-        if (allProjects.isEmpty()) {
-            CompletableFuture.completedFuture(
-                modifyProjects { it }
-            )
-        } else
-        runAsyncTask(intellijProject, "Preparing Elm project refresh") {
+    /**
+     * Apply a desired set of enabled `elm.json` manifests (the settings "Apply" action). Detaches
+     * projects the user unchecked and attaches newly-checked ones (installing their dependencies).
+     *
+     * Unlike [asyncAttachElmProject], a manifest that fails to load is kept in the enabled set and
+     * recorded in [projectLoadErrors] rather than throwing, so it shows as enabled-but-errored and
+     * can be retried via "Reload / install dependencies". The returned future completes once every
+     * newly-enabled project has finished loading (successfully or not).
+     */
+    fun asyncSetEnabledProjects(desiredPaths: Set<Path>): CompletableFuture<Unit> {
+        val current = enabledPathsRef.get()
+        val toEnable = desiredPaths - current
+        val toDisable = current - desiredPaths
+
+        // Record the user's intent up front so it persists even if some loads fail.
+        enabledPathsRef.set(desiredPaths)
+        toDisable.forEach { clearLoadError(it) }
+        if (toDisable.isNotEmpty()) {
+            modifyProjects { projects -> projects.filterNot { it.manifestPath in toDisable } }
+        }
+
+        val futures = toEnable.map { path ->
+            asyncLoadProject(path, installDeps = true)
+                .thenAccept { project ->
+                    clearLoadError(path)
+                    upsertProject(project)
+                }
+                .exceptionally { error ->
+                    recordLoadError(path, describeError(error))
+                    null
+                }
+        }
+        return CompletableFuture.allOf(*futures.toTypedArray())
+            .whenComplete { _, _ -> notifyDidChangeWorkspace(projectSetChanged = false) }
+            .thenApply { }
+    }
+
+
+    fun asyncRefreshAllProjects(installDeps: Boolean = false): CompletableFuture<List<ElmProject>> {
+        // Refresh reloads every ENABLED project (the user's intent), not just the currently-loaded
+        // ones, so that an enabled-but-errored project is retried and can recover here.
+        val enabledPaths = enabledPathsRef.get()
+        if (enabledPaths.isEmpty()) {
+            return CompletableFuture.completedFuture(modifyProjects { it })
+        }
+        val currentByManifest = allProjects.associateBy { it.manifestPath }
+        return runAsyncTask(intellijProject, "Preparing Elm project refresh") {
             settings.toolchain.queryCompilerVersion(intellijProject).orNull()
                 ?: run {
                     log.warn("Could not determine version of the selected compiler while refreshing Elm projects. Falling back to 0.19.1.")
                     Version(0, 19, 1)
                 }
         }.thenCompose { elmCompilerVersion ->
-            allProjects.map { elmProject ->
+            enabledPaths.map { manifestPath ->
                 asyncLoadProject(
-                    elmProject.manifestPath,
+                    manifestPath,
                     installDeps = installDeps,
                     compilerVersion = elmCompilerVersion
                 ).thenApply { loadedProject ->
-                    RefreshOutcome(elmProject.manifestPath, loadedProject, null)
+                    RefreshOutcome(manifestPath, loadedProject, null)
                 }.exceptionally { error ->
-                    // TODO Communicate this error in the UI (while warnings may be fine for tests)
                     val root = unwrapCompletionError(error)
                     logRefreshFailure("Could not load elm project", root)
-                    RefreshOutcome(elmProject.manifestPath, null, root)
+                    RefreshOutcome(manifestPath, null, root)
                 }
             }.joinAll()
                 .thenApply { outcomes ->
-                    val refreshOutcomeByManifest = outcomes.associateBy { it.manifestPath }
-                    modifyProjects { currentProjects ->
-                        currentProjects.mapNotNull { current ->
-                            val outcome = refreshOutcomeByManifest[current.manifestPath] ?: return@mapNotNull current
-                            when {
-                                outcome.project != null -> outcome.project
-                                isMissingManifestFailure(outcome.error) -> null
-                                else -> current
-                            }
+                    // A deleted manifest drops the project from the enabled set entirely; any other
+                    // load failure keeps the previously-loaded project (if any) so a transient error
+                    // doesn't lose it, and is surfaced via projectLoadErrors for the settings UI.
+                    val missingManifests = outcomes
+                        .filter { isMissingManifestFailure(it.error) }
+                        .map { it.manifestPath }
+                        .toSet()
+                    if (missingManifests.isNotEmpty()) {
+                        enabledPathsRef.updateAndGet { it - missingManifests }
+                    }
+                    outcomes.forEach { outcome ->
+                        when {
+                            outcome.project != null -> clearLoadError(outcome.manifestPath)
+                            outcome.manifestPath in missingManifests -> clearLoadError(outcome.manifestPath)
+                            outcome.error != null -> recordLoadError(outcome.manifestPath, describeError(outcome.error))
                         }
                     }
+                    val refreshedProjects = outcomes.mapNotNull { outcome ->
+                        when {
+                            outcome.project != null -> outcome.project
+                            outcome.manifestPath in missingManifests -> null
+                            else -> currentByManifest[outcome.manifestPath]
+                        }
+                    }
+                    modifyProjects { _ -> refreshedProjects }
                 }
         }
+    }
 
 
     fun asyncDiscoverAndRefresh(): CompletableFuture<List<ElmProject>> {
@@ -708,6 +831,25 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         directoryIndex.getInfoForFile(file).takeIf { it !== noProjectSentinel }
 
 
+    /**
+     * All `elm.json` manifests discoverable within the project's content roots, excluding
+     * IDE-excluded folders (e.g. `node_modules`, `elm-stuff`). This is the universe of projects
+     * the settings UI lets the user enable/disable, and is independent of auto-discovery's
+     * one-shot flag — newly-added `elm.json` files show up here immediately.
+     */
+    fun discoverElmJsonManifestPaths(): List<Path> =
+        runReadAction {
+            val fileIndex = ProjectFileIndex.getInstance(intellijProject)
+            FilenameIndex.getVirtualFilesByName(ELM_JSON, GlobalSearchScope.projectScope(intellijProject))
+                .asSequence()
+                .filter { it.isValid && !it.isDirectory && fileIndex.isInContent(it) && !fileIndex.isExcluded(it) }
+                .map { it.pathAsPath }
+                .distinct()
+                .sortedWith(manifestPathDisplayOrder)
+                .toList()
+        }
+
+
     private val directoryIndex: MyDirectoryIndex<ElmProject> =
         MyDirectoryIndex(this, noProjectSentinel) { index ->
             fun put(path: Path?, elmProject: ElmProject) {
@@ -767,6 +909,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     /// Configures the workspace for the Elm project described by [manifestFile]
     fun setupForTests(toolchain: ElmToolchain, manifestFile: VirtualFile) {
         useToolchain(toolchain)
+        enabledPathsRef.updateAndGet { it + manifestFile.pathAsPath }
         asyncLoadProject(manifestFile.pathAsPath)
             .get(5, TimeUnit.SECONDS)
             .run { upsertProject(this) }
@@ -781,8 +924,10 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
 
         val projectsElement = Element("elmProjects")
         state.addContent(projectsElement)
-        for (project in allProjects) {
-            val elem = Element("project").setAttribute("path", project.manifestPath.systemIndependentPath)
+        // Persist the user's enabled set (intent), not just the currently-loaded projects, so an
+        // enabled project that failed to load this session is remembered and retried next time.
+        for (manifestPath in enabledPathsRef.get().sortedWith(manifestPathDisplayOrder)) {
+            val elem = Element("project").setAttribute("path", manifestPath.systemIndependentPath)
             projectsElement.addContent(elem)
         }
 
@@ -903,16 +1048,27 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             )
         }
 
-        return state.getChild("elmProjects")
-            .getChildren("project")
-            .mapNotNull { it.getAttributeValue("path") }
-            .mapNotNull { Paths.get(it) }
+        val enabledPaths = state.getChild("elmProjects")
+            ?.getChildren("project")
+            ?.mapNotNull { it.getAttributeValue("path") }
+            ?.mapNotNull { runCatching { Paths.get(it) }.getOrNull() }
+            ?.toCollection(LinkedHashSet())
+            ?: LinkedHashSet()
+
+        enabledPathsRef.set(enabledPaths)
+
+        // Startup loads intentionally do NOT install dependencies (keeps opening a project fast and
+        // works offline). A project whose deps aren't present yet fails here and is surfaced as an
+        // enabled-but-errored project the user can retry via "Reload / install dependencies".
+        return enabledPaths
             .map { path ->
-                asyncLoadProject(path).exceptionally {
-                    // TODO Communicate this error in the UI (while warnings may be fine for tests)
-                    log.warn("Could not load child project", it)
-                    null
-                }
+                asyncLoadProject(path)
+                    .thenApply<ElmProject?> { it.also { clearLoadError(path) } }
+                    .exceptionally {
+                        recordLoadError(path, describeError(it))
+                        log.warn("Could not load Elm project $path: ${describeError(it)}")
+                        null
+                    }
             }.joinAll()
             .thenApply { rawProjects ->
                 if (rawProjects.isNotEmpty()) {
@@ -980,6 +1136,13 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         // This topic covers any changes to the projects contained within the Elm workspace as
         // well as changes to the workspace settings.
         val WORKSPACE_TOPIC = Topic("Elm workspace changes", ElmWorkspaceListener::class.java)
+
+        /**
+         * Display/persistence order for `elm.json` manifests: shallower paths first (by segment
+         * depth), then alphabetically. Keeps the top-level project at the top of the settings list.
+         */
+        val manifestPathDisplayOrder: Comparator<Path> =
+            compareBy({ it.nameCount }, { it.systemIndependentPath })
     }
 }
 

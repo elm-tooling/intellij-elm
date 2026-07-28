@@ -244,8 +244,6 @@
         <projectConfigurable instance="org.elm.workspace.ui.ElmWorkspaceConfigurable" displayName="Elm"
                              groupId="language"/>
         <editorNotificationProvider implementation="org.elm.ide.notifications.ElmNeedsConfigNotificationProvider"/>
-        <toolWindow id="Elm" anchor="right" icon="/icons/elm-toolwindow.svg"
-                    factoryClass="org.elm.ide.toolwindow.ElmToolWindowFactory"/>
         <toolWindow id="Elm Compiler" anchor="bottom" icon="/icons/elm-toolwindow.svg"
                     factoryClass="org.elm.ide.toolwindow.ElmCompilerToolWindowFactory"/>
         <toolWindow id="Elm Review" anchor="bottom" secondary="false" icon="/icons/elm-toolwindow.svg"
@@ -288,22 +286,6 @@
             <add-to-group group-id="NewGroup" anchor="before" relative-to-action="NewFile"/>
         </action>
 
-        <action id="Elm.AttachElmProject"
-                class="org.elm.workspace.ElmAttachProjectAction"
-                text="Attach elm.json project file"
-                icon="AllIcons.General.Add">
-        </action>
-
-        <action id="Elm.DetachElmProject"
-                class="org.elm.workspace.ElmDetachProjectAction"
-                text="Detach elm.json project file"
-                icon="AllIcons.General.Remove"/>
-
-        <action id="Elm.RefreshElmProjects"
-                class="org.elm.workspace.ElmRefreshProjectsAction"
-                text="Refresh Elm projects"
-                icon="AllIcons.Actions.Refresh"/>
-
         <action id="Elm.BuildSelected"
                 class="org.elm.ide.actions.ElmBuildSelectedAction"
                 text="Build Selected Elm Target"
@@ -333,15 +315,6 @@
                 text="Run elm-review">
             <add-to-group group-id="CodeMenu" anchor="last"/>
         </action>
-
-        <group id="Elm.WorkspaceToolsGroup" text="Elm" popup="true">
-            <reference ref="Elm.RefreshElmProjects"/>
-            <separator/>
-            <reference ref="Elm.AttachElmProject"/>
-            <reference ref="Elm.DetachElmProject"/>
-
-            <add-to-group group-id="ToolsMenu"/>
-        </group>
 
     </actions>
 

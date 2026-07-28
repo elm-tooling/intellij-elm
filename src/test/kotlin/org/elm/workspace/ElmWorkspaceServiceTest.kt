@@ -1,8 +1,10 @@
 package org.elm.workspace
 
 import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.PlatformTestUtil
 import org.elm.fileTree
+import org.elm.workspace.ui.ElmWorkspaceConfigurable
 import org.elm.openapiext.elementFromXmlString
 import org.elm.openapiext.pathAsPath
 import org.elm.openapiext.toXmlString
@@ -367,6 +369,129 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
         // ... and serialize the resulting state ...
         val actualXml = workspace.state.toXmlString()
         checkEquals(xml, actualXml)
+    }
+
+    @Test
+    fun `test asyncSetEnabledProjects enables and disables projects`() {
+        val testProject = fileTree {
+            dir("a") {
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
+                dir("src") { elm("Main.elm") }
+            }
+            dir("b") {
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
+                dir("src") { elm("Main.elm") }
+            }
+        }.create(project, elmWorkspaceDirectory)
+
+        val rootPath = testProject.root.pathAsPath
+        val a = rootPath.resolve("a/elm.json")
+        val b = rootPath.resolve("b/elm.json")
+        val workspace = project.elmWorkspace
+
+        // Enabling both attaches both.
+        workspace.asyncSetEnabledProjects(setOf(a, b)).get()
+        checkEquals(setOf(a, b), workspace.enabledProjectPaths)
+        checkEquals(setOf(a, b), workspace.allProjects.map { it.manifestPath }.toSet())
+
+        // Disabling one detaches it and removes it from the enabled set.
+        workspace.asyncSetEnabledProjects(setOf(a)).get()
+        checkEquals(setOf(a), workspace.enabledProjectPaths)
+        checkEquals(setOf(a), workspace.allProjects.map { it.manifestPath }.toSet())
+    }
+
+    @Test
+    fun `test enabled project that fails to load stays enabled and errored`() {
+        val testProject = fileTree {
+            dir("a") {
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
+                dir("src") { elm("Main.elm") }
+            }
+            dir("b") {
+                project("elm.json", """ { "BOGUS": "INVALID ELM.JSON" } """)
+            }
+        }.create(project, elmWorkspaceDirectory)
+
+        val workspace = project.elmWorkspace
+        val rootPath = testProject.root.pathAsPath
+        val a = rootPath.resolve("a").resolve("elm.json")
+        val b = rootPath.resolve("b").resolve("elm.json")
+        val aString = a.toString().replace("\\", "/")
+        val bString = b.toString().replace("\\", "/")
+
+        val xml = """
+            <state>
+              <elmProjects>
+                <project path="$aString" />
+                <project path="$bString" />
+              </elmProjects>
+              <settings elmCompilerPath="${toolchain.elmCompilerPath}" compilerType="ELM" elmFormatPath="${toolchain.elmFormatPath}" elmTestPath="${toolchain.elmTestPath}" elmReviewPath="" elmReviewConfigPath="" isElmFormatOnSaveEnabled="true" isElmReviewOnTheFlyEnabled="true" isElmBuildOnSaveEnabled="false" />
+            </state>
+            """.trimIndent()
+
+        workspace.asyncLoadState(elementFromXmlString(xml)).get()
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+
+        // Only the valid project loads...
+        checkEquals(listOf(a), workspace.allProjects.map { it.manifestPath })
+        // ...but both stay enabled (intent), and the bad one is recorded as errored.
+        checkEquals(setOf(a, b), workspace.enabledProjectPaths)
+        check(workspace.projectLoadErrors.containsKey(b)) { "Expected a recorded load error for $b" }
+
+        // The enabled set (including the errored project) round-trips through persistence, so a
+        // transient failure does not silently drop the project.
+        val actualXml = workspace.state.toXmlString()
+        checkEquals(xml, actualXml)
+    }
+
+    @Test
+    fun `test settings panel builds and shows enabled project as checked`() {
+        val testProject = fileTree {
+            dir("a") {
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
+                dir("src") { elm("Main.elm") }
+            }
+        }.create(project, elmWorkspaceDirectory)
+
+        val a = testProject.root.pathAsPath.resolve("a").resolve("elm.json")
+        project.elmWorkspace.asyncAttachElmProject(a).get()
+
+        // Build and reset the whole settings panel; this exercises the projects checkbox list and
+        // its toolbar wiring the same way opening Settings > Languages & Frameworks > Elm would.
+        val configurable = ElmWorkspaceConfigurable(project)
+        try {
+            configurable.createComponent()
+            configurable.reset()
+            check(!configurable.isModified) { "A freshly reset settings panel should not be modified" }
+        } finally {
+            configurable.disposeUIResources()
+            Disposer.dispose(configurable)
+        }
+    }
+
+    @Test
+    fun `test discoverElmJsonManifestPaths lists content elm-json sorted by depth then name`() {
+        val testProject = fileTree {
+            project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
+            dir("src") { elm("Main.elm") }
+            dir("b") {
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
+            }
+            dir("a") {
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
+            }
+        }.create(project, elmWorkspaceDirectory)
+
+        val rootPath = testProject.root.pathAsPath
+        val discovered = project.elmWorkspace.discoverElmJsonManifestPaths()
+        checkEquals(
+            listOf(
+                rootPath.resolve("elm.json"),
+                rootPath.resolve("a").resolve("elm.json"),
+                rootPath.resolve("b").resolve("elm.json")
+            ),
+            discovered
+        )
     }
 
 

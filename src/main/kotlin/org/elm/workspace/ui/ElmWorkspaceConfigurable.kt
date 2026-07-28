@@ -1,5 +1,6 @@
 package org.elm.workspace.ui
 
+import com.intellij.icons.AllIcons
 import com.intellij.ide.DataManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -8,6 +9,10 @@ import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.keymap.impl.ui.KeymapPanel
 import com.intellij.openapi.actionSystem.ActionToolbarPosition
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.AnActionButton
 import com.intellij.openapi.options.Configurable
@@ -18,6 +23,7 @@ import com.intellij.util.messages.MessageBusConnection
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.HyperlinkLabel
+import com.intellij.ui.CheckBoxList
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.JBColor
 import com.intellij.ui.ToolbarDecorator
@@ -31,6 +37,7 @@ import org.elm.openapiext.Result
 import org.elm.openapiext.UiDebouncer
 import org.elm.openapiext.fileSystemPathTextField
 import org.elm.openapiext.findFileByPathTestAware
+import org.elm.openapiext.pathAsPath
 import org.elm.utils.layout
 import org.elm.workspace.ElmSuggest
 import org.elm.workspace.ElmWorkspaceService
@@ -55,6 +62,7 @@ import org.elm.workspace.compiler.toPathOrNull
 import java.awt.CardLayout
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 import javax.swing.BoxLayout
@@ -136,6 +144,12 @@ class ElmWorkspaceConfigurable(
     private lateinit var targetOutputRow: JComponent
     private lateinit var targetModeRow: JComponent
 
+    // The activatable-projects list: every discoverable `elm.json` (plus any manually-added ones),
+    // each with a checkbox that enables/disables it as a project. Checkbox state is staged and
+    // committed in apply(); `displayedProjectPaths` is the row order (depth-then-alpha).
+    private val projectsCheckBoxList = CheckBoxList<Path>()
+    private val displayedProjectPaths = mutableListOf<Path>()
+
     private val buildTargetList = mutableListOf<ElmBuildTargetConfig>()
     private var lastSelectedTargetIndex = -1
     private var isReorderingTargets = false
@@ -204,12 +218,15 @@ class ElmWorkspaceConfigurable(
         }
 
         val panel = layout {
-            block("Toolchain Compiler") {
-                row("Location:", pathFieldPlusAutoDiscoverButton(toolchainCompilerPathField, elmCompilerTool))
-                noteRow("Path to the compiler used by other tools")
+            block("Enabled elm.json files") {
+                row(projectsPanel())
             }
             block("Build Targets") {
                 row(buildTargetsPanel())
+            }
+            block("Toolchain Compiler") {
+                row("Location:", pathFieldPlusAutoDiscoverButton(toolchainCompilerPathField, elmCompilerTool))
+                noteRow("Path to the compiler used by other tools")
             }
             block(elmFormatTool) {
                 row("Location:", pathFieldPlusAutoDiscoverButton(elmFormatPathField, elmFormatTool))
@@ -246,12 +263,141 @@ class ElmWorkspaceConfigurable(
                 object : ElmWorkspaceService.ElmWorkspaceListener {
                     override fun didUpdate() {
                         updateReviewCompilerStatusLabel()
+                        // Reflect load-status changes (e.g. after a Reload) without discarding the
+                        // user's pending checkbox edits.
+                        ApplicationManager.getApplication().invokeLater {
+                            if (displayedProjectPaths.isNotEmpty()) {
+                                rebuildProjectsList(checkedProjectPaths())
+                            }
+                        }
                     }
                 }
             )
         }
 
         return panel
+    }
+
+    // ELM PROJECTS (activate/deactivate elm.json files)
+
+    private fun projectsPanel(): JComponent {
+        val decorated = ToolbarDecorator.createDecorator(projectsCheckBoxList)
+            .setToolbarPosition(ActionToolbarPosition.TOP)
+            .disableUpDownActions()
+            .disableRemoveAction()
+            .setAddAction { addProjectManually() }
+            .setAddActionName("Add elm.json manually…")
+            .addExtraAction(reloadProjectsAction())
+            .createPanel()
+        decorated.minimumSize = Dimension(0, 0)
+        decorated.preferredSize = Dimension(decorated.preferredSize.width, JBUI.scale(160))
+        return decorated
+    }
+
+    /**
+     * The "Reload / install dependencies" toolbar action. It reloads every enabled project and
+     * installs missing dependencies. It is disabled while there are pending check changes, because
+     * newly-enabled projects have their dependencies installed when the settings are applied — the
+     * button only ever operates on the already-applied set.
+     */
+    private fun reloadProjectsAction(): AnAction =
+        object : DumbAwareAction("Reload / Install Dependencies", null, AllIcons.Actions.Refresh) {
+            override fun actionPerformed(e: AnActionEvent) = reloadProjects()
+
+            override fun update(e: AnActionEvent) {
+                val pending = isProjectsModified()
+                e.presentation.isEnabled = !pending
+                e.presentation.text = if (pending)
+                    "Apply changes to load newly enabled projects"
+                else
+                    "Reload / Install Dependencies"
+            }
+
+            override fun getActionUpdateThread() = ActionUpdateThread.EDT
+        }
+
+    private fun checkedProjectPaths(): Set<Path> =
+        (0 until projectsCheckBoxList.itemsCount)
+            .filter { projectsCheckBoxList.isItemSelected(it) }
+            .mapNotNull { projectsCheckBoxList.getItemAt(it) }
+            .toSet()
+
+    private fun rebuildProjectsList(checked: Set<Path>) {
+        projectsCheckBoxList.setItems(displayedProjectPaths.toList()) { path -> projectDisplayLabel(path) }
+        for (path in checked) {
+            projectsCheckBoxList.setItemSelected(path, true)
+        }
+        projectsCheckBoxList.repaint()
+    }
+
+    private fun projectDisplayLabel(path: Path): String {
+        val base = project.basePath?.let { runCatching { Paths.get(it) }.getOrNull() }
+        val shown = if (base != null && path.startsWith(base)) base.relativize(path).toString() else path.toString()
+        val workspace = project.elmWorkspace
+        val error = workspace.projectLoadErrors[path]
+        return when {
+            error != null -> "$shown  —  failed to load: ${error.lineSequence().firstOrNull().orEmpty()}"
+            else -> shown
+        }
+    }
+
+    private fun resetProjects() {
+        val workspace = project.elmWorkspace
+        val enabled = workspace.enabledProjectPaths
+        val discovered = runCatching { workspace.discoverElmJsonManifestPaths() }.getOrElse { emptyList() }
+        val union = (discovered + enabled).toSet()
+        displayedProjectPaths.clear()
+        displayedProjectPaths.addAll(union.sortedWith(ElmWorkspaceService.manifestPathDisplayOrder))
+        rebuildProjectsList(enabled)
+    }
+
+    private fun isProjectsModified(): Boolean =
+        checkedProjectPaths() != project.elmWorkspace.enabledProjectPaths
+
+    private fun applyProjects() {
+        project.elmWorkspace.asyncSetEnabledProjects(checkedProjectPaths())
+    }
+
+    private fun addProjectManually() {
+        val descriptor = FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
+            .withTitle("Select 'elm.json' File")
+            .withFileFilter { it.name == "elm.json" }
+            .also { it.isForcedToUseIdeaFileChooser = true }
+        val file = FileChooser.chooseFile(descriptor, project, null) ?: return
+        val path = file.pathAsPath
+        val checked = checkedProjectPaths() + path
+        if (path !in displayedProjectPaths) {
+            displayedProjectPaths.add(path)
+            displayedProjectPaths.sortWith(ElmWorkspaceService.manifestPathDisplayOrder)
+        }
+        rebuildProjectsList(checked)
+    }
+
+    /**
+     * When the "no Elm project for this file" banner opened these settings, highlight the `elm.json`
+     * that most nearly covers that file (the deepest ancestor directory containing an `elm.json`),
+     * so the user can see which project to enable. Does not auto-check it — that stays the user's call.
+     */
+    private fun applyPendingProjectSelection() {
+        val contextFile = project.elmWorkspace.consumePendingProjectSelection() ?: return
+        val nearest = displayedProjectPaths
+            .filter { manifest -> manifest.parent?.let { contextFile.startsWith(it) } == true }
+            .maxByOrNull { it.parent.nameCount }
+            ?: return
+        val index = displayedProjectPaths.indexOf(nearest)
+        if (index >= 0) {
+            projectsCheckBoxList.selectedIndex = index
+            projectsCheckBoxList.ensureIndexIsVisible(index)
+        }
+    }
+
+    private fun reloadProjects() {
+        project.elmWorkspace.asyncRefreshAllProjects(installDeps = true)
+            .whenComplete { _, _ ->
+                ApplicationManager.getApplication().invokeLater {
+                    rebuildProjectsList(checkedProjectPaths())
+                }
+            }
     }
 
     private fun buildTargetsPanel(): JComponent {
@@ -711,6 +857,9 @@ class ElmWorkspaceConfigurable(
         refreshTargetListLabels(select = 0)
         applyPendingBuildTargetSelection()
 
+        resetProjects()
+        applyPendingProjectSelection()
+
         update(null)
     }
 
@@ -726,6 +875,7 @@ class ElmWorkspaceConfigurable(
     }
 
     override fun apply() {
+        applyProjects()
         persistCurrentProjectTargets()
         val buildTargets = buildTargetList.toList()
         project.elmWorkspace.modifySettings {
@@ -756,6 +906,7 @@ class ElmWorkspaceConfigurable(
             || elmReviewOnTheFlyCheckbox.isSelected != settings.isElmReviewOnTheFlyEnabled
             || isOnSaveHookEnabledAndSelected() != settings.isElmFormatOnSaveEnabled
             || buildTargetList.toList() != settings.buildTargets
+            || isProjectsModified()
     }
 
     override fun getDisplayName() = "Elm"
