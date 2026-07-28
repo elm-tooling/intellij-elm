@@ -372,6 +372,72 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
     }
 
     @Test
+    fun `test migrates pre-migration build targets nested under projects to the flat model`() {
+        val testProject = fileTree {
+            dir("a") {
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
+                dir("src") {
+                    elm("Main.elm")
+                }
+            }
+        }.create(project, elmWorkspaceDirectory)
+
+        val workspace = project.elmWorkspace
+        val rootPath = testProject.root.pathAsPath
+        val projectPath = rootPath.resolve("a").resolve("elm.json")
+        val projectPathString = projectPath.toString().replace("\\", "/") // normalize windows paths
+        val projectDirString = projectPath.parent.toString().replace("\\", "/")
+
+        // The old serialized format: build targets nested under <project manifestPath="…"> with
+        // project-relative input/output paths and no `type` attribute.
+        val xml = """
+            <state>
+              <elmProjects>
+                <project path="$projectPathString" />
+              </elmProjects>
+              <settings elmCompilerPath="${toolchain.elmCompilerPath}" compilerType="ELM" elmFormatPath="${toolchain.elmFormatPath}" elmTestPath="${toolchain.elmTestPath}" elmReviewPath="" elmReviewConfigPath="" isElmFormatOnSaveEnabled="true" isElmReviewOnTheFlyEnabled="true" isElmBuildOnSaveEnabled="false" />
+              <buildTargets>
+                <project manifestPath="$projectPathString">
+                  <target name="App" inputPath="src/Main.elm" outputPath="build/main.js" mode="DEBUG" compilerKind="ELM" compilerPath="${toolchain.elmCompilerPath}" compileOnSave="true" />
+                  <target name="Pkg check" inputPath="" outputPath="" mode="NONE" compilerKind="ELM" compilerPath="${toolchain.elmCompilerPath}" compileOnSave="false" />
+                </project>
+              </buildTargets>
+            </state>
+            """.trimIndent()
+
+        workspace.asyncLoadState(elementFromXmlString(xml)).get()
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+
+        val expected = listOf(
+            // A relative input path becomes an APPLICATION target with an absolute input file and
+            // an absolute (project-relative-resolved) output path.
+            ElmBuildTargetConfig(
+                name = "App",
+                type = ElmBuildTargetType.APPLICATION,
+                inputPath = "$projectDirString/src/Main.elm",
+                outputPath = "$projectDirString/build/main.js",
+                mode = ElmBuildMode.DEBUG,
+                compilerKind = ElmCompilerKind.ELM,
+                compilerPath = toolchain.elmCompilerPath.toString(),
+                compileOnSave = true
+            ),
+            // A blank input path meant "type-check this package"; it becomes a PACKAGE target
+            // pointing at the project's own elm.json.
+            ElmBuildTargetConfig(
+                name = "Pkg check",
+                type = ElmBuildTargetType.PACKAGE,
+                inputPath = projectPathString,
+                outputPath = "",
+                mode = ElmBuildMode.NONE,
+                compilerKind = ElmCompilerKind.ELM,
+                compilerPath = toolchain.elmCompilerPath.toString(),
+                compileOnSave = false
+            )
+        )
+        checkEquals(expected, workspace.buildTargets)
+    }
+
+    @Test
     fun `test asyncSetEnabledProjects enables and disables projects`() {
         val testProject = fileTree {
             dir("a") {

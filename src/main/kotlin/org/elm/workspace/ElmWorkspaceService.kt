@@ -920,6 +920,93 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     // PERSISTENT STATE
 
 
+    /** Parse a single `<target>` element in the current (flat) format. */
+    private fun parseBuildTargetElement(targetElement: Element): ElmBuildTargetConfig? {
+        val name = targetElement.getAttributeValue("name") ?: ""
+        val type = targetElement.getAttributeValue("type")
+            ?.let { rawType -> runCatching { ElmBuildTargetType.valueOf(rawType) }.getOrNull() }
+            ?: ElmBuildTargetType.APPLICATION
+        val inputPath = targetElement.getAttributeValue("inputPath") ?: return null
+        val outputPath = targetElement.getAttributeValue("outputPath") ?: ""
+        val mode = targetElement.getAttributeValue("mode")
+            ?.let { rawMode -> runCatching { ElmBuildMode.valueOf(rawMode) }.getOrNull() }
+            ?: ElmBuildMode.NONE
+        val compilerKind = targetElement.getAttributeValue("compilerKind")
+            ?.let { rawKind -> runCatching { ElmCompilerKind.valueOf(rawKind) }.getOrNull() }
+            ?: ElmCompilerKind.ELM
+        val compilerPath = targetElement.getAttributeValue("compilerPath") ?: ""
+        val compileOnSave = targetElement.getAttributeValue("compileOnSave")
+            ?.takeIf { it.isNotBlank() }
+            ?.toBoolean() ?: false
+        return ElmBuildTargetConfig(
+            name = name,
+            type = type,
+            inputPath = inputPath,
+            outputPath = outputPath,
+            mode = mode,
+            compilerKind = compilerKind,
+            compilerPath = compilerPath,
+            compileOnSave = compileOnSave
+        )
+    }
+
+    /**
+     * Convert a pre-migration `<project manifestPath="…"><target …/></project>` element into the
+     * current flat [ElmBuildTargetConfig]s.
+     *
+     * Legacy targets belonged to a project, stored project-relative paths, and had no explicit
+     * type. We resolve their paths against the project directory (making them absolute) and pick
+     * the type from the old rule that a blank input path was only valid for a package and meant
+     * "type-check this package" — which is now a [ElmBuildTargetType.PACKAGE] target pointing at
+     * the project's own `elm.json`. Everything else becomes an [ElmBuildTargetType.APPLICATION].
+     */
+    private fun migrateLegacyProjectTargets(projectElement: Element): List<ElmBuildTargetConfig> {
+        val manifestPath = projectElement.getAttributeValue("manifestPath")
+            ?.let { runCatching { Paths.get(it) }.getOrNull() }
+            ?: return emptyList()
+        val projectDir = manifestPath.parent ?: return emptyList()
+        return projectElement.getChildren("target").map { targetElement ->
+            val name = targetElement.getAttributeValue("name") ?: ""
+            val oldInput = (targetElement.getAttributeValue("inputPath") ?: "").trim()
+            val oldOutput = (targetElement.getAttributeValue("outputPath") ?: "").trim()
+            val mode = targetElement.getAttributeValue("mode")
+                ?.let { rawMode -> runCatching { ElmBuildMode.valueOf(rawMode) }.getOrNull() }
+                ?: ElmBuildMode.NONE
+            val compilerKind = targetElement.getAttributeValue("compilerKind")
+                ?.let { rawKind -> runCatching { ElmCompilerKind.valueOf(rawKind) }.getOrNull() }
+                ?: ElmCompilerKind.ELM
+            val compilerPath = targetElement.getAttributeValue("compilerPath") ?: ""
+            val compileOnSave = targetElement.getAttributeValue("compileOnSave")
+                ?.takeIf { it.isNotBlank() }
+                ?.toBoolean() ?: false
+            if (oldInput.isBlank()) {
+                ElmBuildTargetConfig(
+                    name = name,
+                    type = ElmBuildTargetType.PACKAGE,
+                    inputPath = manifestPath.systemIndependentPath,
+                    compilerKind = compilerKind,
+                    compilerPath = compilerPath,
+                    compileOnSave = compileOnSave
+                )
+            } else {
+                ElmBuildTargetConfig(
+                    name = name,
+                    type = ElmBuildTargetType.APPLICATION,
+                    inputPath = projectDir.resolve(oldInput).normalize().systemIndependentPath,
+                    outputPath = if (oldOutput.isBlank()) {
+                        ""
+                    } else {
+                        projectDir.resolve(oldOutput).normalize().systemIndependentPath
+                    },
+                    mode = mode,
+                    compilerKind = compilerKind,
+                    compilerPath = compilerPath,
+                    compileOnSave = compileOnSave
+                )
+            }
+        }
+    }
+
     override fun getState(): Element {
         val state = Element("state")
 
@@ -1002,37 +1089,17 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             .getAttributeValue("isElmBuildOnSaveEnabled")
             .takeIf { it != null && it.isNotBlank() }?.toBoolean()
             ?: DEFAULT_BUILD_ON_SAVE
-        val buildTargets = state.getChild("buildTargets")
-            ?.getChildren("target")
-            ?.mapNotNull { targetElement ->
-                val name = targetElement.getAttributeValue("name") ?: ""
-                val type = targetElement.getAttributeValue("type")
-                    ?.let { rawType -> runCatching { ElmBuildTargetType.valueOf(rawType) }.getOrNull() }
-                    ?: ElmBuildTargetType.APPLICATION
-                val inputPath = targetElement.getAttributeValue("inputPath") ?: return@mapNotNull null
-                val outputPath = targetElement.getAttributeValue("outputPath") ?: ""
-                val mode = targetElement.getAttributeValue("mode")
-                    ?.let { rawMode -> runCatching { ElmBuildMode.valueOf(rawMode) }.getOrNull() }
-                    ?: ElmBuildMode.NONE
-                val compilerKind = targetElement.getAttributeValue("compilerKind")
-                    ?.let { rawKind -> runCatching { ElmCompilerKind.valueOf(rawKind) }.getOrNull() }
-                    ?: ElmCompilerKind.ELM
-                val compilerPath = targetElement.getAttributeValue("compilerPath") ?: ""
-                val compileOnSave = targetElement.getAttributeValue("compileOnSave")
-                    ?.takeIf { it.isNotBlank() }
-                    ?.toBoolean() ?: false
-                ElmBuildTargetConfig(
-                    name = name,
-                    type = type,
-                    inputPath = inputPath,
-                    outputPath = outputPath,
-                    mode = mode,
-                    compilerKind = compilerKind,
-                    compilerPath = compilerPath,
-                    compileOnSave = compileOnSave
-                )
-            }
-            .orEmpty()
+        val buildTargetsRoot = state.getChild("buildTargets")
+        val buildTargets = when {
+            buildTargetsRoot == null -> emptyList()
+            // Current format: a flat list of <target> directly under <buildTargets>.
+            buildTargetsRoot.getChildren("target").isNotEmpty() ->
+                buildTargetsRoot.getChildren("target").mapNotNull { parseBuildTargetElement(it) }
+            // Pre-migration format: <target>s nested under <project manifestPath="…">. Targets used
+            // to belong to a project and stored project-relative paths with no explicit type; convert
+            // them to the flat, absolute-path model. See migrateLegacyProjectTargets.
+            else -> buildTargetsRoot.getChildren("project").flatMap { migrateLegacyProjectTargets(it) }
+        }
 
         modifySettings(notify = false) {
             RawSettings(
