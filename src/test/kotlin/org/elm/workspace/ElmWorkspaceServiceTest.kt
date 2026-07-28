@@ -528,7 +528,13 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
         try {
             configurable.createComponent()
             configurable.reset()
-            check(!configurable.isModified) { "A freshly reset settings panel should not be modified" }
+            // reset() populates the enabled-projects checkbox list asynchronously (discovery runs
+            // off the EDT), so pump the event queue until that settles before asserting.
+            PlatformTestUtil.waitWithEventsDispatching(
+                "A freshly reset settings panel should not be modified",
+                { !configurable.isModified },
+                10
+            )
         } finally {
             configurable.disposeUIResources()
             Disposer.dispose(configurable)
