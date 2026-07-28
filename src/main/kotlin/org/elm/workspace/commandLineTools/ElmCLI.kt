@@ -4,12 +4,12 @@ import com.intellij.execution.ExecutionException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.elm.openapiext.*
-import org.elm.workspace.ElmProject
 import org.elm.workspace.ParseException
 import org.elm.workspace.Version
 import org.elm.workspace.compiler.ERRORS_TOPIC
 import org.elm.workspace.compiler.ElmError
 import org.elm.workspace.compiler.COMPILER_OUTPUT_TOPIC
+import org.elm.workspace.compiler.ElmCompilerOutput
 import org.elm.workspace.compiler.ResolvedBuildTarget
 import org.elm.workspace.compiler.elmJsonToCompilerMessages
 import org.elm.workspace.elmCompilerTool
@@ -24,10 +24,16 @@ class ElmCLI(val elmExecutablePath: Path) {
     fun make(
         project: Project,
         workDir: Path,
-        elmProject: ElmProject?,
+        // The base dir for reporting errors to the tool window, or null to not report (e.g. an
+        // internal dependency-install build). Error file paths from `elm` are absolute regardless.
+        baseDirForErrors: Path?,
         entryPoints: List<ResolvedBuildTarget>,
         jsonReport: Boolean = false,
-        currentFile: VirtualFile? = null
+        currentFile: VirtualFile? = null,
+        messageSink: MutableList<ElmError>? = null,
+        // Collects console output for an aggregated build (e.g. "Build all") instead of posting it
+        // here; the caller posts every command's output at once. Null for a normal single build.
+        outputSink: MutableList<ElmCompilerOutput>? = null
     ): Boolean {
 
         if (entryPoints.isEmpty()) return true
@@ -35,6 +41,7 @@ class ElmCLI(val elmExecutablePath: Path) {
         project.elmTaskStatus.compilerStarted()
         try {
             val allMessages = mutableListOf<ElmError>()
+            val outputs = mutableListOf<ElmCompilerOutput>()
             var allSucceeded = true
             // Elm 0.19.2 has a bug where the error locations reported by `--report=json` are
             // off by one: https://github.com/elm/compiler/issues/2358
@@ -44,20 +51,14 @@ class ElmCLI(val elmExecutablePath: Path) {
                 if (queryVersion(project).orNull()?.xyz == Version(0, 19, 2)) 1 else 0
             }
             for (entry in entryPoints) {
-                val modeFlag = entry.mode.asFlag()
-                val params = mutableListOf("make")
-                if (entry.inputPathForCompiler.isNotBlank()) {
-                    params += entry.inputPathForCompiler
-                }
-                params += "--output=${entry.outputPathForCompiler}"
-                if (modeFlag != null) params += modeFlag
+                val params = entry.makeParameters()
 
                 val commandLine = GeneralCommandLine(elmExecutablePath)
                     .withWorkDirectory(workDir)
                     .withParameters(*params.toTypedArray())
                     .apply { if (jsonReport) addParameter("--report=json") }
                 val output = commandLine.execute(elmCompilerTool, project)
-                project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(
+                outputs += ElmCompilerOutput(
                     elmCompilerTool,
                     commandLine.commandLineString,
                     output.stdout,
@@ -75,6 +76,12 @@ class ElmCLI(val elmExecutablePath: Path) {
                 }
             }
 
+            if (outputSink != null) {
+                outputSink += outputs
+            } else {
+                project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(outputs)
+            }
+
             val sortedMessages = allMessages.sortedWith(
                 compareBy(
                     { it.location?.moduleName },
@@ -87,19 +94,20 @@ class ElmCLI(val elmExecutablePath: Path) {
                 sortedMessages.filter(predicate) + sortedMessages.filterNot(predicate)
             } else sortedMessages
 
-            if (elmProject == null) {
-                // from ElmWorkSpaceService
+            if (messageSink != null) {
+                // Collect messages for an aggregated build (e.g. "Build all") instead of
+                // posting them here; the caller deduplicates and posts once.
+                messageSink += messages.map { it.withAbsolutePath(workDir) }
+                return messages.isEmpty() && allSucceeded
+            }
+
+            if (baseDirForErrors == null) {
+                // Internal build (e.g. dependency install from ElmWorkspaceService); don't report.
                 return allSucceeded
-                // TODO Lamdera
-                //  org.elm.workspace.log.error("Failed to install deps: Elm compiler failed: ${output.stderr}")
             } else {
                 val first = entryPoints.first()
-                fun postErrors() = project.messageBus.syncPublisher(ERRORS_TOPIC)
-                    .update(elmProject.projectDirPath, messages, first.inputPathForCompiler, first.offset)
-                when {
-                    isUnitTestMode -> postErrors()
-                    else -> postErrors()
-                }
+                project.messageBus.syncPublisher(ERRORS_TOPIC)
+                    .update(baseDirForErrors, messages, first.inputPathForCompiler, first.offset)
             }
             return messages.isEmpty() && allSucceeded
         } finally {

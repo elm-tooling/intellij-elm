@@ -56,8 +56,7 @@ class ElmReviewPass(
         service.runReviewOnDocumentChange(
             projectBasePath = pathToListenFor,
             sourceFilePath = sourceFilePath,
-            documentModificationStamp = document.modificationStamp,
-            elmProjectHint = elmProject
+            documentModificationStamp = document.modificationStamp
         )
         val messages = if (service.hasFreshResults(pathToListenFor)) {
             service.messagesForCurrentProject(pathToListenFor)

@@ -90,10 +90,10 @@ class ElmProjectHelperTest : ElmWorkspaceTestBase() {
         return testProject
     }
 
-    val elmJson = """{
+    val elmJson get() = """{
         "type": "application",
         "source-directories": [ "src" ],
-        "elm-version": "0.19.1",
+        "elm-version": "$installedElmCompilerVersion",
         "dependencies": {
             "direct": {
                 "elm/core": "1.0.0",

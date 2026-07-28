@@ -60,7 +60,7 @@ class ElmCreateFileActionTest : ElmWorkspaceTestBase() {
                         "vendor/elm-foo",
                         "./foo1"
                     ],
-                    "elm-version": "0.19.1",
+                    "elm-version": "$installedElmCompilerVersion",
                     "dependencies": {
                         "direct": {
                             "elm/core": "1.0.0",

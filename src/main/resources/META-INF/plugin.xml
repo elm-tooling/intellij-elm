@@ -240,8 +240,6 @@
         <projectConfigurable instance="org.elm.workspace.ui.ElmWorkspaceConfigurable" displayName="Elm"
                              groupId="language"/>
         <editorNotificationProvider implementation="org.elm.ide.notifications.ElmNeedsConfigNotificationProvider"/>
-        <toolWindow id="Elm" anchor="right" icon="/icons/elm-toolwindow.svg"
-                    factoryClass="org.elm.ide.toolwindow.ElmToolWindowFactory"/>
         <toolWindow id="Elm Compiler" anchor="bottom" icon="/icons/elm-toolwindow.svg"
                     factoryClass="org.elm.ide.toolwindow.ElmCompilerToolWindowFactory"/>
         <toolWindow id="Elm Review" anchor="bottom" secondary="false" icon="/icons/elm-review.svg"
@@ -284,21 +282,23 @@
             <add-to-group group-id="NewGroup" anchor="before" relative-to-action="NewFile"/>
         </action>
 
-        <action id="Elm.AttachElmProject"
-                class="org.elm.workspace.ElmAttachProjectAction"
-                text="Attach elm.json project file"
-                icon="AllIcons.General.Add">
-        </action>
+        <action id="Elm.BuildSelected"
+                class="org.elm.ide.actions.ElmBuildSelectedAction"
+                text="Build Selected Elm Target"
+                description="Build the target selected in the Elm Compiler tool window"
+                icon="AllIcons.Actions.Execute"/>
 
-        <action id="Elm.DetachElmProject"
-                class="org.elm.workspace.ElmDetachProjectAction"
-                text="Detach elm.json project file"
-                icon="AllIcons.General.Remove"/>
+        <action id="Elm.BuildAll"
+                class="org.elm.ide.actions.ElmBuildAllAction"
+                text="Build All Elm Targets"
+                description="Build all Elm build targets and show their combined errors"
+                icon="AllIcons.Actions.RunAll"/>
 
-        <action id="Elm.RefreshElmProjects"
-                class="org.elm.workspace.ElmRefreshProjectsAction"
-                text="Refresh Elm projects"
-                icon="AllIcons.Actions.Refresh"/>
+        <action id="Elm.RunTestsSelected"
+                class="org.elm.ide.actions.ElmRunTestsSelectedAction"
+                text="Run Selected Elm Tests"
+                description="Run the tests for the selected test target in the Elm Compiler tool window"
+                icon="AllIcons.RunConfigurations.TestState.Green2"/>
 
         <action id="Elm.RunExternalElmFormat"
                 class="org.elm.ide.actions.ElmExternalFormatAction"
@@ -311,15 +311,6 @@
                 text="Run elm-review">
             <add-to-group group-id="CodeMenu" anchor="last"/>
         </action>
-
-        <group id="Elm.WorkspaceToolsGroup" text="Elm" popup="true">
-            <reference ref="Elm.RefreshElmProjects"/>
-            <separator/>
-            <reference ref="Elm.AttachElmProject"/>
-            <reference ref="Elm.DetachElmProject"/>
-
-            <add-to-group group-id="ToolsMenu"/>
-        </group>
 
     </actions>
 

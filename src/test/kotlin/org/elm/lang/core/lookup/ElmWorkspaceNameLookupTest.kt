@@ -12,14 +12,16 @@ import org.intellij.lang.annotations.Language
 
 class ElmWorkspaceNameLookupTest : ElmWorkspaceTestBase() {
 
-    @Language("JSON")
-    private val standardElmAppProject = """
+    // A getter (not a plain `val`) so `installedElmCompilerVersion` is read when a test uses this,
+    // i.e. after `setUp()` has configured the toolchain — not during construction.
+    @get:Language("JSON")
+    private val standardElmAppProject get() = """
             {
                 "type": "application",
                 "source-directories": [
                     "src"
                 ],
-                "elm-version": "0.19.1",
+                "elm-version": "$installedElmCompilerVersion",
                 "dependencies": {
                     "direct": {
                         "elm/core": "1.0.0",
@@ -74,7 +76,7 @@ class ElmWorkspaceNameLookupTest : ElmWorkspaceTestBase() {
                 "source-directories": [
                     "src"
                 ],
-                "elm-version": "0.19.1",
+                "elm-version": "$installedElmCompilerVersion",
                 "dependencies": {
                     "direct": {
                         "elm/core": "1.0.0",

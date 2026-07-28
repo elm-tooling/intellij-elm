@@ -9,6 +9,7 @@ import org.elm.workspace.*
 import org.elm.workspace.compiler.ERRORS_TOPIC
 import org.elm.workspace.compiler.ElmError
 import org.elm.workspace.compiler.COMPILER_OUTPUT_TOPIC
+import org.elm.workspace.compiler.ElmCompilerOutput
 import org.elm.workspace.compiler.ResolvedBuildTarget
 import org.elm.workspace.compiler.elmJsonToCompilerMessages
 import org.elm.ide.statusbar.elmTaskStatus
@@ -24,10 +25,14 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
     fun make(
         project: Project,
         workDir: Path,
-        elmProject: ElmProject?,
+        baseDirForErrors: Path?,
         entryPoints: List<ResolvedBuildTarget>,
         jsonReport: Boolean = false,
-        currentFile: VirtualFile? = null
+        currentFile: VirtualFile? = null,
+        messageSink: MutableList<ElmError>? = null,
+        // Collects console output for an aggregated build (e.g. "Build all") instead of posting it
+        // here; the caller posts every command's output at once. Null for a normal single build.
+        outputSink: MutableList<ElmCompilerOutput>? = null
     ): Boolean {
 
         if (entryPoints.isEmpty()) return true
@@ -35,21 +40,16 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
         project.elmTaskStatus.compilerStarted()
         try {
             val allMessages = mutableListOf<ElmError>()
+            val outputs = mutableListOf<ElmCompilerOutput>()
             var allSucceeded = true
             for (entry in entryPoints) {
-                val modeFlag = entry.mode.asFlag()
-                val params = mutableListOf("make")
-                if (entry.inputPathForCompiler.isNotBlank()) {
-                    params += entry.inputPathForCompiler
-                }
-                params += "--output=${entry.outputPathForCompiler}"
-                if (modeFlag != null) params += modeFlag
+                val params = entry.makeParameters()
                 val commandLine = GeneralCommandLine(lamderaExecutablePath)
                     .withWorkDirectory(workDir)
                     .withParameters(*params.toTypedArray())
                     .apply { if (jsonReport) addParameter("--report=json") }
                 val output = commandLine.execute(elmCompilerTool, project)
-                project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(
+                outputs += ElmCompilerOutput(
                     lamderaCompilerTool,
                     commandLine.commandLineString,
                     output.stdout,
@@ -66,6 +66,11 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
                     allMessages += elmJsonToCompilerMessages(cleansedJson)
                 }
             }
+            if (outputSink != null) {
+                outputSink += outputs
+            } else {
+                project.messageBus.syncPublisher(COMPILER_OUTPUT_TOPIC).update(outputs)
+            }
             val sortedMessages = allMessages.sortedWith(
                 compareBy(
                     { it.location?.moduleName },
@@ -77,8 +82,15 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
                 val predicate: (ElmError) -> Boolean = { it.location?.path == currentFile.path }
                 sortedMessages.filter(predicate) + sortedMessages.filterNot(predicate)
             } else sortedMessages
-            if (elmProject == null) {
-                // from ElmWorkSpaceService
+            if (messageSink != null) {
+                // Collect messages for an aggregated build (e.g. "Build all") instead of
+                // posting them here; the caller deduplicates and posts once.
+                messageSink += messages.map { it.withAbsolutePath(workDir) }
+                return messages.isEmpty() && allSucceeded
+            }
+
+            if (baseDirForErrors == null) {
+                // Internal build (e.g. dependency install from ElmWorkspaceService); don't report.
                 if (!allSucceeded) {
                     log.error("Failed to install dependencies: Lamdera compiler failed")
                     return false
@@ -86,12 +98,8 @@ class LamderaCLI(private val lamderaExecutablePath: Path) {
                 return true
             } else {
                 val first = entryPoints.first()
-                fun postErrors() = project.messageBus.syncPublisher(ERRORS_TOPIC)
-                    .update(elmProject.projectDirPath, messages, first.inputPathForCompiler, first.offset)
-                when {
-                    isUnitTestMode -> postErrors()
-                    else -> postErrors()
-                }
+                project.messageBus.syncPublisher(ERRORS_TOPIC)
+                    .update(baseDirForErrors, messages, first.inputPathForCompiler, first.offset)
             }
             return messages.isEmpty() && allSucceeded
         } finally {

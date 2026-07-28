@@ -1,11 +1,6 @@
 package org.elm.workspace.elmreview
 
-import com.intellij.openapi.project.Project
-import org.elm.workspace.ElmProject
-import org.elm.workspace.ElmSuggest
 import org.elm.workspace.elmCompilerTool
-import org.elm.workspace.elmToolchain
-import org.elm.workspace.elmWorkspace
 import org.elm.workspace.lamderaCompilerTool
 import org.elm.workspace.compiler.ElmBuildTargetConfig
 import org.elm.workspace.compiler.toPathOrNull
@@ -36,23 +31,6 @@ data class ElmReviewCompilerResolution(
             ElmReviewCompilerSource.DISCOVERED -> "Discovered (${discoveredToolName.orEmpty()}): ${path ?: "<none>"}"
             ElmReviewCompilerSource.NONE -> "None"
         }
-}
-
-fun resolveElmReviewCompiler(
-    project: Project,
-    projectBasePath: Path,
-    elmProjectHint: ElmProject? = null,
-    suggestedTools: Map<String, Path?> = ElmSuggest.suggestTools(project)
-): ElmReviewCompilerResolution {
-    val elmProject = elmProjectHint
-        ?: project.elmWorkspace.allProjects.firstOrNull { it.projectDirPath.normalize() == projectBasePath.normalize() }
-    val buildTargets = elmProject?.let { project.elmWorkspace.buildTargetConfigsFor(it) }.orEmpty()
-    return resolveElmReviewCompiler(
-        projectBasePath = projectBasePath,
-        toolchainCompilerPath = project.elmToolchain.compilerPath,
-        buildTargets = buildTargets,
-        suggestedTools = suggestedTools
-    )
 }
 
 fun resolveElmReviewCompiler(

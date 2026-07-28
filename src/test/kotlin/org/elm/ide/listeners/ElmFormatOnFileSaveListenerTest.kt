@@ -6,6 +6,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import junit.framework.TestCase
 import org.elm.workspace.ElmWorkspaceTestBase
+import org.elm.workspace.Version
 import org.elm.workspace.elmWorkspace
 import org.intellij.lang.annotations.Language
 import org.junit.Test
@@ -29,7 +30,7 @@ class ElmFormatOnFileSaveListenerTest : ElmWorkspaceTestBase() {
     @Test
     fun `test ElmFormatOnFileSaveComponent should work with elm 19 (flaky)`() {
         buildProject {
-            project("elm.json", manifestElm19)
+            project("elm.json", manifestElm19(installedElmCompilerVersion))
             dir("src") {
                 elm("Main.elm", unformatted)
             }
@@ -41,7 +42,7 @@ class ElmFormatOnFileSaveListenerTest : ElmWorkspaceTestBase() {
     @Test
     fun `test ElmFormatOnFileSaveComponent should not add to the undo stack (flaky)`() {
         buildProject {
-            project("elm.json", manifestElm19)
+            project("elm.json", manifestElm19(installedElmCompilerVersion))
             dir("src") {
                 elm("Main.elm", unformatted)
             }
@@ -59,7 +60,7 @@ class ElmFormatOnFileSaveListenerTest : ElmWorkspaceTestBase() {
     @Test
     fun `test ElmFormatOnFileSaveComponent should not touch a file with the wrong ending like 'scala' (flaky)`() {
         buildProject {
-            project("elm.json", manifestElm19)
+            project("elm.json", manifestElm19(installedElmCompilerVersion))
             dir("src") {
                 elm("Main.elm")
                 file("Main.scala", "blah")
@@ -72,7 +73,7 @@ class ElmFormatOnFileSaveListenerTest : ElmWorkspaceTestBase() {
     @Test
     fun `test ElmFormatOnFileSaveComponent should not touch a file if the save-hook is deactivated (flaky)`() {
         buildProject {
-            project("elm.json", manifestElm19)
+            project("elm.json", manifestElm19(installedElmCompilerVersion))
             dir("src") {
                 elm(
                     "Main.elm", """
@@ -120,13 +121,13 @@ class ElmFormatOnFileSaveListenerTest : ElmWorkspaceTestBase() {
 
 
 @Language("JSON")
-private val manifestElm19 = """
+private fun manifestElm19(elmVersion: Version) = """
     {
         "type": "application",
         "source-directories": [
             "src"
         ],
-        "elm-version": "0.19.1",
+        "elm-version": "$elmVersion",
         "dependencies": {
             "direct": {
                 "elm/core": "1.0.0",

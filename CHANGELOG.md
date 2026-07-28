@@ -8,6 +8,21 @@
 *   Fixed: elm-review is no longer run on files from dependencies (in `~/.elm`)
 *   Fixed: Global elm-review errors now show up in the elm-review panel
 *   Fixed: Elm 0.19.2 has a bug where error locations are off-by-one – added a workaround for that in the Elm Compiler feature
+*   Elm Compiler Panel: Build button is now always visible
+*   Elm Compiler Panel: Added Build All button
+*   Elm Compiler Panel: Build Selected Elm Target and Build All Elm Targets are now available in the command palette, and you can assign keyboard shortcuts to them
+*   Elm Compiler Panel: The selected target is now persisted across restarts, which is useful if you use Build Selected Elm Target a lot
+*   Elm Compiler Panel: Targets can now be reordered
+*   Elm Compiler Panel: Targets now use the elm.json attached to the input file
+*   Elm Compiler Panel: Packages can now be configured as a build target more easily
+*   Elm Compiler Panel: Target configuration errors are now shown instead of showing no targets at all
+*   Elm Compiler Panel: When adding a build target, there are suggestions based on files found in your project
+*   Elm Compiler Panel: Tests are automatically added to it as build targets and are compiled with `elm-test make`, they also have a button for running the tests
+*   Test runner: Test runs are no longer wrongly shown as Terminated (most of the time)
+*   Test runner: If there are compilation errors, those are shown in the Elm Compiler panel instead
+*   Test runner: Fixed output for edge cases like when _all_ tests are skipped or are `todo`s
+*   The Elm Projects sidebar has been moved to settings, and now lets you toggle each found elm.json file instead of looking for them in a file picker
+*   When attaching an elm.json file, the Elm version specified in the elm.json file is now used
 
 ## [6.0.0] - 2026-04-13
 *   Fixed: Reworked the elm-review panel (#19)

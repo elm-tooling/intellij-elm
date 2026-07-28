@@ -54,18 +54,14 @@ class ElmReviewService(private val project: Project) {
     }
 
     fun runReview(projectBasePath: Path) {
-        runReview(projectBasePath, elmProjectHint = null, forcePublish = false)
+        runReview(projectBasePath, forcePublish = false)
     }
 
-    fun runReview(projectBasePath: Path, elmProjectHint: ElmProject?) {
-        runReview(projectBasePath, elmProjectHint = elmProjectHint, forcePublish = false)
+    fun runReviewFromManualAction(projectBasePath: Path) {
+        runReview(projectBasePath, forcePublish = true)
     }
 
-    fun runReviewFromManualAction(projectBasePath: Path, elmProjectHint: ElmProject?) {
-        runReview(projectBasePath, elmProjectHint = elmProjectHint, forcePublish = true)
-    }
-
-    private fun runReview(projectBasePath: Path, elmProjectHint: ElmProject?, forcePublish: Boolean) {
+    private fun runReview(projectBasePath: Path, forcePublish: Boolean) {
         if (!project.elmSettings.toolchain.isElmReviewOnTheFlyEnabled) return
         if (!projectBasePath.resolve("elm.json").exists()) return
         val elmReviewConfigDir = resolveElmReviewConfigDir(
@@ -103,9 +99,9 @@ class ElmReviewService(private val project: Project) {
             val suggestedTools = ElmSuggest.suggestTools(project)
             try {
                 val compilerResolution = resolveElmReviewCompiler(
-                    project = project,
                     projectBasePath = projectBasePath,
-                    elmProjectHint = elmProjectHint,
+                    toolchainCompilerPath = project.elmToolchain.compilerPath,
+                    buildTargets = project.elmWorkspace.buildTargets,
                     suggestedTools = suggestedTools
                 )
                 val compilerPathForReview = compilerResolution.path
@@ -171,9 +167,9 @@ class ElmReviewService(private val project: Project) {
             } catch (t: Throwable) {
                 if (!project.isDisposed) {
                     val compilerPathForReview = resolveElmReviewCompiler(
-                        project = project,
                         projectBasePath = projectBasePath,
-                        elmProjectHint = elmProjectHint,
+                        toolchainCompilerPath = project.elmToolchain.compilerPath,
+                        buildTargets = project.elmWorkspace.buildTargets,
                         suggestedTools = suggestedTools
                     ).path
                     val args = buildList {
@@ -199,7 +195,6 @@ class ElmReviewService(private val project: Project) {
                 if (pendingReviews.remove(projectBasePath) && !project.isDisposed) {
                     runReview(
                         projectBasePath,
-                        elmProjectHint = null,
                         forcePublish = pendingForcePublishReviews.remove(projectBasePath)
                     )
                 }
@@ -210,15 +205,14 @@ class ElmReviewService(private val project: Project) {
     fun runReviewOnDocumentChange(
         projectBasePath: Path,
         sourceFilePath: Path,
-        documentModificationStamp: Long,
-        elmProjectHint: ElmProject?
+        documentModificationStamp: Long
     ) {
         if (!project.elmSettings.toolchain.isElmReviewOnTheFlyEnabled) return
         val previousStamp = lastRequestedStampByFile[sourceFilePath]
         if (previousStamp != null && previousStamp >= documentModificationStamp) return
         lastRequestedStampByFile[sourceFilePath] = documentModificationStamp
         markReviewRequested(projectBasePath)
-        runReview(projectBasePath, elmProjectHint = elmProjectHint, forcePublish = false)
+        runReview(projectBasePath, forcePublish = false)
     }
 
     private fun markReviewRequested(projectBasePath: Path): Long {
