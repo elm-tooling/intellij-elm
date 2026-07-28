@@ -4,6 +4,8 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.DataManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.keymap.KeymapUtil
@@ -19,6 +21,7 @@ import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ex.Settings
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.messages.MessageBusConnection
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.vfs.VirtualFile
@@ -344,11 +347,20 @@ class ElmWorkspaceConfigurable(
     private fun resetProjects() {
         val workspace = project.elmWorkspace
         val enabled = workspace.enabledProjectPaths
-        val discovered = runCatching { workspace.discoverElmJsonManifestPaths() }.getOrElse { emptyList() }
-        val union = (discovered + enabled).toSet()
-        displayedProjectPaths.clear()
-        displayedProjectPaths.addAll(union.sortedWith(ElmWorkspaceService.manifestPathDisplayOrder))
-        rebuildProjectsList(enabled)
+        // Discovery reads the file/workspace index, which is a slow operation that must not run on
+        // the EDT. Compute it in a background read action and update the list once it completes.
+        ReadAction.nonBlocking<List<Path>> {
+            runCatching { workspace.discoverElmJsonManifestPaths() }.getOrElse { emptyList() }
+        }
+            .expireWith(this)
+            .finishOnUiThread(ModalityState.any()) { discovered ->
+                val union = (discovered + enabled).toSet()
+                displayedProjectPaths.clear()
+                displayedProjectPaths.addAll(union.sortedWith(ElmWorkspaceService.manifestPathDisplayOrder))
+                rebuildProjectsList(enabled)
+                applyPendingProjectSelection()
+            }
+            .submit(AppExecutorUtil.getAppExecutorService())
     }
 
     private fun isProjectsModified(): Boolean =
@@ -858,7 +870,6 @@ class ElmWorkspaceConfigurable(
         applyPendingBuildTargetSelection()
 
         resetProjects()
-        applyPendingProjectSelection()
 
         update(null)
     }
