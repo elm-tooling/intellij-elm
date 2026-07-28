@@ -35,7 +35,7 @@ class BuildTargetAutoDetectTest : ElmWorkspaceTestBase() {
     @Test
     fun `test suggests an application target for a file with a top-level main`() {
         val testProject = buildProject {
-            project("elm.json", APPLICATION_MANIFEST)
+            project("elm.json", applicationManifest(installedElmCompilerVersion))
             dir("src") {
                 elm("Main.elm", """
                     module Main exposing (main)
@@ -60,7 +60,7 @@ class BuildTargetAutoDetectTest : ElmWorkspaceTestBase() {
     @Test
     fun `test suggests a target for each file with a top-level main`() {
         buildProject {
-            project("elm.json", APPLICATION_MANIFEST)
+            project("elm.json", applicationManifest(installedElmCompilerVersion))
             dir("src") {
                 elm("Main.elm", """
                     module Main exposing (main)
@@ -92,7 +92,7 @@ class BuildTargetAutoDetectTest : ElmWorkspaceTestBase() {
     @Test
     fun `test does not suggest anything for an application without a top-level main`() {
         buildProject {
-            project("elm.json", APPLICATION_MANIFEST)
+            project("elm.json", applicationManifest(installedElmCompilerVersion))
             dir("src") { elm("Other.elm") }
         }
 
@@ -102,7 +102,7 @@ class BuildTargetAutoDetectTest : ElmWorkspaceTestBase() {
     @Test
     fun `test ignores a main nested in a let expression`() {
         buildProject {
-            project("elm.json", APPLICATION_MANIFEST)
+            project("elm.json", applicationManifest(installedElmCompilerVersion))
             dir("src") {
                 elm("Widget.elm", """
                     module Widget exposing (view)
@@ -147,7 +147,7 @@ class BuildTargetAutoDetectTest : ElmWorkspaceTestBase() {
     @Test
     fun `test filters out an application suggestion already covered by an existing target`() {
         val testProject = buildProject {
-            project("elm.json", APPLICATION_MANIFEST)
+            project("elm.json", applicationManifest(installedElmCompilerVersion))
             dir("src") {
                 elm("Main.elm", """
                     module Main exposing (main)
@@ -248,11 +248,11 @@ class BuildTargetAutoDetectTest : ElmWorkspaceTestBase() {
 }
 
 /** A minimal `elm.json` for an application project (deps must exist in the local package cache). */
-private const val APPLICATION_MANIFEST = """
+private fun applicationManifest(elmVersion: Version) = """
 {
   "type": "application",
   "source-directories": [ "src" ],
-  "elm-version": "0.19.1",
+  "elm-version": "$elmVersion",
   "dependencies": {
     "direct": {
         "elm/core": "1.0.0",
