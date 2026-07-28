@@ -163,7 +163,7 @@ private fun findTopLevelMainFiles(project: Project, elmProject: ElmProject): Lis
         find("main", project, scope)
             .filterIsInstance<ElmFunctionDeclarationLeft>()
             .filter { it.isTopLevel }
-            .mapNotNull { it.containingFile?.virtualFile }
+            .mapNotNull { it.containingFile.virtualFile }
             .distinct()
     } catch (e: IndexNotReadyException) {
         emptyList()
