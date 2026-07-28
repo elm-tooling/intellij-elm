@@ -71,7 +71,7 @@ class ElmWebProjectTemplate : WebProjectTemplate<Any>(), CustomStepProjectGenera
     }
 }
 
-// As-of 2020-08-25, this is the standard `elm.json` file created by `elm init`.
+// As-of 2026-07-28, this is the standard `elm.json` file created by `elm init`.
 @Language("JSON")
 private val elmJson = """
     {
@@ -79,18 +79,18 @@ private val elmJson = """
       "source-directories": [
         "src"
       ],
-      "elm-version": "0.19.1",
+      "elm-version": "0.19.2",
       "dependencies": {
         "direct": {
           "elm/browser": "1.0.2",
           "elm/core": "1.0.5",
-          "elm/html": "1.0.0"
+          "elm/html": "1.0.1"
         },
         "indirect": {
-          "elm/json": "1.1.3",
+          "elm/json": "1.1.4",
           "elm/time": "1.0.0",
           "elm/url": "1.0.0",
-          "elm/virtual-dom": "1.0.2"
+          "elm/virtual-dom": "1.0.5"
         }
       },
       "test-dependencies": {
