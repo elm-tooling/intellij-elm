@@ -565,7 +565,6 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
         val rootPath = testProject.root.pathAsPath
         workspace.asyncAttachElmProject(rootPath.resolve("app/elm.json")).get()
 
-        val elmProject = workspace.allProjects.single() as ElmApplicationProject
         val compilerPath = project.elmToolchain.compilerPath?.toString()
             ?: error("Compiler path is not configured in test toolchain")
         val inputPath = rootPath.resolve("app/src/Main.elm").toString()
