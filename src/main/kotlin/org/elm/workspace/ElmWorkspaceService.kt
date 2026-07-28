@@ -664,15 +664,6 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             }
 
 
-    fun detachElmProject(manifestPath: Path) {
-        enabledPathsRef.updateAndGet { it.minusElement(manifestPath) }
-        clearLoadError(manifestPath)
-        modifyProjects { oldProjects ->
-            oldProjects.filter { it.manifestPath != manifestPath }
-        }
-    }
-
-
     /**
      * Apply a desired set of enabled `elm.json` manifests (the settings "Apply" action). Detaches
      * projects the user unchecked and attaches newly-checked ones (installing their dependencies).
