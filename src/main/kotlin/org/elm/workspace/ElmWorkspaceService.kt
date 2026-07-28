@@ -796,8 +796,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     }
 
     private fun isMissingManifestFailure(error: Throwable?): Boolean {
-        if (error !is ProjectLoadException) return false
-        return error.message?.startsWith("Manifest file not found:") == true
+        return error is ProjectLoadException && error.message?.startsWith("Manifest file not found:") == true
     }
 
     private fun resolveCompilerVersionForProjectLoad(): Version {
@@ -1065,7 +1064,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         return enabledPaths
             .map { path ->
                 asyncLoadProject(path)
-                    .thenApply<ElmProject?> { it.also { clearLoadError(path) } }
+                    .thenApply { it.also { clearLoadError(path) } }
                     .exceptionally {
                         recordLoadError(path, describeError(it))
                         log.warn("Could not load Elm project $path: ${describeError(it)}")
