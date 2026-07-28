@@ -494,6 +494,26 @@ class ElmWorkspaceServiceTest : ElmWorkspaceTestBase() {
         )
     }
 
+    @Test
+    fun `test discoverElmJsonManifestPaths skips node_modules and elm-stuff`() {
+        val testProject = fileTree {
+            project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
+            dir("src") { elm("Main.elm") }
+            dir("node_modules") {
+                dir("some-elm-package") {
+                    project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
+                }
+            }
+            dir("elm-stuff") {
+                project("elm.json", basicApplicationManifest(installedElmCompilerVersion))
+            }
+        }.create(project, elmWorkspaceDirectory)
+
+        val rootPath = testProject.root.pathAsPath
+        val discovered = project.elmWorkspace.discoverElmJsonManifestPaths()
+        checkEquals(listOf(rootPath.resolve("elm.json")), discovered)
+    }
+
 
     // START OF TESTS RELATED TO SIDECAR MANIFEST (elm.intellij.json)
 

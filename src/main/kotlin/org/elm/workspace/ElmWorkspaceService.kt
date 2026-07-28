@@ -833,9 +833,10 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
 
     /**
      * All `elm.json` manifests discoverable within the project's content roots, excluding
-     * IDE-excluded folders (e.g. `node_modules`, `elm-stuff`). This is the universe of projects
-     * the settings UI lets the user enable/disable, and is independent of auto-discovery's
-     * one-shot flag — newly-added `elm.json` files show up here immediately.
+     * IDE-excluded folders and well-known dependency/build directories ([EXCLUDED_DISCOVERY_DIR_NAMES]).
+     * This is the universe of projects the settings UI lets the user enable/disable, and is
+     * independent of auto-discovery's one-shot flag — newly-added `elm.json` files show up here
+     * immediately.
      */
     fun discoverElmJsonManifestPaths(): List<Path> =
         runReadAction {
@@ -843,6 +844,16 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             FilenameIndex.getVirtualFilesByName(ELM_JSON, GlobalSearchScope.projectScope(intellijProject))
                 .asSequence()
                 .filter { it.isValid && !it.isDirectory && fileIndex.isInContent(it) && !fileIndex.isExcluded(it) }
+                // Skip `node_modules`/`elm-stuff` by name so their `elm.json` files never show up
+                // even without a .gitignore and without an IDE exclude: `node_modules` is not
+                // auto-excluded unless the JavaScript plugin is active, and `elm-stuff` is only
+                // excluded once a project has loaded. Only directory names within the content root
+                // are checked, so a project legitimately located under such a folder is unaffected.
+                .filter { file ->
+                    generateSequence(file.parent) { it.parent }
+                        .takeWhile { fileIndex.isInContent(it) }
+                        .none { it.name in EXCLUDED_DISCOVERY_DIR_NAMES }
+                }
                 .map { it.pathAsPath }
                 .distinct()
                 .sortedWith(manifestPathDisplayOrder)
@@ -1143,6 +1154,13 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
          */
         val manifestPathDisplayOrder: Comparator<Path> =
             compareBy({ it.nameCount }, { it.systemIndependentPath })
+
+        /**
+         * Directory names never scanned for activatable `elm.json` files. These hold dependencies
+         * and build artifacts, not projects the user would enable, and must be skipped regardless
+         * of whether a `.gitignore` or an IDE exclusion happens to cover them.
+         */
+        val EXCLUDED_DISCOVERY_DIR_NAMES = setOf("node_modules", "elm-stuff")
     }
 }
 
