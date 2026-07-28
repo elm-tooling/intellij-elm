@@ -365,7 +365,7 @@ class ElmWorkspaceConfigurable(
             .also { it.isForcedToUseIdeaFileChooser = true }
         val file = FileChooser.chooseFile(descriptor, project, null) ?: return
         val path = file.pathAsPath
-        val checked = checkedProjectPaths() + path
+        val checked = checkedProjectPaths().plusElement(path)
         if (path !in displayedProjectPaths) {
             displayedProjectPaths.add(path)
             displayedProjectPaths.sortWith(ElmWorkspaceService.manifestPathDisplayOrder)

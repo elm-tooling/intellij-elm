@@ -486,7 +486,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     }
 
     private fun clearLoadError(manifestPath: Path) {
-        loadErrorsRef.updateAndGet { it - manifestPath }
+        loadErrorsRef.updateAndGet { it.filterKeys { key -> key != manifestPath } }
     }
 
     private fun describeError(error: Throwable): String {
@@ -658,14 +658,14 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
                 // Only mark the project enabled once it has actually loaded, so a failed attach
                 // (e.g. auto-discovery guessing a bad `elm.json`) does not persist as intent. The
                 // exception still propagates to the caller.
-                enabledPathsRef.updateAndGet { paths -> paths + manifestPath }
+                enabledPathsRef.updateAndGet { paths -> paths.plusElement(manifestPath) }
                 clearLoadError(manifestPath)
                 upsertProject(it)
             }
 
 
     fun detachElmProject(manifestPath: Path) {
-        enabledPathsRef.updateAndGet { it - manifestPath }
+        enabledPathsRef.updateAndGet { it.minusElement(manifestPath) }
         clearLoadError(manifestPath)
         modifyProjects { oldProjects ->
             oldProjects.filter { it.manifestPath != manifestPath }
@@ -920,7 +920,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
     /// Configures the workspace for the Elm project described by [manifestFile]
     fun setupForTests(toolchain: ElmToolchain, manifestFile: VirtualFile) {
         useToolchain(toolchain)
-        enabledPathsRef.updateAndGet { it + manifestFile.pathAsPath }
+        enabledPathsRef.updateAndGet { it.plusElement(manifestFile.pathAsPath) }
         asyncLoadProject(manifestFile.pathAsPath)
             .get(5, TimeUnit.SECONDS)
             .run { upsertProject(this) }
