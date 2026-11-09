@@ -8,6 +8,7 @@
 *   Fixed: elm-review is no longer run on files from dependencies (in `~/.elm`)
 *   Fixed: Global elm-review errors now show up in the elm-review panel
 *   Fixed: Elm 0.19.2 has a bug where error locations are off-by-one – added a workaround for that in the Elm Compiler feature
+*   Fixed: on IntelliJ 2026.x, every elm-review run threw `NoSuchMethodError` (`DaemonCodeAnalyzerEx.markDocumentDirty`) and elm-review highlights did not refresh in open editors
 
 ## [6.0.0] - 2026-04-13
 *   Fixed: Reworked the elm-review panel (#19)
