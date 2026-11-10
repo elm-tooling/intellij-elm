@@ -63,6 +63,10 @@ dependencies {
 
     implementation("com.github.ajalt.colormath:colormath:3.6.1")
 
+    // Jackson 2 is no longer exposed by the IDE's core classloader in IntelliJ 2026.3.
+    // Bundle databind and its transitive core/annotations dependencies ourselves.
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.23.0")
+
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.2.0")
     implementation("org.opentest4j:opentest4j:1.3.0")
 }
