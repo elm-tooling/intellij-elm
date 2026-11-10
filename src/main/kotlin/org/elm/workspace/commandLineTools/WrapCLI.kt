@@ -6,9 +6,10 @@ import com.intellij.openapi.vfs.VirtualFile
 import org.elm.openapiext.GeneralCommandLine
 import org.elm.openapiext.Result
 import org.elm.openapiext.execute
-import org.elm.workspace.ElmProject
 import org.elm.workspace.ParseException
 import org.elm.workspace.Version
+import org.elm.workspace.compiler.ElmCompilerOutput
+import org.elm.workspace.compiler.ElmError
 import org.elm.workspace.compiler.ResolvedBuildTarget
 import org.elm.workspace.elmCompilerTool
 import java.nio.file.Path
@@ -21,12 +22,14 @@ class WrapCLI(private val wrapExecutablePath: Path) {
     fun make(
         project: Project,
         workDir: Path,
-        elmProject: ElmProject?,
+        baseDirForErrors: Path?,
         entryPoints: List<ResolvedBuildTarget>,
         jsonReport: Boolean = false,
-        currentFile: VirtualFile? = null
+        currentFile: VirtualFile? = null,
+        messageSink: MutableList<ElmError>? = null,
+        outputSink: MutableList<ElmCompilerOutput>? = null
     ): Boolean =
-        ElmCLI(wrapExecutablePath).make(project, workDir, elmProject, entryPoints, jsonReport, currentFile)
+        ElmCLI(wrapExecutablePath).make(project, workDir, baseDirForErrors, entryPoints, jsonReport, currentFile, messageSink, outputSink)
 
     fun queryVersion(project: Project): Result<Version> {
         val firstLine = try {

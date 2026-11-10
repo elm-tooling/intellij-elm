@@ -5,33 +5,31 @@ import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.icons.AllIcons
-import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CustomShortcutSet
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.ui.ColoredListCellRenderer
 import com.intellij.ui.JBColor
 import com.intellij.ui.OnePixelSplitter
+import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
 import com.intellij.ui.content.impl.ContentImpl
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.MessageCategory
 import com.intellij.util.ui.UIUtil
-import org.elm.ide.notifications.showBalloon
-import org.elm.workspace.ElmProject
+import org.elm.ide.actions.buildTarget
+import org.elm.ide.actions.buildTargetKeyOf
+import org.elm.ide.actions.elmBuildTargetSelection
 import org.elm.workspace.ElmWorkspaceService
-import org.elm.workspace.commandLineTools.makeProject
 import org.elm.workspace.compiler.*
 import org.elm.workspace.elmWorkspace
 import java.awt.BorderLayout
@@ -39,7 +37,6 @@ import java.awt.CardLayout
 import java.awt.Font
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import javax.swing.*
@@ -63,17 +60,29 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
             }
         }
 
+        lateinit var buildTargetsPanelRef: ElmBuildTargetsPanel
         val errorTreeViewPanel = ElmCompilerErrorTreeViewPanel(
             project,
             onToggleBuildTargets = { setBuildTargetsVisible(!buildTargetsVisible) },
-            isBuildTargetsVisible = { buildTargetsVisible }
+            isBuildTargetsVisible = { buildTargetsVisible },
+            onBuildSelected = { buildTargetsPanelRef.buildSelectedTarget() },
+            isBuildSelectedEnabled = { buildTargetsPanelRef.hasSelectedTarget() },
+            onBuildAll = { org.elm.ide.actions.buildAllTargets(project) },
+            isBuildAllEnabled = { buildTargetsPanelRef.hasTargets() },
+            onRunTestsSelected = { buildTargetsPanelRef.runSelectedTestTarget() },
+            isRunTestsSelectedVisible = { buildTargetsPanelRef.isTestTargetSelected() }
         )
         val outputPanel = ElmCompilerOutputPanel(project)
         val messagesAndOutputSplit = OnePixelSplitter(false, 0.56f).apply {
             firstComponent = errorTreeViewPanel
             secondComponent = outputPanel
         }
-        buildTargetsPanel = ElmBuildTargetsPanel(project)
+        buildTargetsPanel = ElmBuildTargetsPanel(
+            project,
+            onInvalidSelected = { message -> errorTreeViewPanel.showConfigError(message) },
+            onValidSelected = { errorTreeViewPanel.clearConfigError() }
+        )
+        buildTargetsPanelRef = buildTargetsPanel
         root = OnePixelSplitter(false, 0.24f).apply {
             firstComponent = buildTargetsPanel
             secondComponent = messagesAndOutputSplit
@@ -81,8 +90,9 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
         toolWindow.contentManager.addContent(ContentImpl(root, "Compilation Result", true))
 
         with(project.messageBus.connect()) {
-            subscribe(ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
+            subscribe(ERRORS_TOPIC, object : ElmErrorsListener {
                 override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int) {
+                    errorTreeViewPanel.onBuildMessagesArrived()
                     errorTreeViewPanel.clearMessages()
 
                     messages.forEachIndexed { index, elmError ->
@@ -109,10 +119,10 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
                 }
             })
 
-            subscribe(COMPILER_OUTPUT_TOPIC, object : ElmBuildAction.ElmCompilerOutputListener {
-                override fun update(toolName: String, commandLine: String, stdout: String, stderr: String, exitCode: Int) {
+            subscribe(COMPILER_OUTPUT_TOPIC, object : ElmCompilerOutputListener {
+                override fun update(outputs: List<ElmCompilerOutput>) {
                     ToolWindowManager.getInstance(project).invokeLater {
-                        outputPanel.showOutput(toolName, commandLine, stdout, stderr, exitCode)
+                        outputPanel.showOutput(outputs)
                     }
                 }
             })
@@ -128,19 +138,38 @@ class ElmCompilerToolWindowFactory : ToolWindowFactory {
     }
 }
 
-private class ElmBuildTargetsPanel(private val project: Project) : JPanel(BorderLayout()) {
+private class ElmBuildTargetsPanel(
+    private val project: Project,
+    private val onInvalidSelected: (String) -> Unit,
+    private val onValidSelected: () -> Unit
+) : JPanel(BorderLayout()) {
     private val targetListModel = DefaultListModel<BuildTargetItem>()
     private val targetList = JBList(targetListModel).apply {
         selectionMode = ListSelectionModel.SINGLE_SELECTION
         visibleRowCount = 10
         emptyText.text = "No build targets configured"
+        cellRenderer = object : ColoredListCellRenderer<BuildTargetItem>() {
+            override fun customizeCellRenderer(
+                list: JList<out BuildTargetItem>,
+                value: BuildTargetItem,
+                index: Int,
+                selected: Boolean,
+                hasFocus: Boolean
+            ) {
+                if (value.error != null) {
+                    icon = AllIcons.General.Error
+                    append(value.displayName, SimpleTextAttributes.ERROR_ATTRIBUTES)
+                } else {
+                    append(value.displayName)
+                }
+            }
+        }
     }
-    private val buildSelectedAction = BuildSelectedAction()
     private val addBuildTargetAction = AddBuildTargetAction()
     private val editBuildTargetAction = EditBuildTargetAction()
     private val actionToolbar = ActionManager.getInstance().createActionToolbar(
         "Elm Compiler Build Targets",
-        DefaultActionGroup(buildSelectedAction, addBuildTargetAction, editBuildTargetAction),
+        DefaultActionGroup(addBuildTargetAction, editBuildTargetAction),
         false
     )
 
@@ -160,8 +189,13 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
             add(JScrollPane(targetList), BorderLayout.CENTER)
         }, BorderLayout.CENTER)
 
-        targetList.addListSelectionListener {
-            // Action update is driven by IntelliJ toolbar refresh cycle.
+        targetList.addListSelectionListener { e ->
+            if (!e.valueIsAdjusting) {
+                val item = targetList.selectedValue
+                project.elmBuildTargetSelection.selectedKey =
+                    item?.target?.let { buildTargetKeyOf(it) }
+                updateSelectionMessages()
+            }
         }
         targetList.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
@@ -170,68 +204,74 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
                 }
             }
         })
-        val buildSelectedShortcutAction = object : DumbAwareAction() {
-            override fun actionPerformed(e: AnActionEvent) {
-                buildSelectedTarget()
-            }
-        }
-        val buildShortcutSet = ActionManager.getInstance().getAction(ELM_BUILD_ACTION_ID)?.shortcutSet
-            ?: CustomShortcutSet.fromString("alt shift P")
-        buildSelectedShortcutAction.registerCustomShortcutSet(buildShortcutSet, this)
 
         refreshTargets()
     }
 
     fun refreshTargets() {
+        val previousKey = project.elmBuildTargetSelection.selectedKey
         targetListModel.clear()
-        for (elmProject in project.elmWorkspace.allProjects.sortedBy { it.presentableName }) {
-            val resolved = when (val result = project.elmWorkspace.resolveBuildTargets(elmProject)) {
-                is org.elm.openapiext.Result.Ok -> result.value
-                is org.elm.openapiext.Result.Err -> emptyList()
-            }
-            for ((index, target) in resolved.withIndex()) {
-                targetListModel.addElement(BuildTargetItem(elmProject, target, index + 1))
-            }
+        for ((row, config, resolved, error) in project.elmWorkspace.resolveBuildTargetsDetailed()) {
+            val displayName = resolved?.let { displayTargetName(it, row) }
+                ?: displayConfigName(config, row)
+            targetListModel.addElement(
+                BuildTargetItem(
+                    row, displayName, resolved, error, config
+                )
+            )
         }
+        // Always keep one target selected (defaulting to the first), preserving the previous
+        // selection when it still exists. Setting the index updates the selection service.
+        if (!targetListModel.isEmpty) {
+            val matchIndex = (0 until targetListModel.size()).firstOrNull {
+                val item = targetListModel.getElementAt(it)
+                item.target != null && buildTargetKeyOf(item.target) == previousKey
+            } ?: 0
+            targetList.selectedIndex = matchIndex
+        }
+        // Reflect the current selection's validity in the messages box (a refresh may have
+        // changed which target is selected, or cleared the list entirely).
+        updateSelectionMessages()
     }
 
-    private fun buildSelectedTarget() {
+    /** Show the selected target's config error in the messages box, or clear a shown one. */
+    private fun updateSelectionMessages() {
+        val error = targetList.selectedValue?.error
+        if (error != null) onInvalidSelected(error) else onValidSelected()
+    }
+
+    fun hasSelectedTarget(): Boolean = targetList.selectedIndex >= 0
+
+    fun hasTargets(): Boolean = !targetListModel.isEmpty
+
+    fun buildSelectedTarget() {
         val item = targetList.selectedValue ?: return
-        val currentFileInEditor: VirtualFile? = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
-        ApplicationManager.getApplication().executeOnPooledThread {
-            val stillExists = Files.exists(item.target.inputPath)
-            if (!stillExists) {
-                ApplicationManager.getApplication().invokeLater {
-                    project.showBalloon(
-                        "Cannot build target '${displayTargetName(item.target, item.index)}': input file not found.",
-                        NotificationType.ERROR
-                    )
-                }
-                return@executeOnPooledThread
-            }
-            makeProject(item.elmProject, project, listOf(item.target), currentFileInEditor)
+        val target = item.target
+        if (target == null) {
+            // The selected target is misconfigured; show why instead of trying to build it.
+            item.error?.let { onInvalidSelected(it) }
+            return
         }
+        buildTarget(project, target)
+    }
+
+    /** True when the selected target is a runnable (resolved) test target. */
+    fun isTestTargetSelected(): Boolean =
+        targetList.selectedValue?.target?.type == ElmBuildTargetType.TEST
+
+    /** Run the tests for the selected test target; no-op if the selection is not a test target. */
+    fun runSelectedTestTarget() {
+        val target = targetList.selectedValue?.target ?: return
+        if (target.type != ElmBuildTargetType.TEST) return
+        org.elm.ide.actions.runElmTestsForTarget(project, target)
     }
 
     private fun editSelectedTarget() {
         val item = targetList.selectedValue ?: return
-        project.elmWorkspace.showConfigureBuildTargetUI(item.elmProject.manifestPath, item.target)
-    }
-
-    private inner class BuildSelectedAction : DumbAwareAction(
-        "Build selected",
-        "Build the selected target",
-        AllIcons.Actions.Execute
-    ) {
-        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
-
-        override fun update(e: AnActionEvent) {
-            e.presentation.isEnabled = targetList.selectedIndex >= 0
-        }
-
-        override fun actionPerformed(e: AnActionEvent) {
-            buildSelectedTarget()
-        }
+        // Locate the row by its configured name/input path so invalid targets can be edited (and fixed) too.
+        val name = item.target?.name ?: item.config.name
+        val inputPath = item.target?.inputPathForCompiler ?: item.config.inputPath
+        project.elmWorkspace.showConfigureBuildTargetUI(name, inputPath)
     }
 
     private inner class EditBuildTargetAction : DumbAwareAction(
@@ -242,7 +282,9 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
         override fun update(e: AnActionEvent) {
-            e.presentation.isEnabled = targetList.selectedIndex >= 0
+            // Automatic test targets are not user-configured, so there is nothing to edit.
+            val item = targetList.selectedValue
+            e.presentation.isEnabled = item != null && !item.isAutomatic
         }
 
         override fun actionPerformed(e: AnActionEvent) {
@@ -264,14 +306,16 @@ private class ElmBuildTargetsPanel(private val project: Project) : JPanel(Border
 }
 
 private data class BuildTargetItem(
-    val elmProject: ElmProject,
-    val target: ResolvedBuildTarget,
-    val index: Int
+    val index: Int,
+    val displayName: String,
+    /** The resolved target, or null when the target is misconfigured (see [error]). */
+    val target: ResolvedBuildTarget?,
+    /** Non-null when the target could not be resolved; the reason to surface to the user. */
+    val error: String?,
+    val config: ElmBuildTargetConfig
 ) {
-    override fun toString(): String {
-        val targetName = displayTargetName(target, index)
-        return "$targetName (${elmProject.presentableName})"
-    }
+    /** True for the automatic, non-editable test targets appended after the configured ones. */
+    val isAutomatic: Boolean get() = config.type == ElmBuildTargetType.TEST
 }
 
 private fun displayTargetName(target: ResolvedBuildTarget, index: Int): String =
@@ -281,17 +325,110 @@ private fun displayTargetName(target: ResolvedBuildTarget, index: Int): String =
         }
     }
 
+private fun displayConfigName(config: ElmBuildTargetConfig, index: Int): String =
+    config.name.ifBlank {
+        config.inputPath.ifBlank {
+            "Target $index"
+        }
+    }
+
 private class ElmCompilerErrorTreeViewPanel(
     project: Project,
     private val onToggleBuildTargets: () -> Unit,
-    private val isBuildTargetsVisible: () -> Boolean
+    private val isBuildTargetsVisible: () -> Boolean,
+    private val onBuildSelected: () -> Unit,
+    private val isBuildSelectedEnabled: () -> Boolean,
+    private val onBuildAll: () -> Unit,
+    private val isBuildAllEnabled: () -> Boolean,
+    private val onRunTestsSelected: () -> Unit,
+    private val isRunTestsSelectedVisible: () -> Boolean
 ) : ElmErrorTreeViewPanel(project, "Elm Compiler", false, true) {
+    /** True while the messages tree is showing a build-target config error (not compiler output). */
+    private var showingConfigError = false
+
+    /** Show a misconfigured target's error in the messages box (where it otherwise says "No messages"). */
+    fun showConfigError(message: String) {
+        clearMessages()
+        for (line in message.lines()) {
+            addMessage(MessageCategory.ERROR, arrayOf(line), null, -1, -1, null)
+        }
+        showingConfigError = true
+        reload()
+        expandAll()
+    }
+
+    /** Clear a previously shown config error, leaving real build output (if any) untouched. */
+    fun clearConfigError() {
+        if (!showingConfigError) return
+        clearMessages()
+        showingConfigError = false
+        reload()
+    }
+
+    /** Called when real compiler output replaces the messages, so we stop treating it as a config error. */
+    fun onBuildMessagesArrived() {
+        showingConfigError = false
+    }
+
     override fun fillRightToolbarGroup(group: DefaultActionGroup) {
         super.fillRightToolbarGroup(group)
+        group.add(BuildSelectedAction())
+        group.add(BuildAllAction())
+        group.add(RunTestsSelectedAction())
+        group.addSeparator()
         group.add(ToggleBuildTargetsAction())
         group.addSeparator()
         group.add(ExpandAllAction())
         group.add(CollapseAllAction())
+    }
+
+    private inner class BuildSelectedAction : DumbAwareAction(
+        "Build selected",
+        "Build the selected target",
+        AllIcons.Actions.Execute
+    ) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            e.presentation.isEnabled = isBuildSelectedEnabled()
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            onBuildSelected()
+        }
+    }
+
+    private inner class BuildAllAction : DumbAwareAction(
+        "Build all",
+        "Build all targets and show their combined errors",
+        AllIcons.Actions.RunAll
+    ) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            e.presentation.isEnabled = isBuildAllEnabled()
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            onBuildAll()
+        }
+    }
+
+    private inner class RunTestsSelectedAction : DumbAwareAction(
+        "Run tests",
+        "Run the tests for the selected test target",
+        AllIcons.RunConfigurations.TestState.Green2
+    ) {
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+        override fun update(e: AnActionEvent) {
+            // Only offer this for the automatic test targets; hidden for regular build targets.
+            e.presentation.isVisible = isRunTestsSelectedVisible()
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            onRunTestsSelected()
+        }
     }
 
     private inner class ToggleBuildTargetsAction : DumbAwareAction(
@@ -385,25 +522,40 @@ private class ElmCompilerOutputPanel(project: Project) : JPanel(BorderLayout()) 
         cardLayout.show(content, "empty")
     }
 
-    fun showOutput(toolName: String, commandLine: String, stdout: String, stderr: String, exitCode: Int) {
+    fun showOutput(outputs: List<ElmCompilerOutput>) {
         console.clear()
-        console.print("Tool: $toolName\n", ConsoleViewContentType.SYSTEM_OUTPUT)
-        console.print("Command: $commandLine\n", ConsoleViewContentType.SYSTEM_OUTPUT)
-        console.print("Exit Code: $exitCode\n\n", ConsoleViewContentType.SYSTEM_OUTPUT)
+        if (outputs.isEmpty()) {
+            cardLayout.show(content, "empty")
+            return
+        }
+        // "Build all" posts the output of every command across all targets; render each as its own
+        // section, separated by a divider, so nothing is lost the way a single replacing view would.
+        outputs.forEachIndexed { index, output ->
+            if (index > 0) {
+                console.print("\n${"─".repeat(80)}\n\n", ConsoleViewContentType.SYSTEM_OUTPUT)
+            }
+            renderOutput(output)
+        }
+        cardLayout.show(content, "output")
+    }
 
-        if (stdout.isNotBlank()) {
-            renderOutputStream("STDOUT", stdout, ConsoleViewContentType.NORMAL_OUTPUT)
+    private fun renderOutput(output: ElmCompilerOutput) {
+        console.print("Tool: ${output.toolName}\n", ConsoleViewContentType.SYSTEM_OUTPUT)
+        console.print("Command: ${output.commandLine}\n", ConsoleViewContentType.SYSTEM_OUTPUT)
+        console.print("Exit Code: ${output.exitCode}\n\n", ConsoleViewContentType.SYSTEM_OUTPUT)
+
+        if (output.stdout.isNotBlank()) {
+            renderOutputStream("STDOUT", output.stdout, ConsoleViewContentType.NORMAL_OUTPUT)
             console.print("\n", ConsoleViewContentType.SYSTEM_OUTPUT)
         }
 
-        if (stderr.isNotBlank()) {
-            renderOutputStream("STDERR", stderr, ConsoleViewContentType.ERROR_OUTPUT)
+        if (output.stderr.isNotBlank()) {
+            renderOutputStream("STDERR", output.stderr, ConsoleViewContentType.ERROR_OUTPUT)
         }
 
-        if (stdout.isBlank() && stderr.isBlank()) {
+        if (output.stdout.isBlank() && output.stderr.isBlank()) {
             console.print("(no output)\n", ConsoleViewContentType.SYSTEM_OUTPUT)
         }
-        cardLayout.show(content, "output")
     }
 
     private fun renderOutputStream(label: String, text: String, defaultType: ConsoleViewContentType) {

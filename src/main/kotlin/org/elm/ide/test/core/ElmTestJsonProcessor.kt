@@ -75,26 +75,41 @@ class ElmTestJsonProcessor(private val testsRelativeDirPath: String) {
     fun testEvents(path: Path, obj: JsonObject): Sequence<TreeNodeEvent> {
         return when (getStatus(obj)) {
             "pass" -> {
-                val duration = java.lang.Long.parseLong(obj.get("duration").asString)
+                val duration = durationOf(obj)
                 sequenceOf(newTestStartedEvent(path))
                         .plus(newTestFinishedEvent(path, duration))
             }
             "todo" -> {
                 val comment = getComment(obj)
-                sequenceOf(newTestIgnoredEvent(path, comment))
+                val duration = durationOf(obj)
+                // A `todo` is reported as an ignored test. It needs the same `testStarted` /
+                // `testFinished` bracketing as any other test: without `testStarted` the platform
+                // logs "Test wasn't started!" and auto-starts it, and without `testFinished` it
+                // stays in the SMTestRunner's set of running tests — leaving the tree "incomplete"
+                // so the root node is marked "Terminated" instead of showing the ignored test.
+                sequenceOf(newTestStartedEvent(path))
+                        .plus(newTestIgnoredEvent(path, comment))
+                        .plus(newTestFinishedEvent(path, duration))
             }
-            else -> try {
-                val message = getMessage(obj)
-                val actual = getActual(obj)
-                val expected = getExpected(obj)
-
+            else -> {
+                val duration = durationOf(obj)
+                val failedEvent = try {
+                    val message = getMessage(obj)
+                    val actual = getActual(obj)
+                    val expected = getExpected(obj)
+                    newTestFailedEvent(path, actual, expected, message ?: "")
+                } catch (e: Exception) {
+                    val failures = GsonBuilder().setPrettyPrinting().create().toJson(obj.get("failures"))
+                    newTestFailedEvent(path, null, null, failures)
+                }
+                // A failed test still needs a `testFinished` after its `testFailed`, otherwise the
+                // SMTestRunner keeps it in its set of running tests. That leaves the test tree
+                // "incomplete" at the end of the run, which makes the platform mark the root node
+                // "Terminated" (with an error icon) instead of "Tests failed". The `testFinished`
+                // doesn't undo the failure — the test still shows as failed.
                 sequenceOf(newTestStartedEvent(path))
-                        .plus(newTestFailedEvent(path, actual, expected, message
-                                ?: ""))
-            } catch (e: Exception) {
-                val failures = GsonBuilder().setPrettyPrinting().create().toJson(obj.get("failures"))
-                sequenceOf(newTestStartedEvent(path))
-                        .plus(newTestFailedEvent(path, null, null, failures))
+                        .plus(failedEvent)
+                        .plus(newTestFinishedEvent(path, duration))
             }
         }
     }
@@ -198,6 +213,9 @@ class ElmTestJsonProcessor(private val testsRelativeDirPath: String) {
 
         private fun getStatus(obj: JsonObject): String =
                 obj.get("status").asString
+
+        private fun durationOf(obj: JsonObject): Long =
+                obj.get("duration")?.asString?.toLongOrNull() ?: 0L
 
         fun toPath(element: JsonObject): Path {
             val labels = element.get("labels").asJsonArray.asSequence()

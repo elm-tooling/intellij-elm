@@ -5,6 +5,7 @@ import com.intellij.openapi.vfs.VfsUtil
 import org.elm.fileTreeFromText
 import org.elm.workspace.ElmToolchain
 import org.elm.workspace.EmptyElmStdlibVariant
+import org.elm.workspace.Version
 import org.elm.workspace.elmWorkspace
 import org.junit.Test
 
@@ -281,7 +282,8 @@ class ElmUnusedSymbolInspectionTest : ElmInspectionsTestBase(ElmUnusedSymbolInsp
             myFixture.checkHighlighting(checkWarn, checkInfo, checkWeakWarn)
         } finally {
             runWriteAction {
-                VfsUtil.saveText(elmJson, EmptyElmStdlibVariant.jsonManifest)
+                val elmVersion = toolchain.queryCompilerVersion(project).orNull() ?: Version(0, 19, 1)
+                VfsUtil.saveText(elmJson, EmptyElmStdlibVariant.manifestFor(elmVersion))
             }
             project.elmWorkspace.setupForTests(toolchain, elmJson)
         }
