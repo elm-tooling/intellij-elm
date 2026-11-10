@@ -3,7 +3,7 @@
     "source-directories": [
         ".."
     ],
-    "elm-version": "0.19.2",
+    "elm-version": "0.19.3",
     "dependencies": {
         "direct": {
             "elm-explorations/test": "1.0.0",

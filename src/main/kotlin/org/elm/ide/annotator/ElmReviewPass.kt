@@ -3,16 +3,15 @@ package org.elm.ide.annotator
 import com.intellij.codeHighlighting.DirtyScopeTrackingHighlightingPassFactory
 import com.intellij.codeHighlighting.TextEditorHighlightingPass
 import com.intellij.codeHighlighting.TextEditorHighlightingPassRegistrar
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.codeInsight.daemon.impl.DaemonCodeAnalyzerEx
 import com.intellij.codeInsight.daemon.impl.FileStatusMap
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.logger
-import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.DumbAware
@@ -179,16 +178,19 @@ class ElmReviewPassFactory(
                 override fun update(baseDirPath: Path, messages: List<ElmReviewError>) {
                     scheduleExternalActivity(object : Update(baseDirPath) {
                         override fun run() {
-                            val daemon = DaemonCodeAnalyzerEx.getInstanceEx(project)
-                            val docsToMark = ReadAction.compute<List<Document>, Throwable> {
+                            // Re-run the highlighting passes (including ElmReviewPass) for every open
+                            // file of the reviewed project so the new elm-review results are shown.
+                            // `DaemonCodeAnalyzer.restart(PsiFile)` is the public, stable API for this;
+                            // the previously used `DaemonCodeAnalyzerEx.markDocumentDirty` was removed
+                            // from the platform in 2026.x and threw NoSuchMethodError at runtime.
+                            val daemon = DaemonCodeAnalyzer.getInstance(project)
+                            ReadAction.run<Throwable> {
                                 val psiManager = PsiManager.getInstance(project)
                                 FileEditorManager.getInstance(project).openFiles
                                     .mapNotNull { psiManager.findFile(it) as? ElmFile }
                                     .filter { it.elmProject?.projectDirPath == baseDirPath }
-                                    .mapNotNull { FileDocumentManager.getInstance().getDocument(it.virtualFile) }
+                                    .forEach { daemon.restart(it) }
                             }
-                            docsToMark.forEach { doc -> daemon.markDocumentDirty(doc, this) }
-                            daemon.settingsChanged()
                         }
                     })
                 }

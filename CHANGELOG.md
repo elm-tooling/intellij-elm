@@ -23,6 +23,8 @@
 *   Test runner: Fixed output for edge cases like when _all_ tests are skipped or are `todo`s
 *   The Elm Projects sidebar has been moved to settings, and now lets you toggle each found elm.json file instead of looking for them in a file picker
 *   When attaching an elm.json file, the Elm version specified in the elm.json file is now used
+*   Fixed: on IntelliJ 2026.x, every elm-review run threw `NoSuchMethodError` (`DaemonCodeAnalyzerEx.markDocumentDirty`) and elm-review highlights did not refresh in open editors
+
 
 ## [6.0.0] - 2026-04-13
 *   Fixed: Reworked the elm-review panel (#19)
