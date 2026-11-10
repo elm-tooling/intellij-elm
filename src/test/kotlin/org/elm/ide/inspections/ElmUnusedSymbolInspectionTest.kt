@@ -5,6 +5,7 @@ import com.intellij.openapi.vfs.VfsUtil
 import org.elm.fileTreeFromText
 import org.elm.workspace.ElmToolchain
 import org.elm.workspace.EmptyElmStdlibVariant
+import org.elm.workspace.Version
 import org.elm.workspace.elmWorkspace
 import org.junit.Test
 
@@ -199,6 +200,44 @@ class ElmUnusedSymbolInspectionTest : ElmInspectionsTestBase(ElmUnusedSymbolInsp
         """.trimIndent())
 
     @Test
+    fun `test phantom type constructor taking Never is never marked as unused`() = checkByFileTree("""
+        --@ main.elm
+        import Basics exposing (Never)
+        type Id = Id Never
+        --^
+
+        --@ Basics.elm
+        module Basics exposing (Never)
+        type Never = JustOneMore Never
+        """.trimIndent())
+
+
+    @Test
+    fun `test phantom type constructor taking the type itself is never marked as unused`() = checkByText("""
+        type Id = Id Id
+        """.trimIndent())
+
+
+    @Test
+    fun `test a single unused constructor with an argument that is not phantom is still unused`() = checkByText("""
+        type Id = <warning descr="'Id' is never used">Id</warning> Int
+        """.trimIndent())
+
+
+    @Test
+    fun `test an unused constructor taking a same-named type from elsewhere is still unused`() = checkByFileTree("""
+        --@ main.elm
+        import Other exposing (Never)
+        type Id = <warning descr="'Id' is never used">Id</warning> Never
+        --^
+
+        --@ Other.elm
+        module Other exposing (Never)
+        type Never = Never
+        """.trimIndent())
+
+
+    @Test
     fun `test renames unused case branch patterns`() = checkFixByText("Rename to _", """
         type T = T () ()
         main : T -> ()
@@ -243,7 +282,8 @@ class ElmUnusedSymbolInspectionTest : ElmInspectionsTestBase(ElmUnusedSymbolInsp
             myFixture.checkHighlighting(checkWarn, checkInfo, checkWeakWarn)
         } finally {
             runWriteAction {
-                VfsUtil.saveText(elmJson, EmptyElmStdlibVariant.jsonManifest)
+                val elmVersion = toolchain.queryCompilerVersion(project).orNull() ?: Version(0, 19, 1)
+                VfsUtil.saveText(elmJson, EmptyElmStdlibVariant.manifestFor(elmVersion))
             }
             project.elmWorkspace.setupForTests(toolchain, elmJson)
         }

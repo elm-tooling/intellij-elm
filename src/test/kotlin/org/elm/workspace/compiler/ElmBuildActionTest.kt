@@ -1,16 +1,10 @@
 package org.elm.workspace.compiler
 
-import com.intellij.notification.Notification
-import com.intellij.notification.Notifications
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.actionSystem.impl.SimpleDataContext
-import com.intellij.openapi.util.Ref
-import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.testFramework.TestActionEvent
 import junit.framework.TestCase
 import org.elm.workspace.ElmWorkspaceTestBase
+import org.elm.workspace.commandLineTools.makeProject
+import org.elm.workspace.Version
 import org.elm.workspace.elmToolchain
 import org.elm.workspace.elmWorkspace
 import org.intellij.lang.annotations.Language
@@ -29,7 +23,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
                 """.trimIndent()
 
         buildProject {
-            project("elm.json", manifestElm19)
+            project("elm.json", manifestElm19(installedElmCompilerVersion))
             dir("src") {
                 elm("Main.elm", source)
             }
@@ -61,7 +55,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
         val fileFrontend = myFixture.configureFromTempProjectFile("src/Frontend.elm").virtualFile
         val fileBackend = myFixture.configureFromTempProjectFile("src/Backend.elm").virtualFile
         configureBuildTargets(listOf(fileFrontend, fileBackend), ElmCompilerKind.LAMDERA)
-        doTest(listOf(fileFrontend, fileBackend), expectedNumErrors = 0, expectedOffset = listOf(0, 0), listOf("src/Frontend.elm", "src/Backend.elm"))
+        doTest(listOf(fileFrontend, fileBackend), expectedNumErrors = 0, expectedOffset = listOf(0, 0))
     }
 
     @Test
@@ -74,7 +68,7 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
                 """.trimIndent()
 
         buildProject {
-            project("elm.json", manifestElm19)
+            project("elm.json", manifestElm19(installedElmCompilerVersion))
             dir("src") {
                 elm("Main.elm", source)
             }
@@ -84,122 +78,58 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
         doTest(file, expectedNumErrors = 1, expectedOffset = 0)
     }
 
-    @Test
-    fun `test build Elm project ignores nested function named 'main'`() {
-        val source = """
-                    module Main exposing (..)
-                    import Html
-                    foo =
-                        let
-                            main = Html.text "hi"
-                        in
-                        main
-                        
-                """.trimIndent()
-
-        buildProject {
-            project("elm.json", manifestElm19)
-            dir("src") {
-                elm("Foo.elm", source)
-            }
-        }
-        val file = myFixture.configureFromTempProjectFile("src/Foo.elm").virtualFile
-        doTestShowsErrorBalloon(file, "No build targets configured")
-    }
-
 
     private fun doTest(file: VirtualFile, expectedNumErrors: Int, expectedOffset: Int) {
         var succeeded = false
         with(project.messageBus.connect(testRootDisposable)) {
-            subscribe(ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
+            subscribe(ERRORS_TOPIC, object : ElmErrorsListener {
                 override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int) {
                     TestCase.assertEquals(expectedNumErrors, messages.size)
-                    TestCase.assertEquals("src/Main.elm", targetPath)
+                    TestCase.assertEquals(file.path, targetPath)
                     TestCase.assertEquals(expectedOffset, offset)
                     succeeded = true
                 }
             })
         }
 
-        val (action, event) = makeTestAction(file)
-        check(event.presentation.isEnabledAndVisible) {
-            "The build action should be enabled in this context"
-        }
-        action.actionPerformed(event)
+        buildConfiguredTargets(file)
         assertTrue(succeeded)
     }
 
-    private fun doTest(files: List<VirtualFile>, expectedNumErrors: Int, expectedOffset: List<Int>, source: List<String> = listOf("src/Mail.elm")) {
+    private fun doTest(files: List<VirtualFile>, expectedNumErrors: Int, expectedOffset: List<Int>) {
         var succeeded = false
+        val inputPaths = files.map { it.path }
         with(project.messageBus.connect(testRootDisposable)) {
-            subscribe(ERRORS_TOPIC, object : ElmBuildAction.ElmErrorsListener {
-                override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int ) {
+            subscribe(ERRORS_TOPIC, object : ElmErrorsListener {
+                override fun update(baseDirPath: Path, messages: List<ElmError>, targetPath: String, offset: Int) {
                     TestCase.assertEquals(expectedNumErrors, messages.size)
-                    assertTrue(source.contains(targetPath))
+                    assertTrue(inputPaths.contains(targetPath))
                     assertTrue(expectedOffset.contains(offset))
                     succeeded = true
                 }
             })
         }
 
-        files.forEach {
-            val (action, event) = makeTestAction(it)
-            check(event.presentation.isEnabledAndVisible) {
-                "The build action should be enabled in this context"
-            }
-            action.actionPerformed(event)
-        }
+        buildConfiguredTargets(files.first())
         assertTrue(succeeded)
     }
 
-    private fun doTestShowsErrorBalloon(file: VirtualFile, errorFragment: String) {
-        val (action, event) = makeTestAction(file)
-        check(event.presentation.isEnabledAndVisible) {
-            "The build action should be enabled in this context"
-        }
-        val ref = connectToBusAndGetNotificationRef()
-        action.actionPerformed(event)
-        assertTrue(ref.get().content.contains(errorFragment))
-    }
-
-
-    private fun makeTestAction(file: VirtualFile): Pair<ElmBuildAction, AnActionEvent> {
-        val dataContext = SimpleDataContext.builder()
-            .add(CommonDataKeys.PROJECT, project)
-            .add(CommonDataKeys.VIRTUAL_FILE, file)
-            .build()
-        val action = ElmBuildAction()
-        val event = TestActionEvent.createTestEvent(action, dataContext)
-        action.update(event)
-        return Pair(action, event)
-    }
-
-    private fun connectToBusAndGetNotificationRef(): Ref<Notification> {
-        val notificationRef = Ref<Notification>()
-        project.messageBus.connect(testRootDisposable).subscribe(Notifications.TOPIC,
-                object : Notifications {
-                    override fun notify(notification: Notification) =
-                            notificationRef.set(notification)
-                })
-        return notificationRef
+    /** Build every configured target, exactly as the tool window's build actions do. */
+    private fun buildConfiguredTargets(currentFileInEditor: VirtualFile?) {
+        val entryPoints = project.elmWorkspace.resolveBuildTargetsDetailed().mapNotNull { it.resolved }
+        makeProject(project, entryPoints, currentFileInEditor)
     }
 
     private fun configureBuildTargets(file: VirtualFile, compilerKind: ElmCompilerKind) =
         configureBuildTargets(listOf(file), compilerKind)
 
     private fun configureBuildTargets(files: List<VirtualFile>, compilerKind: ElmCompilerKind) {
-        val elmProject = project.elmWorkspace.findProjectForFile(files.first())
-            ?: error("Could not find Elm project for test file")
-        val projectDir = myFixture.findFileInTempDir(".")
-            ?: error("Could not find test project root")
         val compilerPath = project.elmToolchain.compilerPath?.toString()
             ?: error("Compiler path is not configured in test toolchain")
         val targets = files.mapIndexed { index, file ->
-            val relativeInput = VfsUtilCore.getRelativePath(file, projectDir)
-                ?: error("Could not create relative input path for ${file.path}")
             ElmBuildTargetConfig(
                 name = "Target ${index + 1}",
-                inputPath = relativeInput,
+                inputPath = file.path,
                 outputPath = "",
                 mode = ElmBuildMode.NONE,
                 compilerKind = compilerKind,
@@ -207,18 +137,21 @@ class ElmBuildActionTest : ElmWorkspaceTestBase() {
                 compileOnSave = true
             )
         }
-        project.elmWorkspace.setBuildTargetConfigsFor(elmProject.manifestPath, targets)
+        project.elmWorkspace.setBuildTargets(targets)
     }
 }
 
+// The Elm compiler refuses to compile an application whose `elm.json` declares a different
+// `elm-version` than the compiler itself, so this manifest is parameterized by the installed
+// compiler version (0.19.1, 0.19.2, ...) rather than hardcoding one.
 @Language("JSON")
-private val manifestElm19 = """
+private fun manifestElm19(elmVersion: Version) = """
         {
             "type": "application",
             "source-directories": [
                 "src"
             ],
-            "elm-version": "0.19.1",
+            "elm-version": "$elmVersion",
             "dependencies": {
                 "direct": {
                     "elm/core": "1.0.0",
@@ -258,7 +191,7 @@ private val manifestLamdera101 = """
                     "elm/bytes": "1.0.8",
                     "elm/file": "1.0.5",
                     "elm/http": "2.0.0",
-                    "elm/json": "1.1.3",
+                    "elm/json": "1.1.4",
                     "elm/time": "1.0.0",
                     "elm/virtual-dom": "1.0.2"
                 }

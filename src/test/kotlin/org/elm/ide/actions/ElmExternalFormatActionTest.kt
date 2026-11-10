@@ -13,6 +13,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.TestActionEvent
 import junit.framework.TestCase
 import org.elm.workspace.ElmWorkspaceTestBase
+import org.elm.workspace.Version
 import org.intellij.lang.annotations.Language
 import org.junit.Test
 
@@ -33,7 +34,7 @@ class ElmExternalFormatActionTest : ElmWorkspaceTestBase() {
     @Test
     fun `test elm-format action with elm 19`() {
         buildProject {
-            project("elm.json", manifestElm19)
+            project("elm.json", manifestElm19(installedElmCompilerVersion))
             dir("src") {
                 elm("Main.elm", """
                     module Main exposing (f)
@@ -70,7 +71,7 @@ class ElmExternalFormatActionTest : ElmWorkspaceTestBase() {
 
 
         buildProject {
-            project("elm.json", manifestElm19)
+            project("elm.json", manifestElm19(installedElmCompilerVersion))
             dir("src") {
                 elm("Main.elm", originalCode)
             }
@@ -85,14 +86,12 @@ class ElmExternalFormatActionTest : ElmWorkspaceTestBase() {
         TestCase.assertEquals(originalCode, document.text)
 
         TestCase.assertEquals("elm-format encountered syntax errors that it could not fix", ref.get().content)
-        TestCase.assertEquals(1, ref.get().actions.size)
-        TestCase.assertEquals("Show Errors", ref.get().actions.first().templatePresentation.text)
     }
 
     @Test
     fun `test elm-format action shouldn't be active on non-elm files`() {
         buildProject {
-            project("elm.json", manifestElm19.trimIndent())
+            project("elm.json", manifestElm19(installedElmCompilerVersion).trimIndent())
             dir("src") {
                 elm("Main.elm")
                 file("foo.txt", "")
@@ -109,7 +108,7 @@ class ElmExternalFormatActionTest : ElmWorkspaceTestBase() {
     @Test
     fun `test elm-format action should add to the undo stack`() {
         buildProject {
-            project("elm.json", manifestElm19)
+            project("elm.json", manifestElm19(installedElmCompilerVersion))
             dir("src") {
                 elm("Main.elm", """
                     module Main exposing (f)
@@ -164,13 +163,13 @@ class ElmExternalFormatActionTest : ElmWorkspaceTestBase() {
 
 
 @Language("JSON")
-private val manifestElm19 = """
+private fun manifestElm19(elmVersion: Version) = """
         {
             "type": "application",
             "source-directories": [
                 "src"
             ],
-            "elm-version": "0.19.1",
+            "elm-version": "$elmVersion",
             "dependencies": {
                 "direct": {
                     "elm/core": "1.0.0",

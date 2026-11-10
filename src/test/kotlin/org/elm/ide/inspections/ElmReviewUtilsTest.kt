@@ -1,8 +1,11 @@
 package org.elm.ide.inspections
 
-import com.intellij.openapi.application.runReadAction
+import com.intellij.codeInsight.daemon.impl.HighlightInfo
+import com.intellij.openapi.application.ReadAction
+import com.intellij.psi.PsiFile
 import junit.framework.TestCase
 import org.elm.workspace.ElmWorkspaceTestBase
+import org.elm.workspace.Version
 import org.elm.workspace.elmWorkspace
 import org.elm.workspace.elmreview.ElmReviewError
 import org.elm.workspace.elmreview.Location
@@ -20,7 +23,7 @@ class ElmReviewUtilsTest : ElmWorkspaceTestBase() {
             main = 1
         """.trimIndent()
         buildProject {
-            project("elm.json", manifestElm19)
+            project("elm.json", manifestElm19(installedElmCompilerVersion))
             dir("src") { elm("Main.elm", source) }
         }
         val file = myFixture.configureFromTempProjectFile("src/Main.elm").virtualFile
@@ -33,7 +36,7 @@ class ElmReviewUtilsTest : ElmWorkspaceTestBase() {
         )
         val result = ElmReviewResult(listOf(message), basePath, 0)
 
-        val highlights = runReadAction { highlightsForFile(project, basePath, result) }
+        val highlights = ReadAction.compute<List<Pair<PsiFile, HighlightInfo>>, Throwable> { highlightsForFile(project, basePath, result) }
 
         TestCase.assertEquals(1, highlights.size)
         TestCase.assertEquals(file.path, highlights[0].first.virtualFile.path)
@@ -48,7 +51,7 @@ class ElmReviewUtilsTest : ElmWorkspaceTestBase() {
             main = 1
         """.trimIndent()
         buildProject {
-            project("elm.json", manifestElm19)
+            project("elm.json", manifestElm19(installedElmCompilerVersion))
             dir("src") { elm("Main.elm", source) }
         }
         val basePath = project.elmWorkspace.allProjects.single().projectDirPath
@@ -60,20 +63,20 @@ class ElmReviewUtilsTest : ElmWorkspaceTestBase() {
         )
         val result = ElmReviewResult(listOf(message), basePath, 0)
 
-        val highlights = runReadAction { highlightsForFile(project, basePath, result) }
+        val highlights = ReadAction.compute<List<Pair<PsiFile, HighlightInfo>>, Throwable> { highlightsForFile(project, basePath, result) }
 
         assertTrue(highlights.isEmpty())
     }
 }
 
 @Language("JSON")
-private val manifestElm19 = """
+private fun manifestElm19(elmVersion: Version) = """
         {
             "type": "application",
             "source-directories": [
                 "src"
             ],
-            "elm-version": "0.19.1",
+            "elm-version": "$elmVersion",
             "dependencies": {
                 "direct": {
                     "elm/core": "1.0.0",

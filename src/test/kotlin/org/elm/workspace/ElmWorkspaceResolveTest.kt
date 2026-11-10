@@ -18,7 +18,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
                 "source-directories": [
                     "src"
                 ],
-                "elm-version": "0.19.1",
+                "elm-version": "$installedElmCompilerVersion",
                 "dependencies": {
                     "direct": {
                         "elm/core": "1.0.0",
@@ -61,7 +61,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
                             "src",
                             "../src"
                         ],
-                        "elm-version": "0.19.1",
+                        "elm-version": "$installedElmCompilerVersion",
                         "dependencies": {
                             "direct": {
                                 "elm/core": "1.0.0",
@@ -90,7 +90,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
                     "source-directories": [
                         "src"
                     ],
-                    "elm-version": "0.19.1",
+                    "elm-version": "$installedElmCompilerVersion",
                     "dependencies": {
                         "direct": {
                             "elm/core": "1.0.0",
@@ -135,7 +135,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
                 "source-directories": [
                     "src"
                 ],
-                "elm-version": "0.19.1",
+                "elm-version": "$installedElmCompilerVersion",
                 "dependencies": {
                     "direct": {
                         "elm/core": "1.0.0",
@@ -177,7 +177,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
                 "source-directories": [
                     "src"
                 ],
-                "elm-version": "0.19.1",
+                "elm-version": "$installedElmCompilerVersion",
                 "dependencies": {
                     "direct": {
                         "elm/core": "1.0.0",
@@ -210,7 +210,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
                 "source-directories": [
                     "src"
                 ],
-                "elm-version": "0.19.1",
+                "elm-version": "$installedElmCompilerVersion",
                 "dependencies": {
                     "direct": {
                         "elm/core": "1.0.0",
@@ -246,7 +246,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
                         "source-directories": [
                             "src"
                         ],
-                        "elm-version": "0.19.1",
+                        "elm-version": "$installedElmCompilerVersion",
                         "dependencies": {
                             "direct": {
                                 "elm/core": "1.0.0",
@@ -277,7 +277,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
                         "source-directories": [
                             "src"
                         ],
-                        "elm-version": "0.19.1",
+                        "elm-version": "$installedElmCompilerVersion",
                         "dependencies": {
                             "direct": {
                                 "elm/core": "1.0.0",
@@ -338,7 +338,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
                 "source-directories": [
                     "src"
                 ],
-                "elm-version": "0.19.1",
+                "elm-version": "$installedElmCompilerVersion",
                 "dependencies": {
                     "direct": {
                         "elm/core": "1.0.0",
@@ -378,7 +378,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
                 "source-directories": [
                     "src"
                 ],
-                "elm-version": "0.19.1",
+                "elm-version": "$installedElmCompilerVersion",
                 "dependencies": {
                     "direct": {
                         "elm/core": "1.0.0",
@@ -427,7 +427,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
                 "source-directories": [
                     "src"
                 ],
-                "elm-version": "0.19.1",
+                "elm-version": "$installedElmCompilerVersion",
                 "dependencies": {
                     "direct": {
                         "elm/core": "1.0.0",
@@ -470,7 +470,7 @@ class ElmWorkspaceResolveTest : ElmWorkspaceTestBase() {
                 "source-directories": [
                     "src"
                 ],
-                "elm-version": "0.19.1",
+                "elm-version": "$installedElmCompilerVersion",
                 "dependencies": {
                     "direct": {
                         "elm/core": "1.0.0",

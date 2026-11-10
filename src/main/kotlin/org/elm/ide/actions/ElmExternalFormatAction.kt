@@ -11,7 +11,6 @@ import org.elm.openapiext.isUnitTestMode
 import org.elm.workspace.Version
 import org.elm.workspace.commandLineTools.ElmFormatCLI
 import org.elm.workspace.commandLineTools.ElmFormatCLI.ElmFormatResult
-import org.elm.workspace.compiler.runElmBuildForFile
 import org.elm.workspace.elmToolchain
 import org.elm.workspace.elmWorkspace
 
@@ -47,11 +46,8 @@ class ElmExternalFormatAction : AnAction() {
 
         val result = elmFormat.formatDocumentAndSetText(project, document, ctx.elmVersion, addToUndoStack = true)
         when (result) {
-            is ElmFormatResult.BadSyntax -> {
-                project.showBalloon(result.msg, NotificationType.WARNING, "Show Errors" to {
-                    runElmBuildForFile(project, ctx.file, ctx.file)
-                })
-            }
+            is ElmFormatResult.BadSyntax ->
+                project.showBalloon(result.msg, NotificationType.WARNING)
 
             is ElmFormatResult.FailedToStart ->
                 project.showBalloon(result.msg, NotificationType.ERROR, configureFixAction)

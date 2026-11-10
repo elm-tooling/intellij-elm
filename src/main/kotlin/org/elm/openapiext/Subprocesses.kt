@@ -31,7 +31,6 @@ import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.CapturingProcessHandler
 import com.intellij.execution.process.ProcessOutput
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.util.io.systemIndependentPath
@@ -53,7 +52,8 @@ fun GeneralCommandLine.execute(
     toolName: String,
     project: Project,
     timeoutInMilliseconds: Int = 3000,
-    stdIn: String? = null
+    stdIn: String? = null,
+    logNonZeroExit: Boolean = true
 ): ProcessOutput {
 
     val handler =
@@ -72,15 +72,14 @@ fun GeneralCommandLine.execute(
             CapturingProcessHandler(this)
         }
 
-    val alreadyDisposed = runReadAction { project.isDisposed }
-    if (alreadyDisposed) {
+    if (project.isDisposed) {
         return ProcessOutput().apply { setCancelled() }
     }
 
     try {
         fun runProcess(): ProcessOutput {
             val output = handler.runProcess(timeoutInMilliseconds)
-            if (output.exitCode != 0) {
+            if (output.exitCode != 0 && logNonZeroExit) {
                 log.warn("Command $toolName exited with code ${output.exitCode}")
             }
             return output

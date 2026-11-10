@@ -7,6 +7,7 @@ import com.intellij.ui.EditorNotificationPanel
 import com.intellij.ui.EditorNotificationProvider
 import com.intellij.ui.EditorNotifications
 import org.elm.lang.core.psi.isElmFile
+import org.elm.openapiext.pathAsPath
 import org.elm.workspace.*
 import kotlin.io.path.exists
 import java.util.function.Function
@@ -49,11 +50,11 @@ class ElmNeedsConfigNotificationProvider(
 
         val workspace = project.elmWorkspace
         if (!workspace.hasAtLeastOneValidProject()) {
-            return noElmProjectPanel("No Elm projects found")
+            return noElmProjectPanel("No Elm projects found", file)
         }
 
         val elmProject = project.elmWorkspace.findProjectForFile(file)
-            ?: return noElmProjectPanel("Could not find Elm project for this file")
+            ?: return noElmProjectPanel("Could not find Elm project for this file", file)
 
         val toolchain = project.elmToolchain
         if (!toolchain.looksLikeValidToolchain()) {
@@ -86,10 +87,12 @@ class ElmNeedsConfigNotificationProvider(
         }
 
 
-    private fun noElmProjectPanel(message: String) =
+    private fun noElmProjectPanel(message: String, file: VirtualFile) =
         EditorNotificationPanel().apply {
             text = message
-            createActionLabel("Attach elm.json", "Elm.AttachElmProject")
+            createActionLabel("Configure Elm projects…") {
+                project.elmWorkspace.showConfigureProjectsUI(file.pathAsPath)
+            }
         }
 
 }

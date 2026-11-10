@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.intellij.execution.testframework.sm.runner.events.TestFailedEvent
 import com.intellij.execution.testframework.sm.runner.events.TestFinishedEvent
+import com.intellij.execution.testframework.sm.runner.events.TestIgnoredEvent
 import com.intellij.execution.testframework.sm.runner.events.TestStartedEvent
 import com.intellij.execution.testframework.sm.runner.events.TestSuiteStartedEvent
 import org.elm.ide.test.core.ElmTestJsonProcessor.Companion.closeSuitePaths
@@ -54,6 +55,23 @@ class ElmTestJsonProcessorTest {
         assertEquals("Module", list[0].name)
         assertEquals("test", list[1].name)
         assertEquals("test", list[2].name)
+    }
+
+    @Test
+    fun testCompletedFailedEmitsFinishedSoTheTestIsNoLongerRunning() {
+        // A failing test must still emit a `testFinished` after its `testFailed`; otherwise the
+        // SMTestRunner keeps the test in its running set, the tree stays incomplete, and the root
+        // node is labelled "Terminated" instead of "Tests failed". (Exact payload from elm-test.)
+        val list = processor
+                .accept("{\"event\":\"testCompleted\",\"status\":\"fail\",\"labels\":[\"Example\",\"test\"],\"failures\":[{\"given\":null,\"message\":\"Expect.equal\",\"reason\":{\"type\":\"Equality\",\"data\":{\"expected\":\"2\",\"actual\":\"1\",\"comparison\":\"Expect.equal\"}}}],\"duration\":\"1\"}")
+                ?.toList()
+        assertEquals(4, list!!.size)
+        assertTrue(list[0] is TestSuiteStartedEvent)
+        assertTrue(list[1] is TestStartedEvent)
+        assertTrue(list[2] is TestFailedEvent)
+        assertTrue(list[3] is TestFinishedEvent)
+        assertEquals("test", list[2].name)
+        assertEquals("test", list[3].name)
     }
 
     @Test
@@ -186,6 +204,25 @@ class ElmTestJsonProcessorTest {
     }
 
     @Test
+    fun testCompletedTodoEmitsStartedIgnoredFinished() {
+        // A todo test (e.g. the one `elm-test init` generates) must be bracketed by
+        // testStarted/testFinished around testIgnored; otherwise the ignored test is left running
+        // and the root node is marked "Terminated". (Exact payload from `elm-test init`, whose
+        // single label is just the module name.)
+        val list = processor
+                .accept("{\"event\":\"testCompleted\",\"status\":\"todo\",\"labels\":[\"Example\"],\"failures\":[\"Implement our first test.\"],\"duration\":\"1\"}")
+                ?.toList()
+        assertEquals(4, list!!.size)
+        assertTrue(list[0] is TestSuiteStartedEvent)
+        assertTrue(list[1] is TestStartedEvent)
+        assertTrue(list[2] is TestIgnoredEvent)
+        assertTrue(list[3] is TestFinishedEvent)
+        assertEquals("todo", list[1].name)
+        assertEquals("todo", list[2].name)
+        assertEquals("todo", list[3].name)
+    }
+
+    @Test
     fun fail() {
         val text = "{\"event\":\"testCompleted\",\"status\":\"fail\",\"labels\":[\"Exploratory\",\"describe\",\"fail\"],\"failures\":[{\"given\":null,\"message\":\"boom\",\"reason\":{\"type\":\"custom\",\"data\":\"boom\"}}],\"duration\":\"1\"}"
         val obj = getObject(text)
@@ -244,8 +281,9 @@ class ElmTestJsonProcessorTest {
 
         val list = processor.testEvents(path, obj).toList()
 
-        assertEquals(2, list.size.toLong())
+        assertEquals(3, list.size.toLong())
         assertTrue(list[1] is TestFailedEvent)
+        assertTrue(list[2] is TestFinishedEvent)
         assertEquals("[\n" +
                 "  {\n" +
                 "    \"unknown\": \"format\"\n" +
@@ -261,8 +299,9 @@ class ElmTestJsonProcessorTest {
 
         val list = processor.testEvents(path, obj).toList()
 
-        assertEquals(2, list.size.toLong())
+        assertEquals(3, list.size.toLong())
         assertTrue(list[1] is TestFailedEvent)
+        assertTrue(list[2] is TestFinishedEvent)
         assertEquals("[]", (list[1] as TestFailedEvent).localizedFailureMessage)
     }
 
@@ -301,11 +340,12 @@ class ElmTestJsonProcessorTest {
         val list = processor
                 .accept("{\"event\":\"testCompleted\",\"status\":\"fail\",\"labels\":[\"Exploratory\",\"describe\",\"fail\"],\"failures\":[{\"given\":null,\"message\":\"boom\",\"reason\":{\"type\":\"custom\",\"data\":\"boom\"}}],\"duration\":\"1\"}")
                 ?.toList()
-        assertEquals(4, list!!.size)
+        assertEquals(5, list!!.size)
         assertTrue(list[0] is TestSuiteStartedEvent)
         assertTrue(list[1] is TestSuiteStartedEvent)
         assertTrue(list[2] is TestStartedEvent)
         assertTrue(list[3] is TestFailedEvent)
+        assertTrue(list[4] is TestFinishedEvent)
         assertEquals("elmTestDescribe://Exploratory", (list[0] as TestSuiteStartedEvent).locationUrl)
         assertEquals("elmTestDescribe://Exploratory/describe", (list[1] as TestSuiteStartedEvent).locationUrl)
         assertEquals("elmTestTest://Exploratory/describe/fail", (list[2] as TestStartedEvent).locationUrl)

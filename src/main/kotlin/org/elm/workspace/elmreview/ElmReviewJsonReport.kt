@@ -109,7 +109,8 @@ fun JsonReader.readErrorReport(): List<ElmReviewError> {
                             var currentPath: String? = null
                             readProperties { outerProperty ->
                                 when (outerProperty) {
-                                    "path" -> currentPath = nextString()
+                                    // `path` is null for global errors that aren't tied to a source file.
+                                    "path" -> currentPath = readNullableString()
                                     "errors" -> {
                                         beginArray()
                                         while (hasNext()) {
@@ -153,7 +154,7 @@ fun JsonReader.readErrorReport(): List<ElmReviewError> {
                             var currentPath: String? = null
                             readProperties { outerProperty ->
                                 when (outerProperty) {
-                                    "path" -> currentPath = nextString()
+                                    "path" -> currentPath = readNullableString()
                                     "name" -> skipValue()
                                     "problems" -> {
                                         beginArray()

@@ -51,6 +51,7 @@ import org.elm.workspace.ElmToolchain
 import org.elm.workspace.ElmToolchain.Companion.ELM_JSON
 import org.elm.workspace.EmptyElmStdlibVariant
 import org.elm.workspace.MinimalElmStdlibVariant
+import org.elm.workspace.Version
 import org.elm.workspace.elmWorkspace
 import org.intellij.lang.annotations.Language
 import java.util.*
@@ -240,9 +241,12 @@ abstract class ElmTestBase : LightPlatformCodeInsightFixture4TestCase(), ElmTest
 
             val variant = if (enableStdlib) MinimalElmStdlibVariant else EmptyElmStdlibVariant
             variant.ensureElmStdlibInstalled(module.project, toolchain)
+            // The manifest must declare the installed compiler's version so the plugin resolves the
+            // stdlib from the same ~/.elm/<version>/ directory the compiler installed it into.
+            val elmVersion = toolchain.queryCompilerVersion(module.project).orNull() ?: Version(0, 19, 1)
             val contentRoot = contentEntry.file!!
             val elmJsonFile = contentRoot.createChildData(this, ELM_JSON)
-            VfsUtil.saveText(elmJsonFile, variant.jsonManifest)
+            VfsUtil.saveText(elmJsonFile, variant.manifestFor(elmVersion))
             module.project.elmWorkspace.setupForTests(toolchain, elmJsonFile)
         }
     }

@@ -37,6 +37,7 @@ class ElmUnusedSymbolInspection : ElmLocalInspection() {
 
         if (isProgramEntryPoint(element)) return
         if (isPackagePublicApi(element)) return
+        if (isPhantomTypeConstructor(element)) return
 
         if (scope is GlobalSearchScope) {
             // to keep inspection/analysis time brief, bail out if 'Find Usages' will be slow
@@ -81,6 +82,38 @@ class ElmUnusedSymbolInspection : ElmLocalInspection() {
                 *fixes
         )
     }
+}
+
+/**
+ * Detects two common ways of defining a phantom type, where the sole constructor is
+ * deliberately impossible to construct and is therefore never expected to be used:
+ *
+ * ```
+ * type MyType = Thing Never
+ * type MyOtherType = Foo MyOtherType
+ * ```
+ *
+ * The pattern is a type with exactly one constructor, taking exactly one argument, where the
+ * argument is either `Never` (from `Basics`) or the type itself.
+ *
+ * The pattern comes from elm-review-unused:
+ * https://github.com/jfmengels/elm-review-unused/blob/0ae615f97a56cd1218189bb34b7d41a95a0d952d/src/NoUnused/CustomTypeConstructors.elm#L621-L657
+ */
+private fun isPhantomTypeConstructor(element: ElmNameIdentifierOwner): Boolean {
+    val variant = element as? ElmUnionVariant ?: return false
+    val typeDeclaration = variant.parentOfType<ElmTypeDeclaration>() ?: return false
+
+    // must be the only constructor, taking a single argument that is a plain type reference
+    if (typeDeclaration.unionVariantList.size != 1) return false
+    val parameter = variant.allParameters.singleOrNull() as? ElmTypeRef ?: return false
+    if (parameter.allArguments.isNotEmpty()) return false
+
+    // the argument must be either the type itself or `Never` (as defined in `Basics`)
+    val resolved = parameter.reference.resolve() ?: return false
+    if (element.manager.areElementsEquivalent(resolved, typeDeclaration)) return true
+    return resolved is ElmTypeDeclaration
+            && resolved.name == "Never"
+            && resolved.elmFile.getModuleDecl()?.name == "Basics"
 }
 
 private fun isPackagePublicApi(element: ElmNameIdentifierOwner): Boolean {

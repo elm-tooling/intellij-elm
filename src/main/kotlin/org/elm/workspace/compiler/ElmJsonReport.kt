@@ -6,7 +6,7 @@ import com.google.gson.Gson
 private val urlPattern = Regex("""<((http|https)://.*?)>""")
 
 
-fun elmJsonToCompilerMessages(json: String): List<ElmError> {
+fun elmJsonToCompilerMessages(json: String, rowAndColumnOffset: Int = 0): List<ElmError> {
     val report = Gson().fromJson(json, Report::class.java) ?: error("failed to parse JSON report from elm")
     return when (report) {
         is Report.General -> {
@@ -25,13 +25,20 @@ fun elmJsonToCompilerMessages(json: String): List<ElmError> {
                             location = ElmLocation(
                                     path = error.path,
                                     moduleName = error.name,
-                                    region = problem.region)
+                                    region = problem.region.offsetBy(rowAndColumnOffset))
                     )
                 }
             }
         }
     }
 }
+
+private fun Region.offsetBy(delta: Int): Region =
+        if (delta == 0) this
+        else Region(
+                start = Start(start.line + delta, start.column + delta),
+                end = End(end.line + delta, end.column + delta)
+        )
 
 private fun chunksToHtml(chunks: List<Chunk>): String =
         chunks.joinToString("",

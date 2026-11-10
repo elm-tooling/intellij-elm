@@ -29,7 +29,7 @@ internal fun runElmReviewOnCurrentFile(
     val elmProject = project.elmWorkspace.findProjectForFile(activeFile)
         ?: return ElmReviewRunFailure("Could not determine active Elm project")
 
-    project.elmReviewService.runReviewFromManualAction(elmProject.projectDirPath, elmProject)
+    project.elmReviewService.runReviewFromManualAction(elmProject.projectDirPath)
     return null
 }
 
