@@ -4,6 +4,7 @@
 
 ## [Unreleased]
 *   Fixed: attaching projects in WSL uses a WSL temporary directory, Linux compiler paths, and the WSL Elm package cache instead of Windows host paths (#91)
+*   New: Support folding for list expressions
 *   Fixed: attaching Elm projects on IntelliJ 2026.3 failed with a missing Jackson `ObjectMapper` class; Jackson 2 is now bundled with the plugin (#88)
 *   Fixed: an explicitly imported type now shadows one brought in by a wildcard (`exposing (..)`) import, regardless of import order, matching how values already resolved
 *   The constructor of a phantom type (which is unused on purpose; must be marked with `Never` or the type itself) is no longer marked as unused
@@ -26,7 +27,6 @@
 *   The Elm Projects sidebar has been moved to settings, and now lets you toggle each found elm.json file instead of looking for them in a file picker
 *   When attaching an elm.json file, the Elm version specified in the elm.json file is now used
 *   Fixed: on IntelliJ 2026.x, every elm-review run threw `NoSuchMethodError` (`DaemonCodeAnalyzerEx.markDocumentDirty`) and elm-review highlights did not refresh in open editors
-
 
 ## [6.0.0] - 2026-04-13
 *   Fixed: Reworked the elm-review panel (#19)
