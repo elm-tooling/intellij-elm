@@ -3,6 +3,8 @@
 # Changelog for et-intellij-elm
 
 ## [Unreleased]
+
+## [6.1.0] - 2026-11-13
 *   Fixed: attaching projects in WSL uses a WSL temporary directory, Linux compiler paths, and the WSL Elm package cache instead of Windows host paths (#91)
 *   New: Support folding for list expressions
 *   Fixed: attaching Elm projects on IntelliJ 2026.3 failed with a missing Jackson `ObjectMapper` class; Jackson 2 is now bundled with the plugin (#88)
