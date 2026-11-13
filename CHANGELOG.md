@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+## [6.1.1]
+*   Fixed: Remove use of internal API call
+
 ## [6.1.0] - 2026-11-13
 *   Fixed: attaching projects in WSL uses a WSL temporary directory, Linux compiler paths, and the WSL Elm package cache instead of Windows host paths (#91)
 *   New: Support folding for list expressions

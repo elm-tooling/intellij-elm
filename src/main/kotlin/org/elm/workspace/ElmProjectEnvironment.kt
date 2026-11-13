@@ -17,9 +17,12 @@ internal class ElmProjectEnvironment private constructor(private val distributio
     /** Null preserves the repository's existing local ELM_HOME/platform-default lookup. */
     fun packageCacheHome(): Path? {
         val wsl = distribution ?: return null
-        val home = wsl.userHome?.takeIf { it.isNotBlank() }
+        // getEnvironmentVariable is internal API; use the public login-shell environment map.
+        val environment = wsl.environment
+            ?: throw ProjectLoadException("Could not read the WSL user's environment")
+        val home = environment["HOME"]?.takeIf { it.isNotBlank() }
             ?: throw ProjectLoadException("Could not determine the WSL user's home directory")
-        val elmHome = resolveWslElmHome(wsl.getEnvironmentVariable("ELM_HOME"), home)
+        val elmHome = resolveWslElmHome(environment["ELM_HOME"], home)
         return Paths.get(wsl.getWindowsPath(elmHome))
     }
 
