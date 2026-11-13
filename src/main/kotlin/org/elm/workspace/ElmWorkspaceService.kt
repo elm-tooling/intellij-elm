@@ -532,8 +532,10 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             val elmCompilerVersion = compilerVersion
                 ?: resolveCompilerVersionForProjectLoad()
 
+            val environment = ElmProjectEnvironment.forManifest(manifestPath)
+            val packageCacheHome = environment.packageCacheHome()
             if (installDeps) {
-                installProjectDeps(manifestPath, elmCompilerVersion)
+                installProjectDeps(manifestPath, elmCompilerVersion, environment)
             }
 
             // An application's manifest pins the exact Elm version it must be built with, and that
@@ -543,7 +545,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             val cachePackageVersion = peekApplicationElmVersion(manifestPath) ?: elmCompilerVersion
 
             // not thread-safe; do not reuse across threads!
-            val repo = ElmPackageRepository(cachePackageVersion)
+            val repo = ElmPackageRepository(cachePackageVersion, packageCacheHome)
 
             // External files may have been created/modified by the Elm compiler. Refresh.
             findFileByPathTestAware(Paths.get(repo.elmHomePath))?.also {
@@ -564,14 +566,17 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             }
         }
 
-    private fun installProjectDeps(manifestPath: Path, compilerVersion: Version): Boolean {
+    private fun installProjectDeps(
+        manifestPath: Path,
+        compilerVersion: Version,
+        environment: ElmProjectEnvironment
+    ): Boolean = environment.withTempDirectory { dirPath ->
         // The only way to install an Elm project's dependencies is to compile
         // the project. But the project may not be in a compilable state when
         // we try to load it. So we will copy the `elm.json` into a temp dir
         // and run the compiler there.
 
-        // Create temp dir to hold everything
-        val dir = FileUtil.createTempDirectory("elm_deps_hack", null)
+        val dir = dirPath.toFile()
 
         // Re-write the `elm.json` with sane source-directories
         val mapper = ObjectMapper()
@@ -605,8 +610,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
         // because some inputs can hang the compiler.
         if (!ElmProjectLoader.isValid(tempManifest.toPath())) {
             log.error("Failed to install deps: the elm.json file is invalid")
-            FileUtil.delete(dir)
-            return false
+            return@withTempDirectory false
         }
 
         // Run the Elm compiler to install the dependencies
@@ -615,8 +619,8 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             type = ElmBuildTargetType.APPLICATION,
             workDir = dir.toPath(),
             inputPath = tempMain.toPath(),
-            inputPathForCompiler = tempMain.path,
-            outputPathForCompiler = nullOutputTargetPathString(),
+            inputPathForCompiler = tempMain.relativeTo(dir).invariantSeparatorsPath,
+            outputPathForCompiler = environment.nullOutput,
             mode = ElmBuildMode.NONE,
             compilerKind = ElmCompilerKind.ELM,
             compilerPath = settings.toolchain.compilerPath ?: Paths.get("elm"),
@@ -642,10 +646,7 @@ class ElmWorkspaceService(private val intellijProject: Project) : PersistentStat
             }
         }
 
-        // Cleanup
-        FileUtil.delete(dir)
-
-        return success
+        success
     }
 
 
