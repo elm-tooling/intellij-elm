@@ -21,6 +21,9 @@ class ElmFoldingBuilderTest: ElmTestBase() {
     fun `test record`() = doTest()
 
     @Test
+    fun `test list`() = doTest()
+
+    @Test
     fun `test record_type`() = doTest()
 
     @Test
