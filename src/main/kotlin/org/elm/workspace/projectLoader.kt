@@ -110,12 +110,16 @@ class ElmProjectLoader(
 
 
 /** Provides access to the Elm packages stored on-disk by the Elm compiler in `~/.elm` */
-class ElmPackageRepository(override val elmCompilerVersion: Version) : Repository {
+class ElmPackageRepository(
+    override val elmCompilerVersion: Version,
+    private val packageCacheHome: Path? = null
+) : Repository {
 
     private val inMemCache: MutableMap<String, List<Pkg>> = mutableMapOf()
 
     val elmHomePath: String
         get() {
+            packageCacheHome?.let { return it.toString() }
             /*
             The Elm compiler first checks the ELM_HOME environment variable. If not found,
             it will fall back to the path returned by Haskell's `System.Directory.getAppUserDataDirectory`
