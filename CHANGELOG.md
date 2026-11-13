@@ -4,6 +4,7 @@
 
 ## [Unreleased]
 *   New: Support folding for list expressions
+*   Fixed: attaching Elm projects on IntelliJ 2026.3 failed with a missing Jackson `ObjectMapper` class; Jackson 2 is now bundled with the plugin (#88)
 *   Fixed: an explicitly imported type now shadows one brought in by a wildcard (`exposing (..)`) import, regardless of import order, matching how values already resolved
 *   The constructor of a phantom type (which is unused on purpose; must be marked with `Never` or the type itself) is no longer marked as unused
 *   Fixed: elm-review is no longer run on files from dependencies (in `~/.elm`)
