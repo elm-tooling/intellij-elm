@@ -5,6 +5,7 @@
 .env
 
 build/
+elm-stuff/
 out/
 dist/
 testData/

@@ -110,12 +110,16 @@ class ElmProjectLoader(
 
 
 /** Provides access to the Elm packages stored on-disk by the Elm compiler in `~/.elm` */
-class ElmPackageRepository(override val elmCompilerVersion: Version) : Repository {
+class ElmPackageRepository(
+    override val elmCompilerVersion: Version,
+    private val packageCacheHome: Path? = null
+) : Repository {
 
     private val inMemCache: MutableMap<String, List<Pkg>> = mutableMapOf()
 
     val elmHomePath: String
         get() {
+            packageCacheHome?.let { return it.toString() }
             /*
             The Elm compiler first checks the ELM_HOME environment variable. If not found,
             it will fall back to the path returned by Haskell's `System.Directory.getAppUserDataDirectory`
@@ -168,6 +172,24 @@ class ElmPackageRepository(override val elmCompilerVersion: Version) : Repositor
                 }
         }
 }
+
+
+/**
+ * The exact `elm-version` pinned by an *application* manifest, used to locate its package cache
+ * under `~/.elm/<version>/`. An application must be built by the compiler matching this exact
+ * version (e.g. Elm 0.19.1 for `"0.19.1"`, or Lamdera whose Elm base is 0.19.1), and that compiler
+ * always stores its packages under `~/.elm/<that version>/` — so the manifest is authoritative,
+ * regardless of which compiler the workspace happens to have configured.
+ *
+ * Returns null for a package manifest (whose `elm-version` is a range, not an exact version) or if
+ * the manifest cannot be parsed — callers then fall back to the configured compiler's version.
+ */
+fun peekApplicationElmVersion(manifestPath: Path): Version? =
+    try {
+        (parseDTO(manifestPath) as? ElmApplicationProjectDTO)?.elmVersion
+    } catch (e: Throwable) {
+        null
+    }
 
 
 // DTOs for JSON Decoding

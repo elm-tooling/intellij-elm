@@ -1,5 +1,6 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -62,6 +63,10 @@ dependencies {
 
     implementation("com.github.ajalt.colormath:colormath:3.6.1")
 
+    // Jackson 2 is no longer exposed by the IDE's core classloader in IntelliJ 2026.3.
+    // Bundle databind and its transitive core/annotations dependencies ourselves.
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.23.0")
+
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.2.0")
     implementation("org.opentest4j:opentest4j:1.3.0")
 }
@@ -75,10 +80,17 @@ intellijPlatform {
     pluginVerification {
         ides {
             // Earliest and latest stable IC releases from the current compatibility window.
+            // The newest release must stay here: it is what catches platform APIs that were removed
+            // after the version we compile against (platformVersion in gradle.properties).
             create(properties("platformType"), "2024.3.7") {
                 useInstaller = false
             }
-            create(properties("platformType"), "2025.3.3") {
+            // IntelliJ IDEA Community (IC) is no longer published since 2025.3; newer releases use the
+            // unified IntelliJ IDEA distribution.
+            create(IntelliJPlatformType.IntellijIdea, "2025.3.3") {
+                useInstaller = false
+            }
+            create(IntelliJPlatformType.IntellijIdea, "2026.2.4") {
                 useInstaller = false
             }
         }

@@ -22,9 +22,13 @@ like asking it to compile a dummy application.
 interface ElmStdlibVariant {
 
     /**
-     * A description of the packages that we want to be installed
+     * A description of the packages that we want to be installed, as an application `elm.json`.
+     *
+     * The `elm-version` must match the compiler the developer has installed (the compiler rejects a
+     * mismatch) and, because it also selects which `~/.elm/<version>/packages/` directory the plugin
+     * resolves dependencies from, it must match the version the stdlib was installed under.
      */
-    val jsonManifest: String
+    fun manifestFor(elmVersion: Version): String
 
     /**
      * Install Elm 0.19 stdlib in the default location ($HOME/.elm)
@@ -40,15 +44,14 @@ object EmptyElmStdlibVariant : ElmStdlibVariant {
         // compiler in an external process.
     }
 
-    override val jsonManifest: String
-        @Language("JSON")
-        get() = """
+    @Language("JSON")
+    override fun manifestFor(elmVersion: Version): String = """
             {
                 "type": "application",
                 "source-directories": [
                     "."
                 ],
-                "elm-version": "0.19.1",
+                "elm-version": "$elmVersion",
                 "dependencies": {
                     "direct": {},
                     "indirect": {}
@@ -66,15 +69,17 @@ object EmptyElmStdlibVariant : ElmStdlibVariant {
  * required to compile an Elm application.
  */
 object MinimalElmStdlibVariant : ElmStdlibVariant {
-    override val jsonManifest: String
-        @Language("JSON")
-        get() = """
+    // The Elm compiler refuses to compile an application whose `elm.json` declares a different
+    // `elm-version` than the compiler itself. Parameterize the version so this manifest matches
+    // whichever 0.19.x compiler the developer happens to have installed (0.19.1, 0.19.2, ...).
+    @Language("JSON")
+    override fun manifestFor(elmVersion: Version): String = """
             {
                 "type": "application",
                 "source-directories": [
                     "."
                 ],
-                "elm-version": "0.19.1",
+                "elm-version": "$elmVersion",
                 "dependencies": {
                     "direct": {
                         "elm/core": "1.0.0",
@@ -103,12 +108,14 @@ object MinimalElmStdlibVariant : ElmStdlibVariant {
                 ?: error("Could not create on-disk temp dir for Elm stdlib installation")
 
         fileTree {
-            project(ELM_JSON, jsonManifest)
+            project(ELM_JSON, manifestFor(compilerVersion))
             elm("Main.elm")
         }.create(project, onDiskTmpDir)
 
         val entryPoint = ResolvedBuildTarget(
             name = "Main",
+            type = org.elm.workspace.compiler.ElmBuildTargetType.APPLICATION,
+            workDir = onDiskTmpDir.pathAsPath,
             inputPath = Paths.get("Main.elm"),
             inputPathForCompiler = "Main.elm",
             outputPathForCompiler = nullOutputTargetPathString(),

@@ -27,6 +27,7 @@ class ElmFoldingBuilder : FoldingBuilderEx(), DumbAware {
                 else "{-...-}"
             }
             RECORD_EXPR, RECORD_TYPE -> "{...}"
+            LIST_EXPR -> "[...]"
             TYPE_ALIAS_DECLARATION, TYPE_DECLARATION, VALUE_DECLARATION -> " = ..."
             else -> "..."
         }
@@ -71,7 +72,7 @@ private class ElmFoldingVisitor : PsiElementVisitor() {
             is PsiComment -> {
                 if (element.elementType == BLOCK_COMMENT || element.elementType == DOC_COMMENT) fold(element)
             }
-            is ElmRecordType, is ElmRecordExpr -> {
+            is ElmRecordType, is ElmRecordExpr, is ElmListExpr -> {
                 fold(element)
             }
             is ElmValueDeclaration -> {

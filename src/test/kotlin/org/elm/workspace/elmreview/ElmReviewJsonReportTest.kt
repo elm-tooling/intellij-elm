@@ -315,6 +315,61 @@ class ElmReviewJsonReportTest : ElmTestBase() {
     }
 
     @Test
+    fun `parses review-errors with null path for a global error`() {
+        // elm-review emits "path": null for global errors (Rule.globalError) that are not
+        // tied to a specific source file. The parser must not assume `path` is always a string.
+        @Language("JSON")
+        val json = """
+{
+  "type": "review-errors",
+  "cliVersion": "2.13.5",
+  "errors": [
+    {
+      "path": null,
+      "errors": [
+        {
+          "rule": "ExampleRule",
+          "message": "Example global rule error",
+          "details": [
+            "Global errors have no path"
+          ],
+          "region": {
+            "start": {
+              "line": 0,
+              "column": 0
+            },
+            "end": {
+              "line": 0,
+              "column": 0
+            }
+          },
+          "formatted": [
+            {
+              "string": "ExampleRule",
+              "color": "#FF0000"
+            },
+            ": Example global rule error\n\nGlobal errors have no path"
+          ],
+          "suppressed": false,
+          "originallySuppressed": false
+        }
+      ]
+    }
+  ]
+}
+        """.trimIndent()
+
+        val reader = JsonReader(json.byteInputStream().bufferedReader())
+        reader.strictness = Strictness.LENIENT
+        val report = reader.readErrorReport()
+
+        TestCase.assertEquals(1, report.size)
+        TestCase.assertNull(report[0].path)
+        TestCase.assertEquals("ExampleRule", report[0].rule)
+        TestCase.assertEquals(ElmReviewErrorOrigin.REVIEW, report[0].origin)
+    }
+
+    @Test
     fun `parses type error`() {
         @Language("JSON")
         val json = """
